@@ -1,0 +1,9 @@
+package java.util;
+
+import java.io.Serializable;
+
+public class UUID@A implements Serializable@A {
+    public static UUID@A randomUUID() {}
+
+    public String@A toString() {}
+}

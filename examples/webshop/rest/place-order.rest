@@ -1,0 +1,21 @@
+POST http://localhost:8081/checkout HTTP/1.1
+content-type: application/json
+
+{
+    "user_id": "user1",
+    "user_currency": "DKK",
+    "address": {
+        "street_address": "Campusvej 55",
+        "city": "Odense",
+        "state": "fyn",
+        "country": "Danmark",
+        "zip_code": 5230
+    },
+    "email": "user@example.com",
+    "credit_card": {
+        "credit_card_number": "4432801561520454",
+        "credit_card_cvv": 321,
+        "credit_card_expiration_year": 2027,
+        "credit_card_expiration_month": 8
+    }
+}

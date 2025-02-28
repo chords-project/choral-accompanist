@@ -1,0 +1,546 @@
+services:
+  consul:
+    image: hashicorp/consul:latest
+    ports:
+      - "8300:8300"
+      - "8400:8400"
+      - "8500:8500"
+      - "8600:53/udp"
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  frontend:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: frontend
+    ports:
+      - "5050:5000"
+    depends_on:
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  flights:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    ports:
+      - "8090:8090"
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: flights
+    depends_on:
+      - mongodb-flights
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  profile:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: profile
+    depends_on:
+      - mongodb-profile
+      - memcached-profile
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  search:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: search
+    depends_on:
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  geo:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: geo
+    depends_on:
+      - mongodb-geo
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  rate:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: rate
+    depends_on:
+      - mongodb-rate
+      - memcached-rate
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  review:
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - MEMC_TIMEOUT
+      - LOG_LEVEL=TRACE
+    build: .
+    image: hotel_reserv_review_single_node
+    entrypoint: review
+    container_name: "hotel_reserv_review"
+    depends_on:
+      - mongodb-review
+      - memcached-review
+      - consul
+    restart: unless-stopped
+
+  attractions:
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - MEMC_TIMEOUT
+      - LOG_LEVEL=TRACE
+    build: .
+    image: hotel_reserv_attractions_single_node
+    entrypoint: attractions
+    container_name: "hotel_reserv_attractions"
+    depends_on:
+      - mongodb-attractions
+      - consul
+    restart: unless-stopped
+
+  recommendation:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: recommendation
+    depends_on:
+      - mongodb-recommendation
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  user:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: user
+    depends_on:
+      - mongodb-user
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  reservation:
+    configs:
+      - source: server_config
+        target: /config.json
+    environment:
+      - TLS
+      - GC
+      - JAEGER_SAMPLE_RATIO=1.0
+      - LOG_LEVEL=TRACE
+    build: .
+    image: deathstarbench/hotel-reservation:latest
+    entrypoint: reservation
+    depends_on:
+      - mongodb-reservation
+      - memcached-reserve
+      - consul
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  # jaeger:
+  #   image: jaegertracing/all-in-one:latest
+  #   ports:
+  #     - "14269"
+  #     - "5778:5778"
+  #     - "14268:14268"
+  #     - "14267"
+  #     - "16686:16686"
+  #     - "5775:5775/udp"
+  #     - "6831:6831/udp"
+  #     - "6832:6832/udp"
+  #     - "4317:4317"
+  #   restart: unless-stopped
+  #   deploy:
+  #     replicas: 1
+  #     restart_policy:
+  #       condition: any
+
+  # alloy:
+  #   image: grafana/otel-lgtm:latest
+  #   ports:
+  #     - "3000:3000"
+  #     - "4317:4317"
+  #     - "4318:4318"
+  #   restart: unless-stopped
+  #   deploy:
+  #     replicas: 1
+  #     restart_policy:
+  #       condition: any
+
+  memcached-rate:
+    image: memcached:latest
+    hostname: user-memcached
+    environment:
+      - MEMCACHED_CACHE_SIZE=128
+      - MEMCACHED_THREADS=2
+    logging:
+      options:
+        max-size: 50m
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  memcached-review:
+    image: memcached
+    # hostname: user-memcached
+    container_name: "hotel_reserv_review_mmc"
+    restart: unless-stopped
+    environment:
+      - MEMCACHED_CACHE_SIZE=128
+      - MEMCACHED_THREADS=2
+    logging:
+      options:
+        max-size: 50m
+
+  memcached-profile:
+    image: memcached:latest
+    hostname: user-memcached
+    environment:
+      - MEMCACHED_CACHE_SIZE=128
+      - MEMCACHED_THREADS=2
+    logging:
+      options:
+        max-size: 50m
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  memcached-reserve:
+    image: memcached:latest
+    hostname: user-memcached
+    environment:
+      - MEMCACHED_CACHE_SIZE=128
+      - MEMCACHED_THREADS=2
+    logging:
+      options:
+        max-size: 50m
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-geo:
+    image: mongo:5.0
+    hostname: geo-db
+    volumes:
+      - geo:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-flights:
+    image: mongo:5.0
+    hostname: flights-db
+    volumes:
+      - flights:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-profile:
+    image: mongo:5.0
+    hostname: profile-db
+    volumes:
+      - profile:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-rate:
+    image: mongo:5.0
+    hostname: rate-db
+    volumes:
+      - rate:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-review:
+    image: mongo:5.0
+    hostname: review-db
+    volumes:
+      - review:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-attractions:
+    image: mongo:5.0
+    hostname: attractions-db
+    volumes:
+      - attractions:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-recommendation:
+    image: mongo:5.0
+    hostname: recommendation-db
+    volumes:
+      - recommendation:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-reservation:
+    image: mongo:5.0
+    hostname: reservation-db
+    volumes:
+      - reservation:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  mongodb-user:
+    image: mongo:5.0
+    hostname: user-db
+    volumes:
+      - user:/data/db
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  ### Telemetry Services ###
+
+  # Grafana Alloy batches and processes traces sent to it, generating
+  # auto-logs from those traces.
+  # Includes Metrics, Logs, Traces and Profiles.
+  alloy:
+    image: grafana/alloy:latest
+    # ports:
+    # - "12347:12345"
+    # - "12348:12348"
+    # - "6832:6832"
+    # - "55679:55679"
+    # - "4317:4317"
+    # - "4318:4318"
+    # - "9999:9999"
+    volumes:
+      - "./telemetry/alloy/config.alloy:/etc/alloy/config.alloy"
+      - "./telemetry/alloy/endpoints.json:/etc/alloy/endpoints.json"
+    command:
+      [
+        "run",
+        "--server.http.listen-addr=0.0.0.0:12345",
+        "--stability.level=public-preview",
+        "/etc/alloy/config.alloy",
+      ]
+
+  # The Grafana dashboarding server.
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - "./telemetry/grafana/definitions:/var/lib/grafana/dashboards"
+      - "./telemetry/grafana/provisioning:/etc/grafana/provisioning"
+      - "./telemetry/grafana/plugins/haohanyang-mongodb-datasource:/var/lib/grafana/plugins/haohanyang-mongodb-datasource"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_FEATURE_TOGGLES_ENABLE=flameGraph traceqlSearch traceQLStreaming correlations metricsSummary traceqlEditor traceToMetrics traceToProfiles datatrails
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app,grafana-exploretraces-app,grafana-pyroscope-app
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=haohanyang-mongodb-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_USERS_DEFAULT_THEME=light
+
+  # The Tempo service stores traces send to it by Grafana Alloy, and takes
+  # queries from Grafana to visualise those traces.
+  tempo:
+    image: grafana/tempo:latest
+    # ports:
+    #   - "3200:3200"
+    #   - "9411:9411"
+    #   - "55680:55680"
+    #   - "55681:55681"
+    #   - "14250:14250"
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - "./telemetry/tempo/tempo.yaml:/etc/tempo.yaml"
+
+  # The Loki service stores logs sent to it, and takes queries from Grafana
+  # to visualise those logs.
+  loki:
+    image: grafana/loki:latest
+    command:
+      ["--pattern-ingester.enabled=true", "-config.file=/etc/loki/loki.yaml"]
+    # ports:
+    #   - "3100:3100"
+    volumes:
+      - "./telemetry/loki/loki.yaml:/etc/loki/loki.yaml"
+
+  mimir:
+    image: grafana/mimir:latest
+    command:
+      [
+        "-ingester.native-histograms-ingestion-enabled=true",
+        "-config.file=/etc/mimir.yaml",
+      ]
+    # ports:
+    #   - "9009:9009"
+    volumes:
+      - "./telemetry/mimir/mimir.yaml:/etc/mimir.yaml"
+
+  # k6:
+  #   image: grafana/k6:latest
+  #   volumes:
+  #     - "./telemetry/k6:/scripts"
+  #   environment:
+  #     - K6_PROMETHEUS_RW_SERVER_URL=http://mimir:9009/api/v1/push
+  #     - K6_DURATION=3600s
+  #     - K6_VUS=4
+  #     - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+  #   restart: unless-stopped
+  #   command:
+  #     [
+  #       "run",
+  #       "-o",
+  #       "experimental-prometheus-rw",
+  #       "/scripts/mythical-loadtest.js",
+  #     ]
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    # ports:
+    #   - "4040:4040"
+    command: ["server"]
+
+volumes:
+  flights:
+  geo:
+  profile:
+  rate:
+  recommendation:
+  reservation:
+  user:
+  review:
+  attractions:
+
+configs:
+  server_config:
+    file: ./config.json

@@ -1,0 +1,2741 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: all-in-one
+    app.kubernetes.io/name: jaeger
+  name: jaeger
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "16686"
+        prometheus.io/scrape: "true"
+      labels:
+        app: jaeger
+        app.kubernetes.io/component: all-in-one
+        app.kubernetes.io/name: jaeger
+    spec:
+      containers:
+        - env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          image: jaegertracing/all-in-one
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+          name: jaeger
+          ports:
+            - containerPort: 16686
+              protocol: TCP
+            - containerPort: 4317
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 300Mi
+            requests:
+              cpu: 50m
+              memory: 180Mi
+      tolerations:
+        - effect: NoSchedule
+          key: kubernetes.io/arch
+          operator: Equal
+          value: arm64
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: query
+    app.kubernetes.io/name: jaeger
+  name: jaeger-query
+spec:
+  ports:
+    - name: query-http
+      port: 16686
+      protocol: TCP
+      targetPort: 16686
+  selector:
+    app: jaeger
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/name: jaeger
+  name: jaeger-collector
+spec:
+  ports:
+    - name: jaeger-collector-otlp
+      port: 4317
+      protocol: TCP
+      targetPort: 4317
+  selector:
+    app.kubernetes.io/component: all-in-one
+    app.kubernetes.io/name: jaeger
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+  name: jaeger-query-external
+spec:
+  ports:
+    - name: http
+      port: 16686
+      targetPort: 16686
+  selector:
+    app: jaeger
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cartservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkoutservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: currencyservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: emailservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: paymentservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: productcatalogservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: recommendationservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shippingservice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: adservice
+  name: adservice
+spec:
+  ports:
+    - name: grpc
+      port: 9555
+      targetPort: 9555
+  selector:
+    app: adservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cartservice
+  name: cartservice
+spec:
+  ports:
+    - name: grpc
+      port: 7070
+      targetPort: 7070
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: cartservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: checkoutservice
+  name: checkoutservice
+spec:
+  ports:
+    - name: grpc
+      port: 5050
+      targetPort: 5050
+  selector:
+    app: checkoutservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: currencyservice
+  name: currencyservice
+spec:
+  ports:
+    - name: grpc
+      port: 7000
+      targetPort: 7000
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: currencyservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: emailservice
+  name: emailservice
+spec:
+  ports:
+    - name: grpc
+      port: 5000
+      targetPort: 8080
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: emailservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+  name: frontend
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+    - name: choral-rest-api
+      port: 8081
+      targetPort: 8081
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: frontend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+  name: frontend-external
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  selector:
+    app: frontend
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: paymentservice
+  name: paymentservice
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: paymentservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: productcatalogservice
+  name: productcatalogservice
+spec:
+  ports:
+    - name: grpc
+      port: 3550
+      targetPort: 3550
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: productcatalogservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: recommendationservice
+  name: recommendationservice
+spec:
+  ports:
+    - name: grpc
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: recommendationservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis-cart
+  name: redis-cart
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: redis-cart
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: shippingservice
+  name: shippingservice
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: shippingservice
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: adservice
+  name: adservice
+spec:
+  selector:
+    matchLabels:
+      app: adservice
+  template:
+    metadata:
+      labels:
+        app: adservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "9555"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/adservice:sic-jss-270-g90d1fe47@sha256:5ba0c34b4609648f40fa6d8bc12a5a843f4cf580f649e73e2eedbcfcce118ead
+          livenessProbe:
+            grpc:
+              port: 9555
+          name: server
+          ports:
+            - containerPort: 9555
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 180Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 9555
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: adservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cartservice
+  name: cartservice
+spec:
+  selector:
+    matchLabels:
+      app: cartservice
+  template:
+    metadata:
+      labels:
+        app: cartservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CART
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: CHORAL_PRODUCT_CATALOG
+              value: productcatalogservice:5401
+            - name: CHORAL_SHIPPING
+              value: shippingservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/cartservice-sidecar:sic-jss-270-g90d1fe47@sha256:6366119b64f0f319040be8906fc16c0e703b071130efa66e80ee9e2a227d7b3b
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: cart-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: REDIS_ADDR
+              value: redis-cart:6379
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/cartservice:sic-jss-270-g90d1fe47@sha256:1cac94116dc3e6c2b6ad1e1953c8ff54bc360cf62035d4220ef27a2c6af0f67d
+          livenessProbe:
+            grpc:
+              port: 7070
+          name: cart-server
+          ports:
+            - containerPort: 7070
+          resources:
+            limits:
+              cpu: 300m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 7070
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: cartservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: checkoutservice
+  name: checkoutservice
+spec:
+  selector:
+    matchLabels:
+      app: checkoutservice
+  template:
+    metadata:
+      labels:
+        app: checkoutservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "5050"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: SHIPPING_SERVICE_ADDR
+              value: shippingservice:50051
+            - name: PAYMENT_SERVICE_ADDR
+              value: paymentservice:50051
+            - name: EMAIL_SERVICE_ADDR
+              value: emailservice:5000
+            - name: CURRENCY_SERVICE_ADDR
+              value: currencyservice:7000
+            - name: CART_SERVICE_ADDR
+              value: cartservice:7070
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/checkoutservice:sic-jss-270-g90d1fe47@sha256:31ce7c84fbac62ca4cd5b5ab49851e7e98cd5dd2682833ade0245e561c7a5ae7
+          livenessProbe:
+            grpc:
+              port: 5050
+          name: server
+          ports:
+            - containerPort: 5050
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5050
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: checkoutservice
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: currencyservice
+  name: currencyservice
+spec:
+  selector:
+    matchLabels:
+      app: currencyservice
+  template:
+    metadata:
+      labels:
+        app: currencyservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CURRENCY
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/currencyservice-sidecar:sic-jss-270-g90d1fe47@sha256:b3d74320da0d6aad84a2567a9b301f3b8597bf71ee0d4b6e159db7f5505d8e08
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: currency-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "7000"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/currencyservice:sic-jss-270-g90d1fe47@sha256:f8b5b4409cdd4569cb901856f15a904e0dc2eadaf0a74578dd20bff6d3ac4fbc
+          livenessProbe:
+            grpc:
+              port: 7000
+          name: currency-server
+          ports:
+            - containerPort: 7000
+              name: grpc
+          resources:
+            limits:
+              cpu: 300m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 7000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: currencyservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: emailservice
+  name: emailservice
+spec:
+  selector:
+    matchLabels:
+      app: emailservice
+  template:
+    metadata:
+      annotations:
+        debug.cloud.google.com/config: '{}'
+      labels:
+        app: emailservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_EMAIL
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/emailservice-sidecar:sic-jss-270-g90d1fe47@sha256:c4883259502a5f63fc0b0ced99962a7f15c9c659fe6563feeb93122c15fd0a45
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: email-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/emailservice:sic-jss-270-g90d1fe47@sha256:8271654381fc2bab4f39c1cefff74948963336644057d7b8ae0df9c5e2ae0b29
+          livenessProbe:
+            grpc:
+              port: 8080
+          name: email-server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: emailservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: frontend
+  name: frontend
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CART
+              value: cartservice:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: CHORAL_SHIPPING
+              value: shippingservice:5401
+            - name: CHORAL_PAYMENT
+              value: paymentservice:5401
+            - name: CHORAL_EMAIL
+              value: emailservice:5401
+            - name: CHORAL_FRONTEND
+              value: 0.0.0.0:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/frontend-sidecar:sic-jss-270-g90d1fe47@sha256:fda58989b08d9f8b88961d8e1d4b069a17cb349b1580cc79dcf1a3ca455ae3d8
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8081
+          name: frontend-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            httpGet:
+              path: /ping
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: CURRENCY_SERVICE_ADDR
+              value: currencyservice:7000
+            - name: CART_SERVICE_ADDR
+              value: cartservice:7070
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: recommendationservice:8080
+            - name: SHIPPING_SERVICE_ADDR
+              value: shippingservice:50051
+            - name: CHECKOUT_SERVICE_ADDR
+              value: checkoutservice:5050
+            - name: AD_SERVICE_ADDR
+              value: adservice:9555
+            - name: SHOPPING_ASSISTANT_SERVICE_ADDR
+              value: shoppingassistantservice:80
+            - name: ENABLE_PROFILER
+              value: "0"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/frontend:sic-jss-270-g90d1fe47@sha256:08f82abb8f94133c07f04042ab716ba0e3b9ad76215ebbfa52edce37d9df44a3
+          livenessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Cookie
+                  value: shop_session-id=x-liveness-probe
+              path: /_healthz
+              port: 8080
+            initialDelaySeconds: 10
+          name: frontend-server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            httpGet:
+              httpHeaders:
+                - name: Cookie
+                  value: shop_session-id=x-readiness-probe
+              path: /_healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: paymentservice
+  name: paymentservice
+spec:
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_PAYMENT
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/paymentservice-sidecar:sic-jss-270-g90d1fe47@sha256:17041e5f4e63767921ecbfb0feeb562930e83e56192848f0fd54b61ab79388b6
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: payment-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "50051"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/paymentservice:sic-jss-270-g90d1fe47@sha256:e8b039f2535261589da47d996468d658508d8d6364d03c5d1e4cb07cda2b48c5
+          livenessProbe:
+            grpc:
+              port: 50051
+          name: payment-server
+          ports:
+            - containerPort: 50051
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: paymentservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: productcatalogservice
+  name: productcatalogservice
+spec:
+  selector:
+    matchLabels:
+      app: productcatalogservice
+  template:
+    metadata:
+      labels:
+        app: productcatalogservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_PRODUCT_CATALOG
+              value: 0.0.0.0:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/productcatalog-sidecar:sic-jss-270-g90d1fe47@sha256:adef8fb57d62f31989d197a0161835c457703201413d52e3576a499b0df4c750
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: productcatalog-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "3550"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/productcatalogservice:sic-jss-270-g90d1fe47@sha256:6501f15b39170622ab164a57b3e3d6449fbf4206d6bfab571c1d6026c7f821df
+          livenessProbe:
+            grpc:
+              port: 3550
+          name: productcatalog-server
+          ports:
+            - containerPort: 3550
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 3550
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: productcatalogservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: recommendationservice
+  name: recommendationservice
+spec:
+  selector:
+    matchLabels:
+      app: recommendationservice
+  template:
+    metadata:
+      annotations:
+        debug.cloud.google.com/config: '{}'
+      labels:
+        app: recommendationservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/recommendationservice:sic-jss-270-g90d1fe47@sha256:c39830a2117b01fa561a4298d2b6cf658d6bc62512be730171c552266b48e676
+          livenessProbe:
+            grpc:
+              port: 8080
+          name: server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 450Mi
+            requests:
+              cpu: 50m
+              memory: 220Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: recommendationservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-cart
+  name: redis-cart
+spec:
+  selector:
+    matchLabels:
+      app: redis-cart
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+    spec:
+      containers:
+        - image: redis:alpine
+          livenessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          name: redis
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          resources:
+            limits:
+              cpu: 125m
+              memory: 256Mi
+            requests:
+              cpu: 70m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumes:
+        - emptyDir: {}
+          name: redis-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shippingservice
+  name: shippingservice
+spec:
+  selector:
+    matchLabels:
+      app: shippingservice
+  template:
+    metadata:
+      labels:
+        app: shippingservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_SHIPPING
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/shippingservice-sidecar:sic-jss-270-g90d1fe47@sha256:aaa6ae538f5a5d5840ab7f4cc934883574c93ffd6979ea99166b6869268f0be7
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: shipping-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "50051"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/shippingservice:sic-jss-270-g90d1fe47@sha256:94898c600e562f7140a6877eeb645a739cdcfd314b614c94f633c63dd10d5af0
+          livenessProbe:
+            grpc:
+              port: 50051
+          name: shipping-server
+          ports:
+            - containerPort: 50051
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: shippingservice
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: all-in-one
+    app.kubernetes.io/name: jaeger
+  name: jaeger
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "16686"
+        prometheus.io/scrape: "true"
+      labels:
+        app: jaeger
+        app.kubernetes.io/component: all-in-one
+        app.kubernetes.io/name: jaeger
+    spec:
+      containers:
+        - env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          image: jaegertracing/all-in-one
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+          name: jaeger
+          ports:
+            - containerPort: 16686
+              protocol: TCP
+            - containerPort: 4317
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 300Mi
+            requests:
+              cpu: 50m
+              memory: 180Mi
+      tolerations:
+        - effect: NoSchedule
+          key: kubernetes.io/arch
+          operator: Equal
+          value: arm64
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: query
+    app.kubernetes.io/name: jaeger
+  name: jaeger-query
+spec:
+  ports:
+    - name: query-http
+      port: 16686
+      protocol: TCP
+      targetPort: 16686
+  selector:
+    app: jaeger
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/name: jaeger
+  name: jaeger-collector
+spec:
+  ports:
+    - name: jaeger-collector-otlp
+      port: 4317
+      protocol: TCP
+      targetPort: 4317
+  selector:
+    app.kubernetes.io/component: all-in-one
+    app.kubernetes.io/name: jaeger
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jaeger
+  name: jaeger-query-external
+spec:
+  ports:
+    - name: http
+      port: 16686
+      targetPort: 16686
+  selector:
+    app: jaeger
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cartservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkoutservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: currencyservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: emailservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: paymentservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: productcatalogservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: recommendationservice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shippingservice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: adservice
+  name: adservice
+spec:
+  ports:
+    - name: grpc
+      port: 9555
+      targetPort: 9555
+  selector:
+    app: adservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cartservice
+  name: cartservice
+spec:
+  ports:
+    - name: grpc
+      port: 7070
+      targetPort: 7070
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: cartservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: checkoutservice
+  name: checkoutservice
+spec:
+  ports:
+    - name: grpc
+      port: 5050
+      targetPort: 5050
+  selector:
+    app: checkoutservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: currencyservice
+  name: currencyservice
+spec:
+  ports:
+    - name: grpc
+      port: 7000
+      targetPort: 7000
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: currencyservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: emailservice
+  name: emailservice
+spec:
+  ports:
+    - name: grpc
+      port: 5000
+      targetPort: 8080
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: emailservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+  name: frontend
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+    - name: choral-rest-api
+      port: 8081
+      targetPort: 8081
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: frontend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+  name: frontend-external
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  selector:
+    app: frontend
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: paymentservice
+  name: paymentservice
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: paymentservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: productcatalogservice
+  name: productcatalogservice
+spec:
+  ports:
+    - name: grpc
+      port: 3550
+      targetPort: 3550
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: productcatalogservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: recommendationservice
+  name: recommendationservice
+spec:
+  ports:
+    - name: grpc
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: recommendationservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis-cart
+  name: redis-cart
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: redis-cart
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: shippingservice
+  name: shippingservice
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: choral-sidecar
+      port: 5401
+      targetPort: 5401
+  selector:
+    app: shippingservice
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: adservice
+  name: adservice
+spec:
+  selector:
+    matchLabels:
+      app: adservice
+  template:
+    metadata:
+      labels:
+        app: adservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "9555"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/adservice:sic-jss-270-g90d1fe47@sha256:5ba0c34b4609648f40fa6d8bc12a5a843f4cf580f649e73e2eedbcfcce118ead
+          livenessProbe:
+            grpc:
+              port: 9555
+          name: server
+          ports:
+            - containerPort: 9555
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 180Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 9555
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: adservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cartservice
+  name: cartservice
+spec:
+  selector:
+    matchLabels:
+      app: cartservice
+  template:
+    metadata:
+      labels:
+        app: cartservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CART
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: CHORAL_PRODUCT_CATALOG
+              value: productcatalogservice:5401
+            - name: CHORAL_SHIPPING
+              value: shippingservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/cartservice-sidecar:sic-jss-270-g90d1fe47@sha256:6366119b64f0f319040be8906fc16c0e703b071130efa66e80ee9e2a227d7b3b
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: cart-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: REDIS_ADDR
+              value: redis-cart:6379
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/cartservice:sic-jss-270-g90d1fe47@sha256:1cac94116dc3e6c2b6ad1e1953c8ff54bc360cf62035d4220ef27a2c6af0f67d
+          livenessProbe:
+            grpc:
+              port: 7070
+          name: cart-server
+          ports:
+            - containerPort: 7070
+          resources:
+            limits:
+              cpu: 300m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 7070
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: cartservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: checkoutservice
+  name: checkoutservice
+spec:
+  selector:
+    matchLabels:
+      app: checkoutservice
+  template:
+    metadata:
+      labels:
+        app: checkoutservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "5050"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: SHIPPING_SERVICE_ADDR
+              value: shippingservice:50051
+            - name: PAYMENT_SERVICE_ADDR
+              value: paymentservice:50051
+            - name: EMAIL_SERVICE_ADDR
+              value: emailservice:5000
+            - name: CURRENCY_SERVICE_ADDR
+              value: currencyservice:7000
+            - name: CART_SERVICE_ADDR
+              value: cartservice:7070
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/checkoutservice:sic-jss-270-g90d1fe47@sha256:31ce7c84fbac62ca4cd5b5ab49851e7e98cd5dd2682833ade0245e561c7a5ae7
+          livenessProbe:
+            grpc:
+              port: 5050
+          name: server
+          ports:
+            - containerPort: 5050
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5050
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: checkoutservice
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: currencyservice
+  name: currencyservice
+spec:
+  selector:
+    matchLabels:
+      app: currencyservice
+  template:
+    metadata:
+      labels:
+        app: currencyservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CURRENCY
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/currencyservice-sidecar:sic-jss-270-g90d1fe47@sha256:b3d74320da0d6aad84a2567a9b301f3b8597bf71ee0d4b6e159db7f5505d8e08
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: currency-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "7000"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/currencyservice:sic-jss-270-g90d1fe47@sha256:f8b5b4409cdd4569cb901856f15a904e0dc2eadaf0a74578dd20bff6d3ac4fbc
+          livenessProbe:
+            grpc:
+              port: 7000
+          name: currency-server
+          ports:
+            - containerPort: 7000
+              name: grpc
+          resources:
+            limits:
+              cpu: 300m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 7000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: currencyservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: emailservice
+  name: emailservice
+spec:
+  selector:
+    matchLabels:
+      app: emailservice
+  template:
+    metadata:
+      annotations:
+        debug.cloud.google.com/config: '{}'
+      labels:
+        app: emailservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_EMAIL
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/emailservice-sidecar:sic-jss-270-g90d1fe47@sha256:c4883259502a5f63fc0b0ced99962a7f15c9c659fe6563feeb93122c15fd0a45
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: email-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/emailservice:sic-jss-270-g90d1fe47@sha256:8271654381fc2bab4f39c1cefff74948963336644057d7b8ae0df9c5e2ae0b29
+          livenessProbe:
+            grpc:
+              port: 8080
+          name: email-server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: emailservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: frontend
+  name: frontend
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_CART
+              value: cartservice:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: CHORAL_SHIPPING
+              value: shippingservice:5401
+            - name: CHORAL_PAYMENT
+              value: paymentservice:5401
+            - name: CHORAL_EMAIL
+              value: emailservice:5401
+            - name: CHORAL_FRONTEND
+              value: 0.0.0.0:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/frontend-sidecar:sic-jss-270-g90d1fe47@sha256:fda58989b08d9f8b88961d8e1d4b069a17cb349b1580cc79dcf1a3ca455ae3d8
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8081
+          name: frontend-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            httpGet:
+              path: /ping
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: CURRENCY_SERVICE_ADDR
+              value: currencyservice:7000
+            - name: CART_SERVICE_ADDR
+              value: cartservice:7070
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: recommendationservice:8080
+            - name: SHIPPING_SERVICE_ADDR
+              value: shippingservice:50051
+            - name: CHECKOUT_SERVICE_ADDR
+              value: checkoutservice:5050
+            - name: AD_SERVICE_ADDR
+              value: adservice:9555
+            - name: SHOPPING_ASSISTANT_SERVICE_ADDR
+              value: shoppingassistantservice:80
+            - name: ENABLE_PROFILER
+              value: "0"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/frontend:sic-jss-270-g90d1fe47@sha256:08f82abb8f94133c07f04042ab716ba0e3b9ad76215ebbfa52edce37d9df44a3
+          livenessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Cookie
+                  value: shop_session-id=x-liveness-probe
+              path: /_healthz
+              port: 8080
+            initialDelaySeconds: 10
+          name: frontend-server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            httpGet:
+              httpHeaders:
+                - name: Cookie
+                  value: shop_session-id=x-readiness-probe
+              path: /_healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: paymentservice
+  name: paymentservice
+spec:
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_PAYMENT
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/paymentservice-sidecar:sic-jss-270-g90d1fe47@sha256:17041e5f4e63767921ecbfb0feeb562930e83e56192848f0fd54b61ab79388b6
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: payment-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "50051"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/paymentservice:sic-jss-270-g90d1fe47@sha256:e8b039f2535261589da47d996468d658508d8d6364d03c5d1e4cb07cda2b48c5
+          livenessProbe:
+            grpc:
+              port: 50051
+          name: payment-server
+          ports:
+            - containerPort: 50051
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: paymentservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: productcatalogservice
+  name: productcatalogservice
+spec:
+  selector:
+    matchLabels:
+      app: productcatalogservice
+  template:
+    metadata:
+      labels:
+        app: productcatalogservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_PRODUCT_CATALOG
+              value: 0.0.0.0:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/productcatalog-sidecar:sic-jss-270-g90d1fe47@sha256:adef8fb57d62f31989d197a0161835c457703201413d52e3576a499b0df4c750
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: productcatalog-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "3550"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/productcatalogservice:sic-jss-270-g90d1fe47@sha256:6501f15b39170622ab164a57b3e3d6449fbf4206d6bfab571c1d6026c7f821df
+          livenessProbe:
+            grpc:
+              port: 3550
+          name: productcatalog-server
+          ports:
+            - containerPort: 3550
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 3550
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: productcatalogservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: recommendationservice
+  name: recommendationservice
+spec:
+  selector:
+    matchLabels:
+      app: recommendationservice
+  template:
+    metadata:
+      annotations:
+        debug.cloud.google.com/config: '{}'
+      labels:
+        app: recommendationservice
+    spec:
+      containers:
+        - env:
+            - name: PORT
+              value: "8080"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalogservice:3550
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/recommendationservice:sic-jss-270-g90d1fe47@sha256:c39830a2117b01fa561a4298d2b6cf658d6bc62512be730171c552266b48e676
+          livenessProbe:
+            grpc:
+              port: 8080
+          name: server
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 450Mi
+            requests:
+              cpu: 50m
+              memory: 220Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: recommendationservice
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-cart
+  name: redis-cart
+spec:
+  selector:
+    matchLabels:
+      app: redis-cart
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+    spec:
+      containers:
+        - image: redis:alpine
+          livenessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          name: redis
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          resources:
+            limits:
+              cpu: 125m
+              memory: 256Mi
+            requests:
+              cpu: 70m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumes:
+        - emptyDir: {}
+          name: redis-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shippingservice
+  name: shippingservice
+spec:
+  selector:
+    matchLabels:
+      app: shippingservice
+  template:
+    metadata:
+      labels:
+        app: shippingservice
+    spec:
+      containers:
+        - env:
+            - name: CHORAL_SHIPPING
+              value: 0.0.0.0:5401
+            - name: CHORAL_FRONTEND
+              value: frontend:5401
+            - name: CHORAL_CURRENCY
+              value: currencyservice:5401
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/shippingservice-sidecar:sic-jss-270-g90d1fe47@sha256:aaa6ae538f5a5d5840ab7f4cc934883574c93ffd6979ea99166b6869268f0be7
+          livenessProbe:
+            grpc:
+              port: 5401
+          name: shipping-sidecar
+          ports:
+            - containerPort: 5401
+          resources:
+            limits:
+              cpu: 500m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 250Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 5401
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        - env:
+            - name: PORT
+              value: "50051"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: ENABLE_TRACING
+              value: "1"
+            - name: COLLECTOR_SERVICE_ADDR
+              value: "http://lgtm:4317"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/shippingservice:sic-jss-270-g90d1fe47@sha256:94898c600e562f7140a6877eeb645a739cdcfd314b614c94f633c63dd10d5af0
+          livenessProbe:
+            grpc:
+              port: 50051
+          name: shipping-server
+          ports:
+            - containerPort: 50051
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 100
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: shippingservice
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: loadgenerator
+  name: loadgenerator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadgenerator
+  template:
+    metadata:
+      annotations:
+        debug.cloud.google.com/config: '{}'
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+      labels:
+        app: loadgenerator
+    spec:
+      containers:
+        - env:
+            - name: FRONTEND_ADDR
+              value: frontend:80
+            - name: USERS
+              value: "10"
+          image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/loadgenerator:sic-jss-270-g90d1fe47@sha256:16c7067e4b6ed9cddb57dc3f3331d285ed7139891613e3bf5a98d2efef5877b6
+          name: main
+          ports:
+            - containerPort: 8089
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 400m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: false
+      initContainers:
+        - command:
+            - /bin/sh
+            - -exc
+            - |
+              MAX_RETRIES=12
+              RETRY_INTERVAL=10
+              for i in $(seq 1 $MAX_RETRIES); do
+                echo "Attempt $i: Pinging frontend: ${FRONTEND_ADDR}..."
+                STATUSCODE=$(wget --server-response http://${FRONTEND_ADDR} 2>&1 | awk '/^  HTTP/{print $2}')
+                if [ $STATUSCODE -eq 200 ]; then
+                    echo "Frontend is reachable."
+                    exit 0
+                fi
+                echo "Error: Could not reach frontend - Status code: ${STATUSCODE}"
+                sleep $RETRY_INTERVAL
+              done
+              echo "Failed to reach frontend after $MAX_RETRIES attempts."
+              exit 1
+          env:
+            - name: FRONTEND_ADDR
+              value: frontend:80
+          image: busybox:latest
+          name: frontend-check
+          resources:
+            limits:
+              cpu: 100m
+              memory: 150Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: loadgenerator
+      terminationGracePeriodSeconds: 5
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loadgenerator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: loadgenerator
+  name: loadgenerator
+spec:
+  ports:
+    - name: http
+      port: 8089
+      targetPort: 8089
+  selector:
+    app: loadgenerator
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: loadgenerator
+  name: loadgenerator-external
+spec:
+  ports:
+    - name: http
+      port: 8089
+      targetPort: 8089
+  selector:
+    app: loadgenerator
+  type: LoadBalancer

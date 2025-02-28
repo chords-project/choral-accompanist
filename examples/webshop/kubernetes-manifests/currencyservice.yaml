@@ -1,0 +1,155 @@
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: currencyservice
+  labels:
+    app: currencyservice
+    kind: microservice
+spec:
+  selector:
+    matchLabels:
+      app: currencyservice
+  template:
+    metadata:
+      labels:
+        app: currencyservice
+    spec:
+      serviceAccountName: currencyservice
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+#      affinity:
+#        nodeAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#            nodeSelectorTerms:
+#              - matchExpressions:
+#                  - key: topology.kubernetes.io/zone
+#                    operator: In
+#                    values:
+#                      - eu-north-1b
+      containers:
+      - name: currency-sidecar
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          # readOnlyRootFilesystem: true
+        image: currencyservice-sidecar
+        ports:
+          - containerPort: 5401
+        env:
+        # Ingoing choral channels
+        - name: CHORAL_CURRENCY
+          value: "0.0.0.0:5401"
+
+        # Outgoing choral channels
+        - name: CHORAL_FRONTEND
+          value: "frontend:5401"
+
+        # Tracing
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "http://lgtm:4317"
+
+#        - value: JAVA_TOOL_OPTIONS
+#          name: '-Xms500m -Xmx800m'
+
+        startupProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 100
+          grpc:
+            port: 5401
+        livenessProbe:
+          timeoutSeconds: 12
+          grpc:
+            port: 5401
+        resources:
+          requests:
+            cpu: 200m
+            memory: 400Mi
+          limits:
+            cpu: 1000m
+            memory: 1600Mi
+      - name: currency-server
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        image: currencyservice
+        ports:
+        - name: grpc
+          containerPort: 7000
+        env:
+        - name: PORT
+          value: "7000"
+        - name: DISABLE_PROFILER
+          value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "http://lgtm:4317"
+
+        startupProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 100
+          grpc:
+            port: 7000
+        livenessProbe:
+          timeoutSeconds: 12
+          grpc:
+            port: 7000
+        resources:
+          requests:
+            cpu: 300m
+            memory: 200Mi
+          limits:
+            cpu: 1000m
+            memory: 800Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: currencyservice
+  labels:
+    app: currencyservice
+spec:
+  type: ClusterIP
+  selector:
+    app: currencyservice
+  ports:
+  - name: grpc
+    port: 7000
+    targetPort: 7000
+  - name: choral-sidecar
+    port: 5401
+    targetPort: 5401
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: currencyservice

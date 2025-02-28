@@ -1,0 +1,223 @@
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    kind: microservice
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      serviceAccountName: frontend
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+#      affinity:
+#        nodeAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#            nodeSelectorTerms:
+#              - matchExpressions:
+#                  - key: topology.kubernetes.io/zone
+#                    operator: In
+#                    values:
+#                      - eu-north-1b
+      containers:
+        - name: frontend-sidecar
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            # readOnlyRootFilesystem: true
+          image: frontend-sidecar
+          ports:
+          - containerPort: 5401
+          startupProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 100
+            timeoutSeconds: 12
+            httpGet:
+              path: "/ping"
+              port: 8081
+          livenessProbe:
+            timeoutSeconds: 12
+            httpGet:
+              path: "/ping"
+              port: 8081
+          env:
+          # Choral outgoing channels
+          - name: CHORAL_CART
+            value: "cartservice:5401"
+          - name: CHORAL_CURRENCY
+            value: "currencyservice:5401"
+          - name: CHORAL_SHIPPING
+            value: "shippingservice:5401"
+          - name: CHORAL_PAYMENT
+            value: "paymentservice:5401"
+          - name: CHORAL_EMAIL
+            value: "emailservice:5401"
+
+          # Choral ingoing channels
+          - name: CHORAL_FRONTEND
+            value: "0.0.0.0:5401"
+
+          # Tracing
+          - name: ENABLE_TRACING
+            value: "1"
+          - name: COLLECTOR_SERVICE_ADDR
+            value: "http://lgtm:4317"
+
+#          - value: JAVA_TOOL_OPTIONS
+#            name: '-Xms500m -Xmx800m'
+
+          resources:
+            requests:
+              cpu: 300m
+              memory: 800Mi
+            limits:
+              cpu: 1000m
+              memory: 1600Mi
+        - name: frontend-server
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          image: frontend
+          ports:
+          - containerPort: 8080
+          startupProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 100
+            httpGet:
+              path: "/_healthz"
+              port: 8080
+              httpHeaders:
+              - name: "Cookie"
+                value: "shop_session-id=x-readiness-probe"
+          livenessProbe:
+            initialDelaySeconds: 10
+            timeoutSeconds: 12
+            httpGet:
+              path: "/_healthz"
+              port: 8080
+              httpHeaders:
+              - name: "Cookie"
+                value: "shop_session-id=x-liveness-probe"
+          env:
+          - name: PORT
+            value: "8080"
+          - name: ENABLE_TRACING
+            value: "1"
+          - name: COLLECTOR_SERVICE_ADDR
+            value: "http://lgtm:4317"
+
+          - name: PRODUCT_CATALOG_SERVICE_ADDR
+            value: "productcatalogservice:3550"
+          - name: CURRENCY_SERVICE_ADDR
+            value: "currencyservice:7000"
+          - name: CART_SERVICE_ADDR
+            value: "cartservice:7070"
+          - name: RECOMMENDATION_SERVICE_ADDR
+            value: "recommendationservice:8080"
+          - name: SHIPPING_SERVICE_ADDR
+            value: "shippingservice:50051"
+          - name: CHECKOUT_SERVICE_ADDR
+            value: "checkoutservice:5050"
+          - name: AD_SERVICE_ADDR
+            value: "adservice:9555"
+          - name: SHOPPING_ASSISTANT_SERVICE_ADDR
+            value: "shoppingassistantservice:80"
+
+          # # ENV_PLATFORM: One of: local, gcp, aws, azure, onprem, alibaba
+          # # When not set, defaults to "local" unless running in GKE, otherwies auto-sets to gcp
+          # - name: ENV_PLATFORM
+          #   value: "aws"
+          - name: ENABLE_PROFILER
+            value: "0"
+          # - name: CYMBAL_BRANDING
+          #   value: "true"
+          # - name: ENABLE_ASSISTANT
+          #   value: "true"
+          # - name: FRONTEND_MESSAGE
+          #   value: "Replace this with a message you want to display on all pages."
+          # As part of an optional Google Cloud demo, you can run an optional microservice called the "packaging service".
+          # - name: PACKAGING_SERVICE_URL
+          #   value: "" # This value would look like "http://123.123.123"
+          resources:
+            requests:
+              cpu: 400m
+              memory: 200Mi
+            limits:
+              cpu: 1400m
+              memory: 800Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: choral-rest-api
+    port: 8081
+    targetPort: 8081
+  - name: choral-sidecar
+    port: 5401
+    targetPort: 5401
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-external
+  labels:
+    app: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package flights;
+
+option go_package = "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/flights";
+
+service Flights {
+  rpc GetAirport(AirportRequest) returns (Airport);
+  rpc SearchFlights(SearchRequest) returns (SearchResult);
+  rpc BookFlight(BookingRequest) returns (Booking);
+}
+
+message AirportRequest {
+  string id = 1;
+}
+
+message Airport {
+  string id = 1;
+  string name = 2;
+  float lat = 3;
+  float lon = 4;
+}
+
+message SearchRequest {
+  string from_airport = 1;
+  string to_airport = 2;
+  string departure_date = 3;
+}
+
+message SearchResult {
+  repeated Flight flights = 1;
+}
+
+message Flight {
+  string id = 1;
+  string from_airport = 2;
+  string to_airport = 3;
+  string departure_time = 4;
+  string arrival_time = 5;
+}
+
+message BookingRequest {
+  // The ID of the flight to book
+  string id = 1;
+}
+
+message Booking {
+  string id = 1;
+}
+

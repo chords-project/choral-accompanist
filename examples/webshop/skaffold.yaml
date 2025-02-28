@@ -1,0 +1,186 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: app
+requires:
+  - configs:
+      - jaeger
+build:
+  artifacts:
+    # image tags are relative; to specify an image repo (e.g. GCR), you
+    # must provide a "default repo" using one of the methods described
+    # here:
+    # https://skaffold.dev/docs/concepts/#image-repository-handling
+    - image: emailservice
+      context: src/emailservice
+    - image: productcatalogservice
+      context: src/productcatalogservice
+    - image: recommendationservice
+      context: src/recommendationservice
+    - image: shoppingassistantservice
+      context: src/shoppingassistantservice
+    - image: shippingservice
+      context: src/shippingservice
+    - image: checkoutservice
+      context: src/checkoutservice
+    - image: paymentservice
+      context: src/paymentservice
+    - image: currencyservice
+      context: src/currencyservice
+    - image: cartservice
+      context: src/cartservice/src
+      docker:
+        dockerfile: Dockerfile
+    - image: frontend
+      context: src/frontend
+    - image: adservice
+      context: src/adservice
+    - image: cartservice-sidecar
+      context: choral/sidecars/cartservice
+      jib:
+        project: cartservice
+    - image: currencyservice-sidecar
+      context: choral/sidecars/currencyservice
+      jib:
+        project: currencyservice
+    - image: frontend-sidecar
+      context: choral/sidecars/frontend
+      jib:
+        project: frontend
+    - image: paymentservice-sidecar
+      context: choral/sidecars/paymentservice
+      jib:
+        project: paymentservice
+    - image: productcatalog-sidecar
+      context: choral/sidecars/productcatalog
+      jib:
+        project: productcatalog
+    - image: shippingservice-sidecar
+      context: choral/sidecars/shippingservice
+      jib:
+        project: shippingservice
+    - image: emailservice-sidecar
+      context: choral/sidecars/emailservice
+      jib:
+          project: emailservice
+  tagPolicy:
+    gitCommit: {}
+  local:
+    concurrency: 4
+  #   useBuildkit: false
+manifests:
+  rawYaml:
+    - kubernetes-manifests/jaeger.yaml
+    - kubernetes-manifests/observability.yaml
+  kustomize:
+    paths:
+      - kubernetes-manifests
+deploy:
+  kubectl: {}
+
+# "gcb" profile allows building and pushing the images
+# on Google Container Builder without requiring docker
+# installed on the developer machine. However, note that
+# since GCB does not cache the builds, each build will
+# start from scratch and therefore take a long time.
+#
+# This is not used by default. To use it, run:
+#     skaffold run -p gcb
+profiles:
+  - name: gcb
+    build:
+      googleCloudBuild:
+        diskSizeGb: 300
+        machineType: N1_HIGHCPU_32
+        timeout: 4000s
+  # "debug" profile replaces the default Dockerfile in cartservice with Dockerfile.debug,
+  # which enables debugging via skaffold.
+  #
+  # This profile is used by default when running skaffold debug.
+  - name: debug
+    activation:
+      - command: debug
+      - command: dev
+    patches:
+      - op: replace
+        path: /build/artifacts/8/docker/dockerfile
+        value: Dockerfile.debug
+
+    # patches:
+    #   - op: replace # cartservice
+    #     path: /build/artifacts/8/docker/dockerfile
+    #     value: Dockerfile.debug
+    #   - op: add # cartservice-sidecar
+    #     path: /build/artifacts/12
+    #     value:
+    #       sync:
+    #         infer:
+    #           - 'build/distributions/cartservice.tar'
+    #       docker:
+    #         dockerfile: Dockerfile.debug
+  # The "network-policies" profile is not used by default.
+  # You can use it in isolation or in combination with other profiles:
+  #     skaffold run -p network-policies, debug
+  - name: network-policies
+    patches:
+      - op: add
+        path: /manifests/kustomize/paths/1
+        value: kustomize/components/network-policies
+---
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: loadgenerator
+#requires:
+#  - configs:
+#      - app
+build:
+  artifacts:
+    - image: loadgenerator
+      context: src/loadgenerator
+manifests:
+  rawYaml:
+    - ./kubernetes-manifests/loadgenerator.yaml
+deploy:
+  kubectl: {}
+profiles:
+  - name: gcb
+    build:
+      googleCloudBuild:
+        diskSizeGb: 300
+        machineType: N1_HIGHCPU_32
+        timeout: 4000s
+---
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: jaeger
+manifests:
+  rawYaml:
+    - kubernetes-manifests/jaeger.yaml
+  kustomize:
+    paths:
+      - kubernetes-manifests
+deploy:
+  kubectl: {}
+# portForward:
+#   - resourceType: service
+#     resourceName: jaeger-query
+#     namespace: default
+#     port: 16686
+#     localPort: 16686
+#     address: 127.0.0.1
