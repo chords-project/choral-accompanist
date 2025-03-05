@@ -15,8 +15,24 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation;
     private SymChannel@(Client, Reservation)<Serializable> ch_clientReservation;
 
-    public ChorBookTravel(FlightService@Flight flightSvc) {
+    public ChorBookTravel(
+        FlightService@Flight flightSvc,
+        GeoService@Geo geoSvc,
+        ReservationService@Reservation reservationSvc,
+
+        SymChannel@(Client, Flight)<Serializable> ch_clientFlight,
+        DiChannel@(Flight, Geo)<Serializable> ch_flightGeo,
+        DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation,
+        SymChannel@(Client, Reservation)<Serializable> ch_clientReservation
+    ) {
         this.flightSvc = flightSvc;
+        this.geoSvc = geoSvc;
+        this.reservationSvc = reservationSvc;
+
+        this.ch_clientFlight = ch_clientFlight;
+        this.ch_flightGeo = ch_flightGeo;
+        this.ch_geoReservation = ch_geoReservation;
+        this.ch_clientReservation = ch_clientReservation;
     }
 
     public BookTravelResult@Client bookTravel(BookTravelRequest@Client req) {

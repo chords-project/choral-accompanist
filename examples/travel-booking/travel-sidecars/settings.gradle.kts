@@ -17,4 +17,8 @@ project(":reactive-middleware").projectDir = file("../../../reactive-middleware"
 
 include(
     "travel-choreographies",
+    "clientservice",
+    "flightservice",
+    "geoservice",
+    "reservationservice",
 )
