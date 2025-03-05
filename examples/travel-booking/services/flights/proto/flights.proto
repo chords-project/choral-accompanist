@@ -5,9 +5,15 @@ package flights;
 option go_package = "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/flights";
 
 service Flights {
+  rpc NearestAirport(AirportSearchRequest) returns (Airport);
   rpc GetAirport(AirportRequest) returns (Airport);
   rpc SearchFlights(SearchRequest) returns (SearchResult);
   rpc BookFlight(BookingRequest) returns (Booking);
+}
+
+message AirportSearchRequest {
+  string lat = 1;
+  string lon = 2;
 }
 
 message AirportRequest {
