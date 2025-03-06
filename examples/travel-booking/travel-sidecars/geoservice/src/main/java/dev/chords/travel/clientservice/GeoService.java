@@ -1,4 +1,4 @@
-package dev.chords.travel.reservationservice;
+package dev.chords.travel.clientservice;
 
 import dev.chords.travel.choreographies.Coordinate;
 import io.opentelemetry.api.OpenTelemetry;

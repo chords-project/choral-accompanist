@@ -29,6 +29,7 @@ public class Logger implements io.opentelemetry.api.logs.Logger {
     }
 
     public void log(Severity level, String message, Attributes attributes) {
+        System.out.println(level.name() + ": " + message);
         logger.logRecordBuilder()
             .setAllAttributes(
                 Attributes.builder()

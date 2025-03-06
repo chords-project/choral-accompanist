@@ -39,6 +39,10 @@ java {
     }
 }
 
+jib {
+    to.image = "travel-sidecar-reservation"
+}
+
 //jib {
 //    from.image = "openjdk:24-jdk"
 //    container.mainClass = "dev.chords.microservices.cartservice.Main"

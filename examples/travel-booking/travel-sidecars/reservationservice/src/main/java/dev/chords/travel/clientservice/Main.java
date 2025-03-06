@@ -1,41 +1,36 @@
-package dev.chords.travel.reservationservice;
+package dev.chords.travel.clientservice;
 
 import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveServer.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
-import dev.chords.travel.choreographies.ChorBookTravel_Flight;
-import dev.chords.travel.choreographies.ServiceResources;
-import dev.chords.travel.choreographies.Tracing;
-import dev.chords.travel.choreographies.TravelSession;
+import dev.chords.travel.choreographies.*;
 import io.opentelemetry.api.OpenTelemetry;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import java.net.InetSocketAddress;
 
 public class Main {
 
-    private static FlightService flightService;
+    private static ReservationService reservationService;
 
     private static ClientConnectionManager clientConn;
-    private static ClientConnectionManager geoConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
-        OpenTelemetry telemetry = Tracing.initTracing("FlightService");
+        OpenTelemetry telemetry = Tracing.initTracing("ReservationService");
         logger = new Logger(telemetry, Main.class.getName());
 
         logger.info("Starting choral flight service");
 
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
-        flightService = new FlightService(new InetSocketAddress("localhost", rpcPort), telemetry);
+        reservationService = new ReservationService(new InetSocketAddress("localhost", rpcPort), telemetry);
 
         clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
-        geoConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.geo, telemetry);
 
-        ReactiveServer server = new ReactiveServer(Service.FLIGHT.name(), telemetry,
+        ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry,
                 Main::handleNewSession);
 
-        server.listen(ServiceResources.shared.flight);
+        server.listen(ServiceResources.shared.geo);
     }
 
     private static void handleNewSession(SessionContext ctx)
@@ -46,10 +41,10 @@ public class Main {
             case BOOK_TRAVEL:
                 ctx.log("New BOOK_TRAVEL request");
 
-                ChorBookTravel_Flight bookTravelChor = new ChorBookTravel_Flight(
-                        flightService,
-                        ctx.symChan(Service.CLIENT.name(), clientConn),
-                        ctx.chanA(geoConn)
+                ChorBookTravel_Reservation bookTravelChor = new ChorBookTravel_Reservation(
+                        reservationService,
+                        ctx.chanB(Service.GEO.name()),
+                        ctx.symChan(Service.CLIENT.name(), clientConn)
                 );
 
                 bookTravelChor.bookTravel();

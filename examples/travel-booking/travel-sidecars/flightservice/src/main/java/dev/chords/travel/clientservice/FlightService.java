@@ -1,4 +1,4 @@
-package dev.chords.travel.reservationservice;
+package dev.chords.travel.clientservice;
 
 import dev.chords.travel.choreographies.Airport;
 import dev.chords.travel.choreographies.Coordinate;

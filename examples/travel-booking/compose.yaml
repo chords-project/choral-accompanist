@@ -34,6 +34,10 @@ services:
       restart_policy:
         condition: any
 
+  frontend-sidecar:
+    image: travel-sidecar-client
+    restart: unless-stopped
+
   flights:
     configs:
       - source: server_config

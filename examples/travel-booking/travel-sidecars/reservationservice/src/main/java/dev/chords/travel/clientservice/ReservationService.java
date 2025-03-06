@@ -1,10 +1,8 @@
-package dev.chords.travel.reservationservice;
+package dev.chords.travel.clientservice;
 
-import dev.chords.travel.choreographies.Coordinate;
 import io.opentelemetry.api.OpenTelemetry;
 
 import java.net.InetSocketAddress;
-import java.util.List;
 
 public class ReservationService implements dev.chords.travel.choreographies.ReservationService {
 

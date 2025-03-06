@@ -1,4 +1,4 @@
-package dev.chords.travel.reservationservice;
+package dev.chords.travel.clientservice;
 
 import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveServer.SessionContext;

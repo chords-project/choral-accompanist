@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package choreography;
+
+service Choreography {
+  rpc BookTravel(BookTravelRequest) returns (BookTravelResult);
+}
+
+message BookTravelRequest {
+  Coordinate from = 1;
+  Coordinate to = 2;
+  string startDate = 3;
+  string endDate = 4;
+}
+
+message BookTravelResult {
+  Flight outFlight = 1;
+  Flight homeFlight = 2;
+  string hotelId = 3;
+}
+
+message Coordinate {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message Flight {
+    string id = 1;
+    string fromAirport = 2;
+    string toAirport = 3;
+    string departureTime = 4;
+    string arrivalTime = 5;
+}
