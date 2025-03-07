@@ -18,10 +18,10 @@ public class Main {
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
-        OpenTelemetry telemetry = Tracing.initTracing("FlightService");
+        OpenTelemetry telemetry = Tracing.initTracing("geo-sidecar");
         logger = new Logger(telemetry, Main.class.getName());
 
-        logger.info("Starting choral flight service");
+        logger.info("Starting choral geo sidecar");
 
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
         geoService = new GeoService(new InetSocketAddress("localhost", rpcPort), telemetry);

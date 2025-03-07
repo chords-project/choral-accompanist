@@ -61,7 +61,7 @@ public class FrontendController {
             emailConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.email,
                 telemetry);
         } catch (URISyntaxException | IOException e) {
-            e.printStackTrace();
+            logger.exception("failed to start sidecar connections", e);
             throw new RuntimeException(e);
         }
 
@@ -171,8 +171,7 @@ public class FrontendController {
 
             throw new RuntimeException(e);
         } finally {
-            if (span != null)
-                span.end();
+            span.end();
         }
     }
 }

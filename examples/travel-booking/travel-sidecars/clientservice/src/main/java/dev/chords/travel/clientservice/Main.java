@@ -12,9 +12,12 @@ import dev.chords.travel.choreographies.TravelSession.Choreography;
 import io.opentelemetry.api.OpenTelemetry;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Scope;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.net.URISyntaxException;
 
 public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
@@ -26,57 +29,87 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
     private static GrpcServer grpcServer;
     private static OpenTelemetry telemetry;
 
-    public static void main(String[] args) throws Exception {
-        telemetry = Tracing.initTracing("ClientService");
+    public static void main(String[] args) {
+        telemetry = Tracing.initTracing("client-sidecar");
         logger = new Logger(telemetry, Main.class.getName());
 
-        logger.info("Starting choral client service");
+        logger.info("Starting choral client sidecar");
 
-        flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
-        reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+        try {
+            flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
+            reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+        } catch (URISyntaxException | IOException e) {
+            logger.exception("failed to start sidecar connections", e);
+            throw new RuntimeException(e);
+        }
 
         server = new ReactiveServer(Service.CLIENT.name(), telemetry, ctx -> {
-            throw new Exception("Client server will never start new session");
+            logger.warn("client server received new session from " + ctx.session.senderName() +
+                    ", this should never happen and is ignored.");
         });
 
-        grpcServer = new GrpcServer(new GrpcServer.RequestHandler() {
+        grpcServer = new GrpcServer(telemetry, new GrpcServer.RequestHandler() {
             @Override
             public BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
                 return Main.bookTravel(req);
             }
         });
-        grpcServer.start(8945);
+
+        try {
+            grpcServer.start(8945);
+        } catch (IOException e) {
+            logger.exception("failed to start grpc server", e);
+            throw new RuntimeException(e);
+        }
         logger.info("Client gRPC server running on port 8945");
 
-        server.listen(ServiceResources.shared.client);
+        try {
+            server.listen(ServiceResources.shared.client);
+        } catch (URISyntaxException | IOException e) {
+            logger.exception("choral reactive server failed", e);
+            throw new RuntimeException(e);
+        }
     }
 
     private static BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
 
         TravelSession session = TravelSession.makeSession(Choreography.BOOK_TRAVEL, Service.CLIENT);
 
-        Span span = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
-                .spanBuilder("BookTravel").startSpan();
+        Span span = telemetry
+                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .spanBuilder("BookTravel")
+                .setSpanKind(SpanKind.CLIENT)
+                .setAttribute("choreography.session", session.toString())
+                .startSpan();
 
-        try (Scope scope = span.makeCurrent()) {
-            TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
+        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
+        server.registerSession(session, telemetrySession);
 
-            ReactiveClient flightClient = new ReactiveClient(flightConn, Service.FLIGHT.name(), telemetrySession);
-            ReactiveChannel_A<Serializable> flightChanA = new ReactiveChannel_A<>(session, flightClient, telemetrySession);
-            ReactiveChannel_B<Serializable> flightChanB = new ReactiveChannel_B<>(session.replacingSender(Service.FLIGHT.name()), server, telemetrySession);
-            ReactiveSymChannel<Serializable> flightChan = new ReactiveSymChannel<>(flightChanA, flightChanB);
+        try (Scope scope = span.makeCurrent();
+             ReactiveClient flightClient = new ReactiveClient(flightConn, Service.CLIENT.name(), telemetrySession);
+             ReactiveClient reservationClient = new ReactiveClient(reservationConn, Service.CLIENT.name(), telemetrySession);) {
 
-            ReactiveClient reservationClient = new ReactiveClient(reservationConn, Service.RESERVATION.name(), telemetrySession);
-            ReactiveChannel_A<Serializable> reservationChanA = new ReactiveChannel_A<>(session, reservationClient, telemetrySession);
-            ReactiveChannel_B<Serializable> reservationChanB = new ReactiveChannel_B<>(session.replacingSender(Service.RESERVATION.name()), server, telemetrySession);
-            ReactiveSymChannel<Serializable> reservationChan = new ReactiveSymChannel<>(reservationChanA, reservationChanB);
+            telemetrySession.log("Initializing BOOK_TRAVEL choreography");
+
+            var flightChan = new ReactiveSymChannel<>(flightClient.chanA(session),
+                    server.chanB(session, Service.FLIGHT.name()));
+
+            var reservationChan = new ReactiveSymChannel<>(reservationClient.chanA(session),
+                    server.chanB(session, Service.RESERVATION.name()));
 
             ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(
                     flightChan,
                     reservationChan
             );
 
+            telemetrySession.log("Finished BOOK_TRAVEL choreography");
+
             return bookTravelChor.bookTravel(req);
+        } catch (Exception e) {
+            telemetrySession.recordException("Client BOOK_TRAVEL choreography failed", e, true);
+            throw new RuntimeException(e);
+        } finally {
+            span.end();
         }
     }
 }

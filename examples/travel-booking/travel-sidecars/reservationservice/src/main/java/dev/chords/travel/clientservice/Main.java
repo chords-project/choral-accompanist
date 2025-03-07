@@ -17,10 +17,10 @@ public class Main {
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
-        OpenTelemetry telemetry = Tracing.initTracing("ReservationService");
+        OpenTelemetry telemetry = Tracing.initTracing("reservation-sidecar");
         logger = new Logger(telemetry, Main.class.getName());
 
-        logger.info("Starting choral flight service");
+        logger.info("Starting choral reservation sidecar");
 
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
         reservationService = new ReservationService(new InetSocketAddress("localhost", rpcPort), telemetry);

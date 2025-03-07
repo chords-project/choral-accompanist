@@ -9,14 +9,14 @@ service Choreography {
 message BookTravelRequest {
   Coordinate from = 1;
   Coordinate to = 2;
-  string startDate = 3;
-  string endDate = 4;
+  string start_date = 3;
+  string end_date = 4;
 }
 
 message BookTravelResult {
-  Flight outFlight = 1;
-  Flight homeFlight = 2;
-  string hotelId = 3;
+  Flight out_flight = 1;
+  Flight home_flight = 2;
+  string hotel_id = 3;
 }
 
 message Coordinate {
@@ -26,8 +26,8 @@ message Coordinate {
 
 message Flight {
     string id = 1;
-    string fromAirport = 2;
-    string toAirport = 3;
-    string departureTime = 4;
-    string arrivalTime = 5;
+    string from_airport = 2;
+    string to_airport = 3;
+    string departure_time = 4;
+    string arrival_time = 5;
 }

@@ -21,10 +21,10 @@ public class Main {
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
-        OpenTelemetry telemetry = Tracing.initTracing("FlightService");
+        OpenTelemetry telemetry = Tracing.initTracing("flight-sidecar");
         logger = new Logger(telemetry, Main.class.getName());
 
-        logger.info("Starting choral flight service");
+        logger.info("Starting choral flight sidecar");
 
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
         flightService = new FlightService(new InetSocketAddress("localhost", rpcPort), telemetry);

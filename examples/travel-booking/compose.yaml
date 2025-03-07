@@ -37,6 +37,15 @@ services:
   frontend-sidecar:
     image: travel-sidecar-client
     restart: unless-stopped
+    ports:
+      - "8945:8945"
+    environment:
+      ENABLE_TRACING: 1
+      COLLECTOR_SERVICE_ADDR: http://alloy:4317
+      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_FLIGHT: flight-sidecar:5401
+      CHORAL_GEO: geo-sidecar:5401
+      CHORAL_RESERVATION: reservation-sidecar:5401
 
   flights:
     configs:
@@ -60,6 +69,17 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+
+  flight-sidecar:
+    image: travel-sidecar-flight
+    restart: unless-stopped
+    environment:
+      ENABLE_TRACING: 1
+      COLLECTOR_SERVICE_ADDR: http://alloy:4317
+      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_FLIGHT: flight-sidecar:5401
+      CHORAL_GEO: geo-sidecar:5401
+      CHORAL_RESERVATION: reservation-sidecar:5401
 
   profile:
     configs:
@@ -123,6 +143,17 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+
+  geo-sidecar:
+    image: travel-sidecar-geo
+    restart: unless-stopped
+    environment:
+      ENABLE_TRACING: 1
+      COLLECTOR_SERVICE_ADDR: http://alloy:4317
+      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_FLIGHT: flight-sidecar:5401
+      CHORAL_GEO: geo-sidecar:5401
+      CHORAL_RESERVATION: reservation-sidecar:5401
 
   rate:
     configs:
@@ -242,6 +273,17 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+
+  reservation-sidecar:
+    image: travel-sidecar-reservation
+    restart: unless-stopped
+    environment:
+      ENABLE_TRACING: 1
+      COLLECTOR_SERVICE_ADDR: http://alloy:4317
+      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_FLIGHT: flight-sidecar:5401
+      CHORAL_GEO: geo-sidecar:5401
+      CHORAL_RESERVATION: reservation-sidecar:5401
 
   # jaeger:
   #   image: jaegertracing/all-in-one:latest

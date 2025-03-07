@@ -1,5 +1,6 @@
 package dev.chords.travel.clientservice;
 
+import choral.reactive.tracing.Logger;
 import choreography.ChoreographyGrpc;
 import choreography.ChoreographyOuterClass;
 import dev.chords.travel.choreographies.BookTravelRequest;
@@ -10,6 +11,7 @@ import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.stub.StreamObserver;
+import io.opentelemetry.api.OpenTelemetry;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -17,13 +19,17 @@ import java.util.concurrent.TimeUnit;
 public class GrpcServer {
 
     private Server server;
+    private OpenTelemetry telemetry;
+    private Logger logger;
     private RequestHandler requestHandler;
 
     public interface RequestHandler {
         BookTravelResult bookTravel(BookTravelRequest req) throws Exception;
     }
 
-    public GrpcServer(RequestHandler requestHandler) {
+    public GrpcServer(OpenTelemetry telemetry, RequestHandler requestHandler) {
+        this.telemetry = telemetry;
+        this.logger = new Logger(telemetry, GrpcServer.class.getName());
         this.requestHandler = requestHandler;
     }
 
@@ -36,13 +42,13 @@ public class GrpcServer {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             // Use stderr here since the logger may have been reset by its JVM shutdown
             // hook.
-            System.err.println("GrpcServer: shutting down gRPC server since JVM is shutting down");
+            logger.info("GrpcServer: shutting down gRPC server since JVM is shutting down");
             try {
                 GrpcServer.this.stop();
             } catch (InterruptedException e) {
                 e.printStackTrace(System.err);
             }
-            System.err.println("GrpcServer: server shut down");
+            logger.info("GrpcServer: server shut down");
         }));
     }
 
@@ -74,6 +80,7 @@ public class GrpcServer {
             try {
                 res = requestHandler.bookTravel(req);
             } catch (Exception e) {
+                logger.exception("Error during BookTravel gRPC request", e);
                 responseObserver.onError(e);
                 return;
             }

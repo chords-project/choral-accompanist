@@ -9,6 +9,7 @@ import choral.reactive.tracing.Logger;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
@@ -181,6 +182,8 @@ public class ReactiveServer
 
                 telemetrySession = telemetrySessionMap.get(msg.session.sessionID());
             }
+
+            telemetrySession.log(Severity.DEBUG, "Reactive Server message received, new session: " + isNewSession, Attributes.empty());
 
             msgQueue.addMessage(msg.session, msg.message, msg.sequenceNumber, telemetrySession);
 

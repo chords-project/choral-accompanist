@@ -83,16 +83,20 @@ public class TelemetrySession {
     }
 
     public void log(String message, Attributes attributes) {
+        this.log(Severity.INFO, message, attributes);
+    }
+
+    public void log(Severity severity, String message, Attributes attributes) {
         Attributes extraAttributes = Attributes.builder().put("session", session.toString()).putAll(attributes).build();
 
-        //System.out.println(message + ": " + attributesToString(extraAttributes));
+        System.out.println(message + ": " + attributesToString(extraAttributes));
         //choreographySpan.addEvent(message, extraAttributes);
 
         logger.logRecordBuilder()
-            .setAllAttributes(extraAttributes)
-            .setBody(message)
-            .setSeverity(Severity.INFO)
-            .emit();
+                .setAllAttributes(extraAttributes)
+                .setBody(message)
+                .setSeverity(severity)
+                .emit();
     }
 
     public void recordException(String message, Exception e, boolean error, Attributes attributes) {
@@ -103,8 +107,13 @@ public class TelemetrySession {
             choreographySpan.setAttribute("error", true);
         choreographySpan.recordException(e, extraAttributes);
 
-        System.out.println(message + ": " + attributesToString(extraAttributes));
-        e.printStackTrace();
+        log(
+            Severity.ERROR,
+            message,
+            extraAttributes.toBuilder()
+                    .putAll(choral.reactive.tracing.Logger.exceptionAttributes(e))
+                    .build()
+        );
     }
 
     public void recordException(String message, Exception e, boolean error) {

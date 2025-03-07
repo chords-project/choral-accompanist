@@ -29,14 +29,14 @@ public class Logger implements io.opentelemetry.api.logs.Logger {
     }
 
     public void log(Severity level, String message, Attributes attributes) {
-        System.out.println(level.name() + ": " + message);
+        var allAttributes = Attributes.builder()
+                .put("class_name", className)
+                .putAll(attributes)
+                .build();
+
+        System.out.println(level.name() + ": " + message + " - " + allAttributes.toString());
         logger.logRecordBuilder()
-            .setAllAttributes(
-                Attributes.builder()
-                    .put("class_name", className)
-                    .putAll(attributes)
-                    .build()
-            )
+            .setAllAttributes(allAttributes)
             .setBody(message)
             .setSeverity(level)
             .emit();
@@ -79,18 +79,22 @@ public class Logger implements io.opentelemetry.api.logs.Logger {
     }
 
     public void exception(String message, Throwable exception) {
+        error(
+            message,
+            Logger.exceptionAttributes(exception)
+        );
+    }
+
+    public static Attributes exceptionAttributes(Throwable exception) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         exception.printStackTrace(pw);
         String stackTrace = sw.toString();
 
-        error(
-            message,
-            Attributes.builder()
+        return Attributes.builder()
                 .put("exception.message", exception.getMessage())
                 .put("exception.stacktrace", stackTrace)
                 .put("exception.type", exception.getClass().getSimpleName())
-                .build()
-        );
+                .build();
     }
 }
