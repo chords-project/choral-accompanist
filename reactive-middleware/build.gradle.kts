@@ -24,6 +24,7 @@ repositories {
 
 var choralVersion = "0.1.3"
 var grpcVersion = "1.68.1"
+var otelVersion = "1.47.0"
 
 dependencies {
     // Use JUnit Jupiter for testing.
@@ -38,14 +39,12 @@ dependencies {
     // ## OpenTelemetry SDK ##
 
     // using the bom ensures that all of your opentelemetry dependency versions are aligned
-    //api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.12.0-alpha"))
-    api(platform("io.opentelemetry:opentelemetry-bom:1.47.0"))
+    api(platform("io.opentelemetry:opentelemetry-bom:${otelVersion}"))
 
     api("io.opentelemetry:opentelemetry-api")
-    //api("io.opentelemetry:opentelemetry-api-incubator")
     api("io.opentelemetry:opentelemetry-sdk")
     api("io.opentelemetry:opentelemetry-exporter-otlp")
-    //api("io.opentelemetry.semconv:opentelemetry-semconv")
+    api("io.opentelemetry.instrumentation:opentelemetry-grpc-1.6:2.13.3-alpha")
 
     // ## gRPC ##
     runtimeOnly ("io.grpc:grpc-netty-shaded:${grpcVersion}")

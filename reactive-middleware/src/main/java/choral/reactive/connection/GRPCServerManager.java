@@ -15,6 +15,7 @@ import choral_reactive.ChannelOuterClass.Message;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
+import io.grpc.opentelemetry.GrpcOpenTelemetry;
 import io.grpc.stub.StreamObserver;
 import io.grpc.protobuf.services.HealthStatusManager;
 import io.opentelemetry.api.OpenTelemetry;
@@ -25,10 +26,12 @@ public class GRPCServerManager implements ServerConnectionManager {
     private final ServerEvents serverEvents;
     private Server server;
     private final Logger logger;
+    private final OpenTelemetry telemetry;
 
     public GRPCServerManager(ServerEvents serverEvents, OpenTelemetry telemetry) {
         this.serverEvents = serverEvents;
         this.logger = new Logger(telemetry, GRPCServerManager.class.getName());
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -40,11 +43,14 @@ public class GRPCServerManager implements ServerConnectionManager {
 
         HealthStatusManager health = new HealthStatusManager();
 
-        server = Grpc.newServerBuilderForPort(addr.getPort(), InsecureServerCredentials.create())
+        var serverBuilder = Grpc.newServerBuilderForPort(addr.getPort(), InsecureServerCredentials.create())
                 .addService(new ChannelGrpcImpl())
-                .addService(health.getHealthService())
-                .build()
-                .start();
+                .addService(health.getHealthService());
+
+//        var grpcTelemetry = GrpcOpenTelemetry.newBuilder().sdk(telemetry).build();
+//        grpcTelemetry.configureServerBuilder(serverBuilder);
+
+        server = serverBuilder.build().start();
 
         try {
             server.awaitTermination();
