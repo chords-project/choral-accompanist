@@ -33,6 +33,11 @@ public class LocalReactiveQueue implements ReactiveSender<Object>, ReactiveRecei
         msgQueue.addMessage(session, msg, sequenceNumber, TelemetrySession.makeNoop(session));
     }
 
+    @Override
+    public <T extends Enum<T>> void select(Session session, T label) {
+        send(session, label);
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T> Future<T> recv(Session session) {
@@ -45,6 +50,11 @@ public class LocalReactiveQueue implements ReactiveSender<Object>, ReactiveRecei
                 throw new RuntimeException(e);
             }
         };
+    }
+
+    @Override
+    public <T extends Enum<T>> Future<T> recv_label(Session session) {
+        return recv(session);
     }
 
     @Override

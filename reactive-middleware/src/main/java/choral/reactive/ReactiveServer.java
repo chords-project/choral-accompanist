@@ -140,6 +140,11 @@ public class ReactiveServer
         };
     }
 
+    @Override
+    public <T extends Enum<T>> Future<T> recv_label(Session session) {
+        return recv(session);
+    }
+
     public void registerSession(Session session, TelemetrySession telemetrySession) {
         logger.debug("Registering session " + session.sessionID);
 

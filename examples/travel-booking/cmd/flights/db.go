@@ -38,6 +38,13 @@ func initializeDatabase(url string) (*mongo.Client, func()) {
 			DepartureTime: "2025-03-01 12:00",
 			ArrivalTime:   "2025-03-01 19:30",
 		},
+		flights.Flight{
+			Id:            "2",
+			FromAirport:   "1",
+			ToAirport:     "2",
+			DepartureTime: "2025-03-02 12:00",
+			ArrivalTime:   "2025-03-02 19:30",
+		},
 	}
 
 	uri := fmt.Sprintf("mongodb://%s", url)

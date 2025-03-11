@@ -1,0 +1,21 @@
+type: grpc_request
+model: grpc_request
+id: gr_w7MS3y9ihj
+createdAt: 2025-03-11T09:18:51.489020
+updatedAt: 2025-03-11T09:19:42.096866
+workspaceId: wk_VcrpentPCq
+folderId: fl_Y3xNZDX7e9
+authenticationType: null
+authentication: {}
+description: ''
+message: |-
+  {
+    "lat": 37.7749,
+    "lon": -122.4194
+  }
+metadata: []
+method: NearestAirport
+name: Nearest Airport
+service: flights.Flights
+sortPriority: 1000.001
+url: ${[ flights ]}

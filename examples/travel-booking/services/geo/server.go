@@ -22,7 +22,7 @@ import (
 
 const (
 	name             = "srv-geo"
-	maxSearchRadius  = 10
+	maxSearchRadius  = 100
 	maxSearchResults = 5
 )
 

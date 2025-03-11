@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_vMbKMibBee
+createdAt: 2025-03-10T07:42:09.304446
+updatedAt: 2025-03-10T07:46:25.069073
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Cinema
+sortPriority: 7000.0
+url: ${[ frontend ]}/cinema
+urlParameters:
+- enabled: true
+  name: hotelId
+  value: '2'
+  id: kUd0kZH2XP
+- enabled: true
+  name: username
+  value: ${[ username ]}
+  id: 26d6K0MQGc
+- enabled: true
+  name: password
+  value: ${[ password ]}
+  id: W72BdcMkCe
+- enabled: true
+  name: ''
+  value: ''
+  id: syXQ6gQ32a

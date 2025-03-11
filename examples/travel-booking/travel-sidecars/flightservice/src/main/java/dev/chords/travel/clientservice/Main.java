@@ -26,8 +26,9 @@ public class Main {
 
         logger.info("Starting choral flight sidecar");
 
+        String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "flights");
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
-        flightService = new FlightService(new InetSocketAddress("localhost", rpcPort), telemetry);
+        flightService = new FlightService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
         clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
         geoConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.geo, telemetry);

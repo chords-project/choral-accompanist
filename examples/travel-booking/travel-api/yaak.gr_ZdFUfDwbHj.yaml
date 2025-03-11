@@ -1,0 +1,22 @@
+type: grpc_request
+model: grpc_request
+id: gr_ZdFUfDwbHj
+createdAt: 2025-03-10T07:44:55.743262
+updatedAt: 2025-03-11T10:22:13.865935
+workspaceId: wk_VcrpentPCq
+folderId: fl_Y3xNZDX7e9
+authenticationType: null
+authentication: {}
+description: ''
+message: |-
+  {
+    "to_airport": "2",
+    "from_airport": "1",
+    "departure_date": "2025-03-01"
+  }
+metadata: []
+method: SearchFlights
+name: Search Flights
+service: flights.Flights
+sortPriority: 2000.0
+url: ${[ flights ]}

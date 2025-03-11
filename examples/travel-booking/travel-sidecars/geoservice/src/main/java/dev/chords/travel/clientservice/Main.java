@@ -23,8 +23,9 @@ public class Main {
 
         logger.info("Starting choral geo sidecar");
 
-        int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
-        geoService = new GeoService(new InetSocketAddress("localhost", rpcPort), telemetry);
+        String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "geo");
+        int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8083"));
+        geoService = new GeoService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
         flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
         reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);

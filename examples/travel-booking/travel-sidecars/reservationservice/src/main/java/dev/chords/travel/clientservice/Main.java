@@ -22,15 +22,16 @@ public class Main {
 
         logger.info("Starting choral reservation sidecar");
 
-        int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
-        reservationService = new ReservationService(new InetSocketAddress("localhost", rpcPort), telemetry);
+        String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "reservation");
+        int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8087"));
+        reservationService = new ReservationService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
         clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
 
-        ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry,
+        ReactiveServer server = new ReactiveServer(Service.RESERVATION.name(), telemetry,
                 Main::handleNewSession);
 
-        server.listen(ServiceResources.shared.geo);
+        server.listen(ServiceResources.shared.reservation);
     }
 
     private static void handleNewSession(SessionContext ctx)

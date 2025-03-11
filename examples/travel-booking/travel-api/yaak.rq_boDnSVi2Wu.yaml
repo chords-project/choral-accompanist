@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_boDnSVi2Wu
+createdAt: 2025-03-09T17:46:20.613626
+updatedAt: 2025-03-10T07:46:25.068211
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: Get hotel hotels best matching a given requirement (price, distance, rate)
+headers: []
+method: GET
+name: Recommendations
+sortPriority: 2000.0
+url: ${[ frontend ]}/recommendations
+urlParameters:
+- enabled: true
+  name: lat
+  value: '37.7749'
+  id: qCAPyen6k3
+- enabled: true
+  name: lon
+  value: '-122.4194'
+  id: FbV4IBbiDW
+- enabled: true
+  name: require
+  value: price
+  id: H43BRAXaFp
+- enabled: true
+  name: ''
+  value: ''
+  id: aTrrz5T59z

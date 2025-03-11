@@ -1,0 +1,20 @@
+type: grpc_request
+model: grpc_request
+id: gr_nBc4xmS8oT
+createdAt: 2025-03-10T07:43:41.377534
+updatedAt: 2025-03-11T09:18:14.183031
+workspaceId: wk_VcrpentPCq
+folderId: fl_Y3xNZDX7e9
+authenticationType: null
+authentication: {}
+description: ''
+message: |-
+  {
+    "id": "1"
+  }
+metadata: []
+method: GetAirport
+name: Get Airport
+service: flights.Flights
+sortPriority: 1000.0
+url: ${[ flights ]}

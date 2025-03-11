@@ -2,6 +2,7 @@ package flights
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -89,19 +90,73 @@ func (s *Server) Shutdown() {
 	s.Registry.Deregister(s.uuid)
 }
 
-type Airport = struct {
+type Airport struct {
 	Id   string  `bson:"id"`
 	Name string  `bson:"name"`
-	Lat  float32 `bson:"lat"`
-	Lon  float32 `bson:"lon"`
+	Lat  float64 `bson:"lat"`
+	Lon  float64 `bson:"lon"`
 }
 
-type Flight = struct {
+type Flight struct {
 	Id            string `bson:"id"`
 	FromAirport   string `bson:"fromAirport"`
 	ToAirport     string `bson:"toAirport"`
 	DepartureTime string `bson:"departureTime"`
 	ArrivalTime   string `bson:"arrivalTime"`
+}
+
+type Booking struct {
+	// The ID of the flight to book
+	Id string `bson:"id"`
+}
+
+func (s *Server) NearestAirport(ctx context.Context, req *pb.AirportSearchRequest) (*pb.Airport, error) {
+	slog.Debug("Get nearest airport", slog.Float64("lat", req.Lat), slog.Float64("lon", req.Lon))
+
+	c := s.MongoClient.Database("flights-db").Collection("airports")
+
+	cursor, err := c.Aggregate(ctx, mongo.Pipeline{
+		bson.D{{
+			Key: "$addFields",
+			Value: bson.M{
+				"dist": bson.M{
+					"$add": bson.A{
+						bson.M{"$abs": bson.M{"$subtract": bson.A{"$lat", req.Lat}}},
+						bson.M{"$abs": bson.M{"$subtract": bson.A{"$lon", req.Lon}}},
+					},
+				},
+			},
+		}}, bson.D{{
+			Key:   "$sort",
+			Value: bson.M{"dist": 1},
+		}}, bson.D{{
+			Key:   "$limit",
+			Value: 1,
+		}},
+	})
+
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get nearest airport", slog.Any("error", err))
+		return nil, err
+	}
+
+	if !cursor.Next(ctx) {
+		slog.ErrorContext(ctx, "found no airports")
+		return nil, errors.New("found no airports")
+	}
+
+	var airport Airport
+	if err := cursor.Decode(&airport); err != nil {
+		slog.ErrorContext(ctx, "failed to decode nearest airport", slog.Any("error", err))
+		return nil, err
+	}
+
+	return &pb.Airport{
+		Id:   airport.Id,
+		Name: airport.Name,
+		Lat:  airport.Lat,
+		Lon:  airport.Lon,
+	}, nil
 }
 
 func (s *Server) GetAirport(ctx context.Context, req *pb.AirportRequest) (*pb.Airport, error) {
@@ -163,5 +218,12 @@ func (s *Server) SearchFlights(ctx context.Context, req *pb.SearchRequest) (*pb.
 }
 
 func (s *Server) BookFlight(ctx context.Context, req *pb.BookingRequest) (*pb.Booking, error) {
-	return nil, fmt.Errorf("method BookFlight not implemented")
+	c := s.MongoClient.Database("flights-db").Collection("bookings")
+
+	_, err := c.InsertOne(ctx, Booking{Id: req.Id})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Booking{Id: req.Id}, nil
 }

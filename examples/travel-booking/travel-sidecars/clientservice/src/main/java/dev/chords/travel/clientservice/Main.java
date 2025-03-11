@@ -102,12 +102,14 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
                     reservationChan
             );
 
+            telemetrySession.log("Starting BOOK_TRAVEL choreography");
+            var result = bookTravelChor.bookTravel(req);
             telemetrySession.log("Finished BOOK_TRAVEL choreography");
 
-            return bookTravelChor.bookTravel(req);
+            return result;
         } catch (Exception e) {
             telemetrySession.recordException("Client BOOK_TRAVEL choreography failed", e, true);
-            throw new RuntimeException(e);
+            throw e;
         } finally {
             span.end();
         }

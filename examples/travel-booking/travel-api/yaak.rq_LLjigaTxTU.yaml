@@ -1,0 +1,42 @@
+type: http_request
+model: http_request
+id: rq_LLjigaTxTU
+createdAt: 2025-03-09T17:42:04.401959
+updatedAt: 2025-03-10T07:46:25.068230
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: Get all hotels in a given radius
+headers: []
+method: GET
+name: Hotels
+sortPriority: 1000.0
+url: ${[ frontend ]}/hotels
+urlParameters:
+- enabled: true
+  name: inDate
+  value: 2015-04-09
+  id: Z3aGbmm0xt
+- enabled: true
+  name: outDate
+  value: 2015-04-10
+  id: 3rwv2feqj6
+- enabled: true
+  name: lat
+  value: '37.7749'
+  id: nEdcdFrFSx
+- enabled: true
+  name: lon
+  value: '-122.4194'
+  id: fniUrtXVkn
+- enabled: true
+  name: number
+  value: '2'
+  id: SyUV7PAxqC
+- enabled: true
+  name: ''
+  value: ''
+  id: TJ0dUr994t

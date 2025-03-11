@@ -1,0 +1,30 @@
+type: http_request
+model: http_request
+id: rq_TNJfy2N2gJ
+createdAt: 2025-03-09T17:47:00.875849
+updatedAt: 2025-03-10T07:46:25.068507
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: Authorize user
+headers: []
+method: GET
+name: User
+sortPriority: 3000.0
+url: ${[ frontend ]}/user
+urlParameters:
+- enabled: true
+  name: username
+  value: ${[ username ]}
+  id: CWrS3S5tbK
+- enabled: true
+  name: password
+  value: ${[ password ]}
+  id: E3Dv3AdAvn
+- enabled: true
+  name: ''
+  value: ''
+  id: AMZNMb507G

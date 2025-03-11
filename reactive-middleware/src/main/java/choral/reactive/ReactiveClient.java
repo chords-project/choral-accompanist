@@ -75,6 +75,11 @@ public class ReactiveClient implements ReactiveSender<Serializable>, AutoCloseab
     }
 
     @Override
+    public <T extends Enum<T>> void select(Session session, T label) {
+        send(session, label);
+    }
+
+    @Override
     public ReactiveChannel_A<Serializable> chanA(Session session) {
         return new ReactiveChannel_A<>(session, this, telemetrySession);
     }

@@ -42,7 +42,7 @@ services:
     environment:
       ENABLE_TRACING: 1
       COLLECTOR_SERVICE_ADDR: http://alloy:4317
-      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_CLIENT: frontend-sidecar:5401
       CHORAL_FLIGHT: flight-sidecar:5401
       CHORAL_GEO: geo-sidecar:5401
       CHORAL_RESERVATION: reservation-sidecar:5401
@@ -76,7 +76,7 @@ services:
     environment:
       ENABLE_TRACING: 1
       COLLECTOR_SERVICE_ADDR: http://alloy:4317
-      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_CLIENT: frontend-sidecar:5401
       CHORAL_FLIGHT: flight-sidecar:5401
       CHORAL_GEO: geo-sidecar:5401
       CHORAL_RESERVATION: reservation-sidecar:5401
@@ -150,7 +150,7 @@ services:
     environment:
       ENABLE_TRACING: 1
       COLLECTOR_SERVICE_ADDR: http://alloy:4317
-      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_CLIENT: frontend-sidecar:5401
       CHORAL_FLIGHT: flight-sidecar:5401
       CHORAL_GEO: geo-sidecar:5401
       CHORAL_RESERVATION: reservation-sidecar:5401
@@ -280,7 +280,7 @@ services:
     environment:
       ENABLE_TRACING: 1
       COLLECTOR_SERVICE_ADDR: http://alloy:4317
-      CHORAL_CLIENT: client-sidecar:5401
+      CHORAL_CLIENT: frontend-sidecar:5401
       CHORAL_FLIGHT: flight-sidecar:5401
       CHORAL_GEO: geo-sidecar:5401
       CHORAL_RESERVATION: reservation-sidecar:5401

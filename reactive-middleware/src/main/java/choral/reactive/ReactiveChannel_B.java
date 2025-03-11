@@ -39,34 +39,11 @@ public class ReactiveChannel_B<M> implements AsyncDiChannel_B<M> {
 
     @Override
     public <T extends Enum<T>> T select(Unit unit) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return select();
     }
 
     @Override
     public <T extends Enum<T>> T select() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return receiver.<T>recv_label(session).get();
     }
-
-//    @SuppressWarnings("unchecked")
-//    @Override
-//    public <T extends Enum<T>> T select() {
-//        Span span = telemetrySession.tracer.spanBuilder("ReactiveChannel receive select label")
-//                .setAttribute("channel.session", session.toString())
-//                .setAttribute("channel.receiver", receiver.toString())
-//                .startSpan();
-//
-//        try (Scope scope = span.makeCurrent()) {
-//            T msg = (T) receiver.<M>recv(session);
-//            span.setAttribute("channel.label", msg.toString());
-//            return msg;
-//        } finally {
-//            span.end();
-//        }
-//    }
-//
-//    @Override
-//    public <T extends Enum<T>> T select(Unit unit) {
-//        return select();
-//    }
-
 }

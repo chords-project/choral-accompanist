@@ -4,6 +4,7 @@ import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
 import java.io.Serializable;
+import java.util.Optional;
 
 public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private FlightService@Flight flightSvc;
@@ -42,18 +43,25 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
         Airport@Flight fromAirport = flightSvc.nearestAirport(req_flight.from);
         Airport@Flight toAirport = flightSvc.nearestAirport(req_flight.to);
 
-        Flight@Flight outFlight = null@Flight;
-        Flight@Flight homeFlight = null@Flight;
+        System@Flight.out.println("Flight service found airports: "@Flight + fromAirport.id + " and "@Flight + toAirport.id);
+
+        Flight@Client outFlight_client = null@Client;
+        Flight@Client homeFlight_client = null@Client;
+
         if (!fromAirport.id.equals(toAirport.id)) {
-            outFlight = flightSvc.searchFlight(fromAirport.id, toAirport.id, req_flight.startDate).get(0@Flight);
-            homeFlight = flightSvc.searchFlight(toAirport.id, fromAirport.id, req_flight.endDate).get(0@Flight);
+            ch_clientFlight.<Choice>select(Choice@Flight.FIRST);
+
+            Flight@Flight outFlight = flightSvc.searchFlight(fromAirport.id, toAirport.id, req_flight.startDate).get(0@Flight);
+            Flight@Flight homeFlight = flightSvc.searchFlight(toAirport.id, fromAirport.id, req_flight.endDate).get(0@Flight);
 
             flightSvc.bookFlight(outFlight.id);
             flightSvc.bookFlight(homeFlight.id);
-        }
 
-        Flight@Client outFlight_client = ch_clientFlight.<Flight>com(outFlight);
-        Flight@Client homeFlight_client = ch_clientFlight.<Flight>com(homeFlight);
+            outFlight_client = ch_clientFlight.<Flight>com(outFlight);
+            homeFlight_client = ch_clientFlight.<Flight>com(homeFlight);
+        } else {
+            ch_clientFlight.<Choice>select(Choice@Flight.SECOND);
+        }
 
         Coordinate@Geo hotelNearestLoc = ch_flightGeo.<Coordinate>com(req_flight.to);
         String@Geo hotelID = geoSvc.nearbyHotelIDs(hotelNearestLoc).get(0@Geo);

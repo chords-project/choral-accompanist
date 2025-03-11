@@ -5,8 +5,8 @@ import choral.lang.Unit;
 
 public class ReactiveSymChannel<M> implements AsyncSymChannel_A<M>, AsyncSymChannel_B<M> {
 
-    private ReactiveChannel_A<M> chanA;
-    private ReactiveChannel_B<M> chanB;
+    private final ReactiveChannel_A<M> chanA;
+    private final ReactiveChannel_B<M> chanB;
 
     public ReactiveSymChannel(ReactiveChannel_A<M> chanA, ReactiveChannel_B<M> chanB) {
         this.chanA = chanA;
@@ -17,11 +17,6 @@ public class ReactiveSymChannel<M> implements AsyncSymChannel_A<M>, AsyncSymChan
     public <T extends M> Unit fcom(T msg) {
         return chanA.fcom(msg);
     }
-
-//    @Override
-//    public <T extends Enum<T>> Unit select(T msg) {
-//        return chanA.select(msg);
-//    }
 
     @Override
     public <T extends M> Future<T> fcom() {
@@ -50,27 +45,16 @@ public class ReactiveSymChannel<M> implements AsyncSymChannel_A<M>, AsyncSymChan
 
     @Override
     public <T extends Enum<T>> Unit select(T t) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return chanA.select(t);
     }
 
     @Override
     public <T extends Enum<T>> T select(Unit unit) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return select();
     }
 
     @Override
     public <T extends Enum<T>> T select() {
-        return null;
+        return chanB.select();
     }
-
-//    @Override
-//    public <T extends Enum<T>> T select() {
-//        return chanB.select();
-//    }
-
-//    @Override
-//    public <T extends Enum<T>> T select(Unit unit) {
-//        return select();
-//    }
-
 }

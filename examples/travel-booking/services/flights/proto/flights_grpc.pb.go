@@ -4,7 +4,7 @@
 // - protoc             v5.28.3
 // source: flights.proto
 
-package flights
+package proto
 
 import (
 	context "context"
@@ -19,15 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Flights_GetAirport_FullMethodName    = "/flights.Flights/GetAirport"
-	Flights_SearchFlights_FullMethodName = "/flights.Flights/SearchFlights"
-	Flights_BookFlight_FullMethodName    = "/flights.Flights/BookFlight"
+	Flights_NearestAirport_FullMethodName = "/flights.Flights/NearestAirport"
+	Flights_GetAirport_FullMethodName     = "/flights.Flights/GetAirport"
+	Flights_SearchFlights_FullMethodName  = "/flights.Flights/SearchFlights"
+	Flights_BookFlight_FullMethodName     = "/flights.Flights/BookFlight"
 )
 
 // FlightsClient is the client API for Flights service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FlightsClient interface {
+	NearestAirport(ctx context.Context, in *AirportSearchRequest, opts ...grpc.CallOption) (*Airport, error)
 	GetAirport(ctx context.Context, in *AirportRequest, opts ...grpc.CallOption) (*Airport, error)
 	SearchFlights(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResult, error)
 	BookFlight(ctx context.Context, in *BookingRequest, opts ...grpc.CallOption) (*Booking, error)
@@ -39,6 +41,16 @@ type flightsClient struct {
 
 func NewFlightsClient(cc grpc.ClientConnInterface) FlightsClient {
 	return &flightsClient{cc}
+}
+
+func (c *flightsClient) NearestAirport(ctx context.Context, in *AirportSearchRequest, opts ...grpc.CallOption) (*Airport, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Airport)
+	err := c.cc.Invoke(ctx, Flights_NearestAirport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *flightsClient) GetAirport(ctx context.Context, in *AirportRequest, opts ...grpc.CallOption) (*Airport, error) {
@@ -75,6 +87,7 @@ func (c *flightsClient) BookFlight(ctx context.Context, in *BookingRequest, opts
 // All implementations must embed UnimplementedFlightsServer
 // for forward compatibility.
 type FlightsServer interface {
+	NearestAirport(context.Context, *AirportSearchRequest) (*Airport, error)
 	GetAirport(context.Context, *AirportRequest) (*Airport, error)
 	SearchFlights(context.Context, *SearchRequest) (*SearchResult, error)
 	BookFlight(context.Context, *BookingRequest) (*Booking, error)
@@ -88,6 +101,9 @@ type FlightsServer interface {
 // pointer dereference when methods are called.
 type UnimplementedFlightsServer struct{}
 
+func (UnimplementedFlightsServer) NearestAirport(context.Context, *AirportSearchRequest) (*Airport, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NearestAirport not implemented")
+}
 func (UnimplementedFlightsServer) GetAirport(context.Context, *AirportRequest) (*Airport, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAirport not implemented")
 }
@@ -116,6 +132,24 @@ func RegisterFlightsServer(s grpc.ServiceRegistrar, srv FlightsServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&Flights_ServiceDesc, srv)
+}
+
+func _Flights_NearestAirport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AirportSearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FlightsServer).NearestAirport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Flights_NearestAirport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FlightsServer).NearestAirport(ctx, req.(*AirportSearchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Flights_GetAirport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -179,6 +213,10 @@ var Flights_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "flights.Flights",
 	HandlerType: (*FlightsServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "NearestAirport",
+			Handler:    _Flights_NearestAirport_Handler,
+		},
 		{
 			MethodName: "GetAirport",
 			Handler:    _Flights_GetAirport_Handler,

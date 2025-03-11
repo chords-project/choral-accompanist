@@ -92,6 +92,7 @@ public class GrpcServer {
                             .setHotelId(res.hotelID)
                             .build()
             );
+            responseObserver.onCompleted();
         }
     }
 

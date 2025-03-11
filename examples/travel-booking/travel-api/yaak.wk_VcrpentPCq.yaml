@@ -1,0 +1,10 @@
+type: workspace
+model: workspace
+id: wk_VcrpentPCq
+createdAt: 2025-03-07T08:03:56.311569
+updatedAt: 2025-03-09T17:41:24
+name: Travel API
+description: ''
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0

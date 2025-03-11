@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_ZdmuZHRDXs
+createdAt: 2025-03-09T17:39:36.005686
+updatedAt: 2025-03-10T07:46:25.067898
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Home
+sortPriority: 0.0
+url: ${[ frontend ]}
+urlParameters: []

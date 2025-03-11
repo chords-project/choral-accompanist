@@ -12,8 +12,8 @@ service Flights {
 }
 
 message AirportSearchRequest {
-  string lat = 1;
-  string lon = 2;
+  double lat = 1;
+  double lon = 2;
 }
 
 message AirportRequest {
@@ -23,8 +23,8 @@ message AirportRequest {
 message Airport {
   string id = 1;
   string name = 2;
-  float lat = 3;
-  float lon = 4;
+  double lat = 3;
+  double lon = 4;
 }
 
 message SearchRequest {

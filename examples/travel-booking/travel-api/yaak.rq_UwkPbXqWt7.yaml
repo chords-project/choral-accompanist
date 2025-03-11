@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_UwkPbXqWt7
+createdAt: 2025-03-09T17:48:58.726787
+updatedAt: 2025-03-10T07:46:25.068588
+workspaceId: wk_VcrpentPCq
+folderId: fl_FBYvnKTZiU
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: Get hotel reviews
+headers: []
+method: GET
+name: Review
+sortPriority: 4000.0
+url: ${[ frontend ]}/review
+urlParameters:
+- enabled: true
+  name: username
+  value: ${[ username ]}
+  id: SH7tuTnHQU
+- enabled: true
+  name: password
+  value: ${[ password ]}
+  id: eB3CEin2yz
+- enabled: true
+  name: hotelId
+  value: '1'
+  id: ZJQWygR06B
+- enabled: true
+  name: ''
+  value: ''
+  id: iBvdV3yEYw
