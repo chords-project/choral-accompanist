@@ -1,0 +1,46 @@
+type: http_request
+model: http_request
+id: rq_ZsPB2sUtAx
+createdAt: 2025-03-13T12:43:03.921308
+updatedAt: 2025-03-13T12:44:26.278220
+workspaceId: wk_VcrpentPCq
+folderId: fl_sCVhMTWWNF
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Book Travel Orchestrated
+sortPriority: -0.0001
+url: ${[ frontend ]}/bookTravel
+urlParameters:
+- enabled: true
+  name: fromLat
+  value: '0'
+  id: eg6jJVMT6x
+- enabled: true
+  name: fromLon
+  value: '0'
+  id: pSwCcKqsFz
+- enabled: true
+  name: toLat
+  value: '37.7749'
+  id: X0N7R7288Z
+- enabled: true
+  name: toLon
+  value: '-122.4194'
+  id: 6Vssp87NeV
+- enabled: true
+  name: startDate
+  value: 2025-03-10
+  id: cWHiy3RMJw
+- enabled: true
+  name: endDate
+  value: 2025-03-20
+  id: 0YdkV063ti
+- enabled: true
+  name: ''
+  value: ''
+  id: V394NXEk93

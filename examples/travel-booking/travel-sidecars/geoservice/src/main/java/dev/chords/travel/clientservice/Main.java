@@ -4,9 +4,12 @@ import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveServer.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
-import dev.chords.travel.choreographies.*;
-import io.opentelemetry.api.OpenTelemetry;
+import dev.chords.travel.choreographies.ChorBookTravel_Geo;
+import dev.chords.travel.choreographies.ServiceResources;
+import dev.chords.travel.choreographies.Tracing;
+import dev.chords.travel.choreographies.TravelSession;
 import dev.chords.travel.choreographies.TravelSession.Service;
+import io.opentelemetry.api.OpenTelemetry;
 import java.net.InetSocketAddress;
 
 public class Main {
@@ -30,14 +33,12 @@ public class Main {
         flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
         reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
 
-        ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry,
-                Main::handleNewSession);
+        ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry, Main::handleNewSession);
 
         server.listen(ServiceResources.shared.geo);
     }
 
-    private static void handleNewSession(SessionContext ctx)
-            throws Exception {
+    private static void handleNewSession(SessionContext ctx) throws Exception {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -45,9 +46,9 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Geo bookTravelChor = new ChorBookTravel_Geo(
-                        geoService,
-                        ctx.symChan(Service.FLIGHT.name(), flightConn),
-                        ctx.symChan(Service.RESERVATION.name(), reservationConn)
+                    geoService,
+                    ctx.symChan(Service.FLIGHT.name(), flightConn),
+                    ctx.symChan(Service.RESERVATION.name(), reservationConn)
                 );
 
                 bookTravelChor.bookTravel();

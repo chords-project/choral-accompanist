@@ -13,9 +13,7 @@ import flights.FlightsOuterClass.AirportSearchRequest;
 import io.grpc.ManagedChannel;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -38,10 +36,7 @@ public class FlightService implements dev.chords.travel.choreographies.FlightSer
     @Override
     public Airport nearestAirport(Coordinate location) {
         try {
-            var request = AirportSearchRequest.newBuilder()
-                    .setLat(location.latitude)
-                    .setLon(location.longitude)
-                    .build();
+            var request = AirportSearchRequest.newBuilder().setLat(location.latitude).setLon(location.longitude).build();
 
             var result = this.connection.nearestAirport(request).get(10, TimeUnit.SECONDS);
 
@@ -54,25 +49,15 @@ public class FlightService implements dev.chords.travel.choreographies.FlightSer
     @Override
     public List<Flight> searchFlight(String fromAirportID, String toAirportID, String date) {
         try {
-            var request = FlightsOuterClass.SearchRequest.newBuilder()
-                    .setFromAirport(fromAirportID)
-                    .setToAirport(toAirportID)
-                    .setDepartureDate(date)
-                    .build();
+            var request = FlightsOuterClass.SearchRequest.newBuilder().setFromAirport(fromAirportID).setToAirport(toAirportID).setDepartureDate(date).build();
 
             var result = this.connection.searchFlights(request).get(10, TimeUnit.SECONDS);
 
-            return result.getFlightsList()
-                    .stream()
-                    .map(flight ->
-                        new Flight(
-                                flight.getId(),
-                                flight.getFromAirport(),
-                                flight.getToAirport(),
-                                flight.getDepartureTime(),
-                                flight.getArrivalTime())
-                    )
-                    .collect(Collectors.toList());
+            return result
+                .getFlightsList()
+                .stream()
+                .map(flight -> new Flight(flight.getId(), flight.getFromAirport(), flight.getToAirport(), flight.getDepartureTime(), flight.getArrivalTime()))
+                .collect(Collectors.toList());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -81,9 +66,7 @@ public class FlightService implements dev.chords.travel.choreographies.FlightSer
     @Override
     public void bookFlight(String flightID) {
         try {
-            var request = FlightsOuterClass.BookingRequest.newBuilder()
-                    .setId(flightID)
-                    .build();
+            var request = FlightsOuterClass.BookingRequest.newBuilder().setId(flightID).build();
 
             this.connection.bookFlight(request).get(10, TimeUnit.SECONDS);
         } catch (Exception e) {

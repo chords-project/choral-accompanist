@@ -12,7 +12,6 @@ import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.OpenTelemetry;
-
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -34,22 +33,22 @@ public class GrpcServer {
     }
 
     public void start(int port) throws IOException {
-        server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create())
-                .addService(new ChoreographyImpl())
-                .build()
-                .start();
+        server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create()).addService(new ChoreographyImpl()).build().start();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            // Use stderr here since the logger may have been reset by its JVM shutdown
-            // hook.
-            logger.info("GrpcServer: shutting down gRPC server since JVM is shutting down");
-            try {
-                GrpcServer.this.stop();
-            } catch (InterruptedException e) {
-                e.printStackTrace(System.err);
-            }
-            logger.info("GrpcServer: server shut down");
-        }));
+        Runtime.getRuntime()
+            .addShutdownHook(
+                new Thread(() -> {
+                    // Use stderr here since the logger may have been reset by its JVM shutdown
+                    // hook.
+                    logger.info("GrpcServer: shutting down gRPC server since JVM is shutting down");
+                    try {
+                        GrpcServer.this.stop();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace(System.err);
+                    }
+                    logger.info("GrpcServer: server shut down");
+                })
+            );
     }
 
     public void stop() throws InterruptedException {
@@ -69,9 +68,9 @@ public class GrpcServer {
     }
 
     class ChoreographyImpl extends ChoreographyGrpc.ChoreographyImplBase {
+
         @Override
         public void bookTravel(ChoreographyOuterClass.BookTravelRequest request, StreamObserver<ChoreographyOuterClass.BookTravelResult> responseObserver) {
-
             Coordinate from = new Coordinate(request.getFrom().getLatitude(), request.getFrom().getLongitude());
             Coordinate to = new Coordinate(request.getTo().getLatitude(), request.getTo().getLongitude());
             BookTravelRequest req = new BookTravelRequest(from, to, request.getStartDate(), request.getEndDate());
@@ -86,11 +85,11 @@ public class GrpcServer {
             }
 
             responseObserver.onNext(
-                    ChoreographyOuterClass.BookTravelResult.newBuilder()
-                            .setOutFlight(flightToGrpc(res.outFlight))
-                            .setHomeFlight(flightToGrpc(res.homeFlight))
-                            .setHotelId(res.hotelID)
-                            .build()
+                ChoreographyOuterClass.BookTravelResult.newBuilder()
+                    .setOutFlight(flightToGrpc(res.outFlight))
+                    .setHomeFlight(flightToGrpc(res.homeFlight))
+                    .setHotelId(res.hotelID)
+                    .build()
             );
             responseObserver.onCompleted();
         }
@@ -98,11 +97,11 @@ public class GrpcServer {
 
     private static ChoreographyOuterClass.Flight flightToGrpc(Flight flight) {
         return ChoreographyOuterClass.Flight.newBuilder()
-                .setId(flight.id)
-                .setFromAirport(flight.fromAirport)
-                .setToAirport(flight.toAirport)
-                .setDepartureTime(flight.departureTime)
-                .setArrivalTime(flight.arrivalTime)
-                .build();
+            .setId(flight.id)
+            .setFromAirport(flight.fromAirport)
+            .setToAirport(flight.toAirport)
+            .setDepartureTime(flight.departureTime)
+            .setArrivalTime(flight.arrivalTime)
+            .build();
     }
 }

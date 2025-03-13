@@ -4,9 +4,12 @@ import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveServer.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
-import dev.chords.travel.choreographies.*;
-import io.opentelemetry.api.OpenTelemetry;
+import dev.chords.travel.choreographies.ChorBookTravel_Reservation;
+import dev.chords.travel.choreographies.ServiceResources;
+import dev.chords.travel.choreographies.Tracing;
+import dev.chords.travel.choreographies.TravelSession;
 import dev.chords.travel.choreographies.TravelSession.Service;
+import io.opentelemetry.api.OpenTelemetry;
 import java.net.InetSocketAddress;
 
 public class Main {
@@ -28,14 +31,12 @@ public class Main {
 
         clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
 
-        ReactiveServer server = new ReactiveServer(Service.RESERVATION.name(), telemetry,
-                Main::handleNewSession);
+        ReactiveServer server = new ReactiveServer(Service.RESERVATION.name(), telemetry, Main::handleNewSession);
 
         server.listen(ServiceResources.shared.reservation);
     }
 
-    private static void handleNewSession(SessionContext ctx)
-            throws Exception {
+    private static void handleNewSession(SessionContext ctx) throws Exception {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -43,9 +44,9 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Reservation bookTravelChor = new ChorBookTravel_Reservation(
-                        reservationService,
-                        ctx.chanB(Service.GEO.name()),
-                        ctx.symChan(Service.CLIENT.name(), clientConn)
+                    reservationService,
+                    ctx.chanB(Service.GEO.name()),
+                    ctx.symChan(Service.CLIENT.name(), clientConn)
                 );
 
                 bookTravelChor.bookTravel();

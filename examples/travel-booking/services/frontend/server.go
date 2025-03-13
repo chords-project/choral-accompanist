@@ -13,6 +13,8 @@ import (
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/dialer"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/registry"
 	attractions "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/attractions/proto"
+	flights "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/flights/proto"
+	geo "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/geo/proto"
 	profile "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/profile/proto"
 	recommendation "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/recommendation/proto"
 	reservation "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/reservation/proto"
@@ -33,6 +35,8 @@ var (
 
 // Server implements frontend service
 type Server struct {
+	flightClient         flights.FlightsClient
+	geoClient            geo.GeoClient
 	searchClient         search.SearchClient
 	profileClient        profile.ProfileClient
 	recommendationClient recommendation.RecommendationClient
@@ -64,6 +68,17 @@ func (s *Server) Run() error {
 	}
 
 	slog.InfoContext(ctx, "Initializing gRPC clients...")
+
+	if err := s.initFlightClient(ctx, "srv-flights"); err != nil {
+		slog.ErrorContext(ctx, "failed to initialize FlightClient", slog.Any("error", err))
+		return err
+	}
+
+	if err := s.initGeoClient(ctx, "srv-geo"); err != nil {
+		slog.ErrorContext(ctx, "failed to initialize GeoClient", slog.Any("error", err))
+		return err
+	}
+
 	if err := s.initSearchClient(ctx, "srv-search"); err != nil {
 		slog.ErrorContext(ctx, "failed to initialize SearchClient", slog.Any("error", err))
 		return err
@@ -122,6 +137,7 @@ func (s *Server) Run() error {
 	}
 
 	handleFunc("/", http.FileServer(http.FS(staticContent)))
+	handleFunc("/bookTravel", http.HandlerFunc(s.bookTravelHandler))
 	handleFunc("/hotels", http.HandlerFunc(s.searchHandler))
 	handleFunc("/recommendations", http.HandlerFunc(s.recommendHandler))
 	handleFunc("/user", http.HandlerFunc(s.userHandler))
@@ -148,6 +164,26 @@ func (s *Server) Run() error {
 		slog.Info("Serving http")
 		return srv.ListenAndServe()
 	}
+}
+
+func (s *Server) initFlightClient(ctx context.Context, name string) error {
+	slog.InfoContext(ctx, "initializing Flight client", slog.String("grpc_connection_name", name))
+	conn, err := s.getGprcConn(ctx, name)
+	if err != nil {
+		return fmt.Errorf("error dialing %s: %v", name, err)
+	}
+	s.flightClient = flights.NewFlightsClient(conn)
+	return nil
+}
+
+func (s *Server) initGeoClient(ctx context.Context, name string) error {
+	slog.InfoContext(ctx, "initializing Geo client", slog.String("grpc_connection_name", name))
+	conn, err := s.getGprcConn(ctx, name)
+	if err != nil {
+		return fmt.Errorf("error dialing %s: %v", name, err)
+	}
+	s.geoClient = geo.NewGeoClient(conn)
+	return nil
 }
 
 func (s *Server) initSearchClient(ctx context.Context, name string) error {
@@ -232,6 +268,124 @@ func (s *Server) getGprcConn(ctx context.Context, name string, dialOptions ...di
 	return dialer.Dial(address, dialOptions...)
 }
 
+func (s *Server) bookTravelHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	ctx := r.Context()
+
+	slog.DebugContext(ctx, "starts searchHandler")
+
+	sFromLat, sFromLon := r.URL.Query().Get("fromLat"), r.URL.Query().Get("fromLon")
+	sToLat, sToLon := r.URL.Query().Get("toLat"), r.URL.Query().Get("toLon")
+
+	startDate, endDate := r.URL.Query().Get("startDate"), r.URL.Query().Get("endDate")
+
+	if sFromLat == "" || sFromLon == "" || sToLat == "" || sToLon == "" || startDate == "" || endDate == "" {
+		message := "Please specify all required params: fromLat, fromLon, toLat, toLon, startDate, endDate"
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", message))
+		http.Error(w, message, http.StatusBadRequest)
+		return
+	}
+
+	fromLat, err := strconv.ParseFloat(sFromLat, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fromLon, err := strconv.ParseFloat(sFromLon, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	toLat, err := strconv.ParseFloat(sToLat, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	toLon, err := strconv.ParseFloat(sToLon, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fromAirport, err := s.flightClient.NearestAirport(ctx,
+		&flights.AirportSearchRequest{Lat: fromLat, Lon: fromLon})
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	toAirport, err := s.flightClient.NearestAirport(ctx,
+		&flights.AirportSearchRequest{Lat: toLat, Lon: toLon})
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	slog.DebugContext(ctx, fmt.Sprintf("Found airports: %s and %s", fromAirport.Id, toAirport.Id))
+
+	var outFlight *flights.Flight
+	var homeFlight *flights.Flight
+
+	if fromAirport.Id != toAirport.Id {
+		outFlightSearch, err := s.flightClient.SearchFlights(ctx, &flights.SearchRequest{FromAirport: fromAirport.Id, ToAirport: toAirport.Id})
+		if err != nil {
+			slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		outFlight = outFlightSearch.GetFlights()[0]
+
+		homeFlightSearch, err := s.flightClient.SearchFlights(ctx, &flights.SearchRequest{FromAirport: toAirport.Id, ToAirport: fromAirport.Id})
+		if err != nil {
+			slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		homeFlight = homeFlightSearch.GetFlights()[0]
+
+		s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: outFlight.Id})
+		s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: homeFlight.Id})
+	}
+
+	nearbyHotels, err := s.geoClient.Nearby(ctx, &geo.Request{Lat: float32(toLat), Lon: float32(toLon)})
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	hotelId := nearbyHotels.HotelIds[0]
+
+	reservation, err := s.reservationClient.MakeReservation(ctx, &reservation.Request{
+		CustomerName: "Customer Name",
+		HotelId:      []string{hotelId},
+		InDate:       startDate,
+		OutDate:      endDate,
+		RoomNumber:   1,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"outFlight":  outFlight,
+		"homeFlight": homeFlight,
+		"hotelID":    reservation.HotelId[0],
+	})
+}
+
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	ctx := r.Context()
@@ -261,7 +415,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.DebugContext(ctx, "starts searchHandler querying downstream")
 
-	slog.DebugContext(ctx, "SEARCH [lat: %v, lon: %v, inDate: %v, outDate: %v", lat, lon, inDate, outDate)
+	slog.DebugContext(ctx, fmt.Sprintf("SEARCH [lat: %v, lon: %v, inDate: %v, outDate: %v", lat, lon, inDate, outDate))
 	// search for best hotels
 	searchResp, err := s.searchClient.Nearby(ctx, &search.NearbyRequest{
 		Lat:     lat,
