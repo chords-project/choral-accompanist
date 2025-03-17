@@ -10,6 +10,7 @@ import (
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"github.com/grafana/pyroscope-go"
+	slogmulti "github.com/samber/slog-multi"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
@@ -174,7 +175,15 @@ func SetupOTelSDK(serviceName string, otlpAddr string, pyroscopeAddress string) 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
 
-	logger := otelslog.NewLogger("frontend", otelslog.WithLoggerProvider(loggerProvider))
+	otelLogger := otelslog.NewLogger("frontend", otelslog.WithLoggerProvider(loggerProvider))
+
+	logger := slog.New(
+		slogmulti.Fanout(
+			otelLogger.Handler(),
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}),
+		),
+	)
+
 	slog.SetDefault(logger)
 
 	// Set up profiling
