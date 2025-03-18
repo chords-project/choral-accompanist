@@ -1,0 +1,12 @@
+name: telemetry-pyroscope
+replicas: 1
+ports:
+  - port: 4040
+    portTarget: 4040
+
+container:
+  image: grafana/pyroscope
+  imageVersion: latest
+  name: hotel-reserv-telemetry-pyroscope
+  ports:
+    - containerPort: 4040

@@ -1,4 +1,11 @@
 {{/*
+Create postfix for domain to service.
+*/}}
+{{- define "hotel-reservation.service-url" -}}
+{{ include "hotel-reservation.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.serviceDnsDomain }}
+{{- end }}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "hotel-reservation.name" -}}

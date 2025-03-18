@@ -1,0 +1,30 @@
+name: telemetry-tempo
+replicas: 1
+ports:
+  - port: 3200
+    targetPort: 3200
+  - port: 9411
+    targetPort: 9411
+  - port: 55680
+    targetPort: 55680
+  - port: 55681
+    targetPort: 55681
+  - port: 14250
+    targetPort: 14250
+
+container:
+  image: grafana/tempo
+  imageVersion: latest
+  name: hotel-reserv-telemetry-tempo
+  args: ["-config.file=/etc/tempo.yaml"]
+  ports:
+    - containerPort: 3200
+    - containerPort: 9411
+    - containerPort: 55680
+    - containerPort: 55681
+    - containerPort: 14250
+
+configMaps:
+  - name: tempo.yaml
+    mountPath: /etc/tempo.yaml
+    value: tempo-config

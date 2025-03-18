@@ -1,0 +1,20 @@
+name: telemetry-mimir
+replicas: 1
+ports:
+  - port: 9009
+    targetPort: 9009
+
+container:
+  image: grafana/mimir
+  imageVersion: latest
+  name: hotel-reserv-telemetry-mimir
+  args:
+    - "-ingester.native-histograms-ingestion-enabled=true"
+    - "-config.file=/etc/mimir.yaml"
+  ports:
+    - containerPort: 9009
+
+configMaps:
+  - name: mimir.yaml
+    mountPath: /etc/mimir.yaml
+    value: mimir-config

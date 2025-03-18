@@ -44,3 +44,15 @@ dependencies:
     version: 0.1.0
   - name: user
     version: 0.1.0
+  - name: telemetry-alloy
+    version: 0.1.0
+  - name: telemetry-grafana
+    version: 0.1.0
+  - name: telemetry-loki
+    version: 0.1.0
+  - name: telemetry-tempo
+    version: 0.1.0
+  - name: telemetry-mimir
+    version: 0.1.0
+  - name: telemetry-pyroscope
+    version: 0.1.0
