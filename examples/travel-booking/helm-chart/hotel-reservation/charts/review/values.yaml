@@ -1,0 +1,17 @@
+name: review
+
+ports:
+  - port: 8088
+    targetPort: 8088
+
+container:
+  command: review
+  image: deathstarbench/hotel-reservation
+  name: hotel-reserv-review
+  ports:
+    - containerPort: 8088
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

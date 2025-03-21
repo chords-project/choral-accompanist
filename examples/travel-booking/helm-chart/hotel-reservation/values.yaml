@@ -16,7 +16,7 @@ global:
       #  - 1: Enabled, using default cipher suite based on golang runtime
       #  - TLS_XXX: Enabled, using the specified Cipher suite, see tls/options.go#L22
       TLS: 0
-      LOG_LEVEL: "INFO"
+      LOG_LEVEL: "TRACE"
       JAEGER_SAMPLE_RATIO: "0.01"
       MEMC_TIMEOUT: "2"
       GC: "100"
@@ -29,7 +29,7 @@ global:
       MEMCACHED_CACHE_SIZE: "128"
       MEMCACHED_THREADS: "2"
   mongodb:
-    persistentVolume:               # use hostPath or pvprovisioner
+    persistentVolume: # use hostPath or pvprovisioner
       enabled: false
       size: "1Gi"
       hostPath:
@@ -37,4 +37,4 @@ global:
         path: /tmp
       pvprovisioner:
         enabled: false
-        storageClassName: ceph-fs   # optional
+        storageClassName: ceph-fs # optional

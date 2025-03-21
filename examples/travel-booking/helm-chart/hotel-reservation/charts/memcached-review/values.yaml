@@ -1,0 +1,12 @@
+name: memcached-review
+
+ports:
+  - port: 11215
+    targetPort: 11211
+
+container:
+  image: memcached
+  imageVersion: latest
+  name: hotel-reserv-review-mmc
+  ports:
+    - containerPort: 11211

@@ -29,7 +29,10 @@ func main() {
 	byteValue, _ := io.ReadAll(jsonFile)
 
 	var result map[string]string
-	json.Unmarshal([]byte(byteValue), &result)
+	if err := json.Unmarshal([]byte(byteValue), &result); err != nil {
+		slog.Error("Failed to decode config file json", slog.Any("error", err))
+		return
+	}
 
 	servPort, _ := strconv.Atoi(result["FrontendPort"])
 	servIP := result["FrontendIP"]

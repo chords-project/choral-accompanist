@@ -1,0 +1,112 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: travel-booking
+build:
+  artifacts:
+    - image: docker.io/deathstarbench/hotel-reservation
+      docker:
+        dockerfile: Dockerfile
+deploy:
+  helm:
+    releases:
+      - name: geo
+        chartPath: helm-chart/hotelreservation/charts/geo
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/geo/values.yaml
+        version: 0.1.0
+      - name: memcached-reserve
+        chartPath: helm-chart/hotelreservation/charts/memcached-reserve
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/memcached-reserve/values.yaml
+        version: 0.1.0
+      - name: mongodb-rate
+        chartPath: helm-chart/hotelreservation/charts/mongodb-rate
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-rate/values.yaml
+        version: 0.1.0
+      - name: mongodb-recommendation
+        chartPath: helm-chart/hotelreservation/charts/mongodb-recommendation
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-recommendation/values.yaml
+        version: 0.1.0
+      - name: profile
+        chartPath: helm-chart/hotelreservation/charts/profile
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/profile/values.yaml
+        version: 0.1.0
+      - name: user
+        chartPath: helm-chart/hotelreservation/charts/user
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/user/values.yaml
+        version: 0.1.0
+      - name: mongodb-profile
+        chartPath: helm-chart/hotelreservation/charts/mongodb-profile
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-profile/values.yaml
+        version: 0.1.0
+      - name: mongodb-user
+        chartPath: helm-chart/hotelreservation/charts/mongodb-user
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-user/values.yaml
+        version: 0.1.0
+      - name: rate
+        chartPath: helm-chart/hotelreservation/charts/rate
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/rate/values.yaml
+        version: 0.1.0
+      - name: recommendation
+        chartPath: helm-chart/hotelreservation/charts/recommendation
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/recommendation/values.yaml
+        version: 0.1.0
+      - name: reservation
+        chartPath: helm-chart/hotelreservation/charts/reservation
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/reservation/values.yaml
+        version: 0.1.0
+      - name: hotel-reservation
+        chartPath: helm-chart/hotelreservation
+        valuesFiles:
+          - helm-chart/hotelreservation/values.yaml
+        version: 0.1.0
+      - name: frontend
+        chartPath: helm-chart/hotelreservation/charts/frontend
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/frontend/values.yaml
+        version: 0.1.0
+      - name: memcached-profile
+        chartPath: helm-chart/hotelreservation/charts/memcached-profile
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/memcached-profile/values.yaml
+        version: 0.1.0
+      - name: search
+        chartPath: helm-chart/hotelreservation/charts/search
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/search/values.yaml
+        version: 0.1.0
+      - name: mongodb-geo
+        chartPath: helm-chart/hotelreservation/charts/mongodb-geo
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-geo/values.yaml
+        version: 0.1.0
+      - name: mongodb-reservation
+        chartPath: helm-chart/hotelreservation/charts/mongodb-reservation
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/mongodb-reservation/values.yaml
+        version: 0.1.0
+      - name: consul
+        chartPath: helm-chart/hotelreservation/charts/consul
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/consul/values.yaml
+        version: 0.1.0
+      # - name: jaeger
+      #   chartPath: helm-chart/hotelreservation/charts/jaeger
+      #   valuesFiles:
+      #     - helm-chart/hotelreservation/charts/jaeger/values.yaml
+      #   version: 0.1.0
+      - name: memcached-rate
+        chartPath: helm-chart/hotelreservation/charts/memcached-rate
+        valuesFiles:
+          - helm-chart/hotelreservation/charts/memcached-rate/values.yaml
+        version: 0.1.0

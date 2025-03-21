@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"io/ioutil"
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -23,15 +23,23 @@ func main() {
 	slog.Info("Reading config...")
 	jsonFile, err := os.Open("config.json")
 	if err != nil {
-		slog.Error("Got error while reading config: %v", err)
+		slog.Error("Got error while reading config", slog.Any("error", err))
+		return
 	}
 
 	defer jsonFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
+	if err != nil {
+		slog.Error("Failed to read config file", slog.Any("error", err))
+		return
+	}
 
 	var result map[string]string
-	json.Unmarshal([]byte(byteValue), &result)
+	if err := json.Unmarshal([]byte(byteValue), &result); err != nil {
+		slog.Error("Failed to decode config file json", slog.Any("error", err))
+		return
+	}
 
 	slog.Info("Initializing DB connection...")
 	mongoClient, mongoClose := initializeDatabase(result["RecommendMongoAddress"])

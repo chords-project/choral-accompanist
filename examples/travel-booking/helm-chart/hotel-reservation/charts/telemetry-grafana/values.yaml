@@ -10,3 +10,8 @@ container:
   name: hotel-reserv-telemetry-grafana
   ports:
     - containerPort: 3000
+
+configMaps:
+  - name: datasources.yaml
+    mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+    value: grafana-datasources
