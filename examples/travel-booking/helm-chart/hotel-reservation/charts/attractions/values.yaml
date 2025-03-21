@@ -1,0 +1,17 @@
+name: attractions
+
+ports:
+  - port: 8089
+    targetPort: 8089
+
+container:
+  command: attractions
+  image: deathstarbench/hotel-reservation
+  name: hotel-reserv-attractions
+  ports:
+    - containerPort: 8089
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

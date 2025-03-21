@@ -21,6 +21,8 @@
     "UserMongoAddress": "mongodb-user-{{ include "hotel-reservation.service-url" . }}:27023",
     "ReviewPort": "8088",
     "ReviewMongoAddress": "mongodb-review-{{ include "hotel-reservation.service-url" . }}:27024",
-    "ReviewMemcAddress": {{ include "hotel-reservation.generateMemcAddr" (list . .Values.global.memcached.HACount "memcached-review" 11215)}}
+    "ReviewMemcAddress": {{ include "hotel-reservation.generateMemcAddr" (list . .Values.global.memcached.HACount "memcached-review" 11215)}},
+    "AttractionsPort": "8089",
+    "AttractionsMongoAddress": "mongodb-attractions-{{ include "hotel-reservation.service-url" . }}:27025"
 }
 {{- end }}
