@@ -1,18 +1,18 @@
-name: reservation
+name: flights
 
 ports:
-  - port: 8087
-    targetPort: 8087
+  - port: 8090
+    targetPort: 8090
 
 container:
-  command: reservation
+  command: flights
   image: deathstarbench/hotel-reservation
-  name: hotel-reserv-reservation
+  name: hotel-reserv-flights
   ports:
-    - containerPort: 8087
+    - containerPort: 8090
 
 sidecar:
-  image: travel-sidecar-reservation
+  image: travel-sidecar-flight
 
 configMaps:
   - name: service-config.json

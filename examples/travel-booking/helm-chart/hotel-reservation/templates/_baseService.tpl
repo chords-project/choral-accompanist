@@ -13,6 +13,16 @@ spec:
     protocol: {{ .protocol }}
     {{- end }}
     targetPort: {{ .targetPort }}
+  {{- end -}}
+  {{- if .Values.sidecar }}
+  - name: "5401"
+    port: 5401
+    targetPort: 5401
+  {{- range .Values.sidecar.ports }}
+  - name: "{{ . }}"
+    port: {{ . }}
+    targetPort: {{ . }}
+  {{- end }}
   {{- end }}
   selector:
     {{- include "hotel-reservation.selectorLabels" . | nindent 4 }}

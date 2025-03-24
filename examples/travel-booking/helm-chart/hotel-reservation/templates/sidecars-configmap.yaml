@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecars-{{ include "hotel-reservation.fullname" . }}
+  labels:
+    hotel-reservation/sidecar: sidecars--{{ include "hotel-reservation.fullname" . }}
+data:
+  ENABLE_TRACING: "1"
+  COLLECTOR_SERVICE_ADDR: "http://telemetry-alloy-{{ include "hotel-reservation.service-url" . }}:4317"
+  CHORAL_CLIENT: "frontend-{{ include "hotel-reservation.service-url" . }}:5401"
+  CHORAL_FLIGHT: "flights-{{ include "hotel-reservation.service-url" . }}:5401"
+  CHORAL_GEO: "geo-{{ include "hotel-reservation.service-url" . }}:5401"
+  CHORAL_RESERVATION: "reservation-{{ include "hotel-reservation.service-url" . }}:5401"

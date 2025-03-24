@@ -32,6 +32,10 @@ dependencies:
     version: 0.1.0
   - name: mongodb-user
     version: 0.1.0
+  - name: mongodb-review
+    version: 0.1.0
+  - name: mongodb-flights
+    version: 0.1.0
   - name: profile
     version: 0.1.0
   - name: rate
@@ -43,6 +47,10 @@ dependencies:
   - name: search
     version: 0.1.0
   - name: user
+    version: 0.1.0
+  - name: flights
+    version: 0.1.0
+  - name: review
     version: 0.1.0
   - name: telemetry-alloy
     version: 0.1.0

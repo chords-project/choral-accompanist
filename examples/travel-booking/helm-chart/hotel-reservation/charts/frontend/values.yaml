@@ -11,6 +11,11 @@ container:
   ports:
     - containerPort: 5000
 
+sidecar:
+  image: travel-sidecar-client
+  ports:
+    - 8945
+
 configMaps:
   - name: service-config.json
     mountPath: /workspace/config.json

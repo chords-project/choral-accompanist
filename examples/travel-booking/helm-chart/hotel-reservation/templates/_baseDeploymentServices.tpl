@@ -28,6 +28,22 @@ spec:
       {{- end }}
     spec:
       containers:
+      {{- if .Values.sidecar }}
+      - name: "sidecar-{{ .Values.container.name }}"
+        image: "{{ .Values.sidecar.image }}"
+        imagePullPolicy: {{ .Values.container.imagePullPolicy | default $.Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: 5401
+        {{- range $port := .Values.sidecar.ports }}
+        - containerPort: {{ $port -}}
+        {{- end }}
+        env:
+        - name: "SERVICE_HOST"
+          value: {{ .Values.name }}-{{ include "hotel-reservation.fullname" . }}
+        envFrom:
+        - configMapRef:
+            name: sidecars-{{ include "hotel-reservation.fullname" . }}
+      {{ end -}}
       {{- with .Values.container }}
       - name: "{{ .name }}"
         image: {{ .dockerRegistry | default $.Values.global.dockerRegistry }}/{{ .image }}:{{ .imageVersion | default $.Values.global.defaultImageVersion }}

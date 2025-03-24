@@ -1,7 +1,7 @@
 {{- define "hotel-reservation.templates.service-config.json" }}
 {
     "consulAddress": "consul-{{ include "hotel-reservation.service-url" . }}:8500",
-    "jaegerAddress": "jaeger-{{ include "hotel-reservation.service-url" . }}:6831",
+    "otlpAddress": "telemetry-alloy-{{ include "hotel-reservation.service-url" . }}:4317",
     "FrontendPort": "5000",
     "GeoPort": "8083",
     "GeoMongoAddress": "mongodb-geo-{{ include "hotel-reservation.service-url" . }}:27018",
@@ -23,6 +23,8 @@
     "ReviewMongoAddress": "mongodb-review-{{ include "hotel-reservation.service-url" . }}:27024",
     "ReviewMemcAddress": {{ include "hotel-reservation.generateMemcAddr" (list . .Values.global.memcached.HACount "memcached-review" 11215)}},
     "AttractionsPort": "8089",
-    "AttractionsMongoAddress": "mongodb-attractions-{{ include "hotel-reservation.service-url" . }}:27025"
+    "AttractionsMongoAddress": "mongodb-attractions-{{ include "hotel-reservation.service-url" . }}:27025",
+    "FlightsPort": "8090",
+    "FlightsMongoAddress": "mongodb-flights-{{ include "hotel-reservation.service-url" . }}:27026"
 }
 {{- end }}

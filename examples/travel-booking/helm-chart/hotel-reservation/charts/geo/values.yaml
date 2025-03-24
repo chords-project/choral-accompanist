@@ -11,6 +11,9 @@ container:
   ports:
     - containerPort: 8083
 
+sidecar:
+  image: travel-sidecar-geo
+
 configMaps:
   - name: service-config.json
     mountPath: /workspace/config.json
