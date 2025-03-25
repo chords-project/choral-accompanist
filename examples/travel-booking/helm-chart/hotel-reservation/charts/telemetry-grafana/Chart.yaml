@@ -1,6 +1,0 @@
-apiVersion: v2
-name: telemetry-grafana
-description: telemetry in hotel-reservation
-type: application
-version: 0.1.0
-appVersion: 0.1.0

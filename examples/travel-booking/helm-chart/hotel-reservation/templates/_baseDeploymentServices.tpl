@@ -40,6 +40,8 @@ spec:
         env:
         - name: "SERVICE_HOST"
           value: {{ .Values.name }}-{{ include "hotel-reservation.fullname" . }}
+        - name: "SERVICE_PORT"
+          value: "8081"
         envFrom:
         - configMapRef:
             name: sidecars-{{ include "hotel-reservation.fullname" . }}

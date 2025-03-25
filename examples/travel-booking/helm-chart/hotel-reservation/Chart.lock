@@ -68,23 +68,8 @@ dependencies:
 - name: review
   repository: ""
   version: 0.1.0
-- name: telemetry-alloy
-  repository: ""
-  version: 0.1.0
-- name: telemetry-grafana
-  repository: ""
-  version: 0.1.0
-- name: telemetry-loki
-  repository: ""
-  version: 0.1.0
-- name: telemetry-tempo
-  repository: ""
-  version: 0.1.0
-- name: telemetry-mimir
-  repository: ""
-  version: 0.1.0
-- name: telemetry-pyroscope
-  repository: ""
-  version: 0.1.0
-digest: sha256:6a7fbeaf00e4fefbdc1dcb52e45f7dc0ff26c26051e1c41ccc7de7faab4f5748
-generated: "2025-03-24T11:05:14.900256+01:00"
+- name: lgtm-distributed
+  repository: https://grafana.github.io/helm-charts
+  version: 2.1.0
+digest: sha256:ff3e3a92f28a9f321284632a66a265c1f6cfb5b97585bb15f559ce7ebb3fbe88
+generated: "2025-03-24T11:48:25.240299+01:00"

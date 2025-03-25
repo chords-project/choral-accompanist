@@ -1,1 +1,0 @@
-{{include "hotel-reservation.templates.baseConfigMap" .}}
