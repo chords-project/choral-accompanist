@@ -39,12 +39,12 @@ dependencies {
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
-    }
-}
+// // Apply a specific Java toolchain to ease working on different environments.
+// java {
+//     toolchain {
+//         languageVersion = JavaLanguageVersion.of(24)
+//     }
+// }
 
 application {
     // Define the main class for the application.
@@ -73,6 +73,7 @@ tasks.register("compileChoral") {
     val choreographies = listOf(
         "SimpleChoreography",
         "GreeterChoreography",
+        "ChainChoreography"
     )
 
     doLast {
