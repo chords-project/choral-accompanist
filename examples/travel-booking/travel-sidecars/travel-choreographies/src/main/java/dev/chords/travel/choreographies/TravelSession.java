@@ -28,11 +28,11 @@ public class TravelSession extends Session {
     }
 
     public enum Choreography {
-        BOOK_TRAVEL
+        BOOK_TRAVEL, SEARCH_HOTELS
     }
 
     public enum Service {
-        CLIENT, FLIGHT, GEO, RESERVATION
+        CLIENT, FLIGHT, GEO, RESERVATION, SEARCH, PROFILE
     }
 
     @Override

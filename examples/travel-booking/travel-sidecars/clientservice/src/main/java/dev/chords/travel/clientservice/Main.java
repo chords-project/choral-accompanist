@@ -8,12 +8,7 @@ import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.Logger;
 import choral.reactive.tracing.TelemetrySession;
 import choreography.ChoreographyGrpc;
-import dev.chords.travel.choreographies.BookTravelRequest;
-import dev.chords.travel.choreographies.BookTravelResult;
-import dev.chords.travel.choreographies.ChorBookTravel_Client;
-import dev.chords.travel.choreographies.ServiceResources;
-import dev.chords.travel.choreographies.Tracing;
-import dev.chords.travel.choreographies.TravelSession;
+import dev.chords.travel.choreographies.*;
 import dev.chords.travel.choreographies.TravelSession.Choreography;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.OpenTelemetry;
@@ -22,11 +17,13 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Scope;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 
 public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
     private static ClientConnectionManager flightConn;
     private static ClientConnectionManager reservationConn;
+    private static ClientConnectionManager searchConn;
     private static ReactiveServer server;
     private static Logger logger;
 
@@ -42,6 +39,7 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         try {
             flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
             reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+            searchConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.search, telemetry);
         } catch (URISyntaxException | IOException e) {
             logger.exception("failed to start sidecar connections", e);
             throw new RuntimeException(e);
@@ -57,6 +55,11 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
                 @Override
                 public BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
                     return Main.bookTravel(req);
+                }
+
+                @Override
+                public ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
+                    return Main.searchHotels(request);
                 }
             }
         );
@@ -74,6 +77,43 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         } catch (URISyntaxException | IOException e) {
             logger.exception("choral reactive server failed", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private static ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
+        TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
+
+        Span span = telemetry
+                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .spanBuilder("SearchHotels")
+                .setSpanKind(SpanKind.CLIENT)
+                .setAttribute("choreography.session", session.toString())
+                .startSpan();
+
+        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
+        server.registerSession(session, telemetrySession);
+
+        try (
+                Scope scope = span.makeCurrent();
+                ReactiveClient searchClient = new ReactiveClient(searchConn, Service.CLIENT.name(), telemetrySession);
+        ) {
+            telemetrySession.log("Initializing SEARCH_HOTELS choreography");
+
+            ChorSearchHotels_Client searchHotelsChor = new ChorSearchHotels_Client(
+                    searchClient.chanA(session),
+                    server.chanB(session, Service.PROFILE.name())
+            );
+
+            telemetrySession.log("Starting SEARCH_HOTELS choreography");
+            var result = searchHotelsChor.search(request);
+            telemetrySession.log("Finished SEARCH_HOTELS choreography");
+
+            return result;
+        } catch (Exception e) {
+            telemetrySession.recordException("Client SEARCH_HOTELS choreography failed", e, true);
+            throw e;
+        } finally {
+            span.end();
         }
     }
 

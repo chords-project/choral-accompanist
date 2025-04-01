@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.concurrent.Callable;
 
 import choral.reactive.tracing.JaegerConfiguration;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class Benchmark {
@@ -83,16 +84,41 @@ public class Benchmark {
 
     public static void main(String[] args) throws Exception {
 
-//        Scanner input = new Scanner(System.in);
-//        System.out.print("Press Enter to perform benchmark...");
-//        input.nextLine();
-//        input.close();
+        OpenTelemetry telemetry = OpenTelemetry.noop();
+
+        String benchmark = System.getenv("BENCHMARK");
+        if (benchmark == null) {
+            System.out.println("BENCHMARK=chain-initiator, SERVICE_NAME=name, NEXT_ADDRESS=address:port");
+            System.out.println("BENCHMARK=chain-forwarder, SERVICE_NAME=name, NEXT_ADDRESS=address:port");
+            System.exit(1);
+        }
+
+        String serviceName = System.getenv("SERVICE_NAME");
+        String nextAddress = System.getenv("NEXT_ADDRESS");
+
+        switch (benchmark) {
+            case "chain-initiator": {
+                var service = ChainService.makeInitiator(telemetry, serviceName, nextAddress);
+                service.listen().join();
+                break;
+            }
+            case "chain-forwarder": {
+                var service = ChainService.makeForwarder(telemetry, serviceName, nextAddress);
+                service.listen().join();
+                break;
+            }
+        }
+
+        /*Scanner input = new Scanner(System.in);
+        System.out.print("Press Enter to perform benchmark...");
+        input.nextLine();
+        input.close();
 
         benchmarkChoreography(serviceA -> {
-//            measure(10_000, () -> {
-//                serviceA.startPingPong();
-//                return null;
-//            });
+            measure(10_000, () -> {
+                serviceA.startPingPong();
+                return null;
+            });
 
             measure(10_000, () -> {
                 serviceA.startGreeting();
@@ -100,12 +126,12 @@ public class Benchmark {
             });
         });
 
-//        benchmarkGrpc(client -> {
-//            measure(10_000, () -> {
-//                client.greet("Name");
-//                return null;
-//            });
-//        });
+        benchmarkGrpc(client -> {
+            measure(10_000, () -> {
+                client.greet("Name");
+                return null;
+            });
+        });*/
 
     }
 }

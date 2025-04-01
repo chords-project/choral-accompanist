@@ -1,0 +1,69 @@
+{{- $values := .Values -}}
+{{- range $chain := .Values.chain }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $chain.name }}-{{ include "accompanist-benchmark.fullname" $ }}
+  labels:
+    {{- include "accompanist-benchmark.labels" $ | nindent 4 }}
+    chainName: {{ $chain.name }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "accompanist-benchmark.selectorLabels" $ | nindent 6 }}
+      chainName: {{ $chain.name }}
+  template:
+    metadata:
+      {{- with $values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "accompanist-benchmark.labels" $ | nindent 8 }}
+        chainName: {{ $chain.name }}
+        {{- with $values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml $values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: "sidecar"
+          securityContext:
+            {{- toYaml $values.securityContext | nindent 12 }}
+          image: "{{ $values.image.repository }}:{{ $values.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $values.image.pullPolicy }}
+          env:
+            {{- toYaml $chain.env | nindent 12}}
+          ports:
+            - name: http
+              containerPort: {{ $values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml $values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml $values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml $values.resources | nindent 12 }}
+          {{- with $values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with $values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

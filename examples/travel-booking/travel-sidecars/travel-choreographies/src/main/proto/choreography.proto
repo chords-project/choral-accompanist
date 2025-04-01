@@ -4,6 +4,7 @@ package choreography;
 
 service Choreography {
   rpc BookTravel(BookTravelRequest) returns (BookTravelResult);
+  rpc Search(SearchRequest) returns (SearchResult);
 }
 
 message BookTravelRequest {
@@ -30,4 +31,39 @@ message Flight {
     string to_airport = 3;
     string departure_time = 4;
     string arrival_time = 5;
+}
+
+message SearchRequest {
+  string inDate = 1;
+  string outDate = 2;
+  double lat = 3;
+  double lon = 4;
+}
+
+message SearchResult {
+  repeated Hotel hotels = 1;
+}
+
+message Hotel {
+  string id = 1;
+  string name = 2;
+  string phoneNumber = 3;
+  string description = 4;
+  Address address = 5;
+  repeated Image images = 6;
+}
+
+message Address {
+  string streetNumber = 1;
+  string streetName = 2;
+  string city = 3;
+  string country = 4;
+  string postalCode = 5;
+  double lat = 6;
+  double lon = 7;
+}
+
+message Image {
+  string url = 1;
+  bool isDefault = 2;
 }

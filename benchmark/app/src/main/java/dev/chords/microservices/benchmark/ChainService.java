@@ -24,7 +24,7 @@ public class ChainService {
         this.telemetry = telemetry;
     }
 
-    public static ChainService makeForwarder(OpenTelemetry telemetry, String nextServiceAddress, String serviceName)
+    public static ChainService makeForwarder(OpenTelemetry telemetry, String serviceName, String nextServiceAddress)
             throws Exception {
         var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress, telemetry);
 
@@ -48,21 +48,21 @@ public class ChainService {
         return new ChainService(server, serviceName, nextServiceConnection, grpcClient, telemetry);
     }
 
-    public static ChainService makeInitiator(OpenTelemetry telemetry, String nextServiceAddress, String serviceName)
+    public static ChainService makeInitiator(OpenTelemetry telemetry, String serviceName, String nextServiceAddress)
             throws Exception {
         var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress, telemetry);
 
         var grpcClient = new GrpcClient(5430, telemetry);
 
-        var server = new ReactiveServer(serviceName, telemetry, _ -> {
+        var server = new ReactiveServer(serviceName, telemetry, ctx -> {
             System.out.println(serviceName + " received new session");
         });
 
         return new ChainService(server, serviceName, nextServiceConnection, grpcClient, telemetry);
     }
 
-    public void listen(String address) {
-        Thread.ofVirtual()
+    public Thread listen() {
+        return Thread.ofVirtual()
                 .name("REACTIVE_SERVER_" + serviceName)
                 .start(() -> {
                     try {

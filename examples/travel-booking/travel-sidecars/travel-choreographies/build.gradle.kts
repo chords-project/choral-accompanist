@@ -83,6 +83,7 @@ protobuf {
 tasks.register("compileChoral") {
     val choreographies = listOf(
         "ChorBookTravel",
+        "ChorSearchHotels"
     )
 
     doLast {

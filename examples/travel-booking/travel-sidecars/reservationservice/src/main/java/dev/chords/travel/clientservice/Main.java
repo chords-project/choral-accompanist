@@ -4,10 +4,7 @@ import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveServer.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
-import dev.chords.travel.choreographies.ChorBookTravel_Reservation;
-import dev.chords.travel.choreographies.ServiceResources;
-import dev.chords.travel.choreographies.Tracing;
-import dev.chords.travel.choreographies.TravelSession;
+import dev.chords.travel.choreographies.*;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.OpenTelemetry;
 import java.net.InetSocketAddress;
@@ -17,6 +14,7 @@ public class Main {
     private static ReservationService reservationService;
 
     private static ClientConnectionManager clientConn;
+    private static ClientConnectionManager profileConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -30,6 +28,7 @@ public class Main {
         reservationService = new ReservationService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
         clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
+        profileConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.profile, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.RESERVATION.name(), telemetry, Main::handleNewSession);
 
@@ -54,8 +53,19 @@ public class Main {
                 ctx.log("BOOK_TRAVEL choreography completed");
 
                 break;
-            default:
-                ctx.log("Invalid choreography " + ctx.session.choreographyName());
+            case SEARCH_HOTELS:
+                ctx.log("New BOOK_TRAVEL request");
+
+                ChorSearchHotels_Reservation searchChor = new ChorSearchHotels_Reservation(
+                        reservationService,
+                        ctx.chanB(Service.SEARCH.name()),
+                        ctx.chanA(profileConn)
+                );
+
+                searchChor.search();
+
+                ctx.log("BOOK_TRAVEL choreography completed");
+
                 break;
         }
     }

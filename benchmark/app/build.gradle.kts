@@ -14,6 +14,13 @@ plugins {
     application
 
     id("com.google.protobuf") version "0.9.4"
+    id("com.google.cloud.tools.jib") version "3.4.4"
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 repositories {
@@ -39,16 +46,14 @@ dependencies {
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 }
 
-// // Apply a specific Java toolchain to ease working on different environments.
-// java {
-//     toolchain {
-//         languageVersion = JavaLanguageVersion.of(24)
-//     }
-// }
-
 application {
     // Define the main class for the application.
     mainClass = "dev.chords.microservices.benchmark.Benchmark"
+}
+
+jib {
+    to.image = "accompanist-benchmark"
+    container.mainClass = "dev.chords.microservices.benchmark.Benchmark"
 }
 
 tasks.register<JavaExec>("runA") {

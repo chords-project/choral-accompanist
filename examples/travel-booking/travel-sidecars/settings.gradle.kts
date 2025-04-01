@@ -21,4 +21,6 @@ include(
     "flightservice",
     "geoservice",
     "reservationservice",
+    "searchservice",
+    "profileservice"
 )
