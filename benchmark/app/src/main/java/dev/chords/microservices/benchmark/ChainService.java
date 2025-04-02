@@ -50,7 +50,7 @@ public class ChainService {
 
     public static ChainService makeInitiator(OpenTelemetry telemetry, String serviceName, String nextServiceAddress)
             throws Exception {
-        var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress, telemetry);
+        var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress + ":8201", telemetry);
 
         var grpcClient = new GrpcClient(5430, telemetry);
 

@@ -5,6 +5,7 @@ chain:
     value: chain-initiator
   - name: SERVICE_NAME
     value: first
+  serviceEnv:
   - name: NEXT_ADDRESS
     value: second
 - name: second
@@ -13,6 +14,7 @@ chain:
     value: chain-forwarder
   - name: SERVICE_NAME
     value: second
+  serviceEnv:
   - name: NEXT_ADDRESS
     value: third
 - name: third
@@ -21,6 +23,7 @@ chain:
     value: chain-forwarder
   - name: SERVICE_NAME
     value: third
+  serviceEnv:
   - name: NEXT_ADDRESS
     value: first
 

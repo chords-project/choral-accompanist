@@ -88,8 +88,8 @@ public class Benchmark {
 
         String benchmark = System.getenv("BENCHMARK");
         if (benchmark == null) {
-            System.out.println("BENCHMARK=chain-initiator, SERVICE_NAME=name, NEXT_ADDRESS=address:port");
-            System.out.println("BENCHMARK=chain-forwarder, SERVICE_NAME=name, NEXT_ADDRESS=address:port");
+            System.out.println("BENCHMARK=chain-initiator, SERVICE_NAME=name, NEXT_ADDRESS=address");
+            System.out.println("BENCHMARK=chain-forwarder, SERVICE_NAME=name, NEXT_ADDRESS=address");
             System.exit(1);
         }
 

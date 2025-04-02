@@ -36,6 +36,10 @@ spec:
           imagePullPolicy: {{ $values.image.pullPolicy }}
           env:
             {{- toYaml $chain.env | nindent 12}}
+            {{- range $chain.serviceEnv }}
+            - name: {{ .name }}
+              value: {{ .value }}-{{ include "accompanist-benchmark.fullname" $ }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ $values.service.port }}
