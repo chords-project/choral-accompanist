@@ -1,20 +1,38 @@
 [
   {
+    "name": "first_sidecar_proxy",
+    "listen": "[::]:8001",
+    "upstream": "benchmark:8201",
+    "enabled": true
+  },
+  {
+    "name": "second_sidecar_proxy",
+    "listen": "[::]:8002",
+    "upstream": "second-sidecar:8201",
+    "enabled": true
+  },
+  {
+    "name": "third_sidecar_proxy",
+    "listen": "[::]:8003",
+    "upstream": "third-sidecar:8201",
+    "enabled": true
+  },
+  {
     "name": "first_proxy",
-    "listen": "[::]:8301",
-    "upstream": "first:8201",
+    "listen": "[::]:9001",
+    "upstream": "first-service:5430",
     "enabled": true
   },
   {
     "name": "second_proxy",
-    "listen": "[::]:8301",
-    "upstream": "second:8201",
+    "listen": "[::]:9002",
+    "upstream": "second-service:5430",
     "enabled": true
   },
   {
     "name": "third_proxy",
-    "listen": "[::]:8301",
-    "upstream": "third:8201",
+    "listen": "[::]:9003",
+    "upstream": "third-service:5430",
     "enabled": true
   }
 ]

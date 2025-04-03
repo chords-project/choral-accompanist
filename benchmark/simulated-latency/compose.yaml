@@ -1,37 +1,66 @@
 services:
-  first:
-    image: accompanist-benchmark
-    environment:
-      BENCHMARK: "chain-a"
-      SIDECAR: "first-sidecar"
-      NEXT_ADDRESS: "second"
-  second:
-    image: accompanist-benchmark
-    environment:
-      BENCHMARK: "chain-b"
-      SIDECAR: "second-sidecar"
-      NEXT_ADDRESS: "third"
-  third:
-    image: accompanist-benchmark
-    environment:
-      BENCHMARK: "chain-c"
-      SIDECAR: "third-sidecar"
-      NEXT_ADDRESS: "first"
+#  orchestrator:
+#    image: accompanist-benchmark
+#    environment:
+#      BENCHMARK: "chain-orchestrator"
+#      FIRST: "toxiproxy:9001"
+#      SECOND: "toxiproxy:9002"
+#      THIRD: "toxiproxy:9003"
 
-  first-sidecar:
+#  first-sidecar:
+#    image: accompanist-benchmark
+#    environment:
+#      BENCHMARK: "chain-a"
+#      # SERVICE: "first-service:5430"
+#      # NEXT_SIDECAR: "second-sidecar:8201"
+#      SERVICE: "toxiproxy:9001"
+#      NEXT_SIDECAR: "toxiproxy:8002"
+
+  benchmark:
     image: accompanist-benchmark
     environment:
-      BENCHMARK: "greeter"
+      BENCHMARK: "chain-benchmark"
+      FIRST: "toxiproxy:9001"
+      SECOND: "toxiproxy:9002"
+      THIRD: "toxiproxy:9003"
+      NEXT_SIDECAR: "toxiproxy:8002"
+      TOXIPROXY: "toxiproxy:8474"
+
   second-sidecar:
     image: accompanist-benchmark
     environment:
-      BENCHMARK: "greeter"
+      BENCHMARK: "chain-b"
+      # SERVICE: "second-service:5430"
+      # NEXT_SIDECAR: "third-sidecar:8201"
+      SERVICE: "toxiproxy:9002"
+      NEXT_SIDECAR: "toxiproxy:8003"
   third-sidecar:
     image: accompanist-benchmark
     environment:
+      BENCHMARK: "chain-c"
+      # SERVICE: "third-service:5430"
+      # NEXT_SIDECAR: "first-sidecar:8201"
+      SERVICE: "toxiproxy:9003"
+      NEXT_SIDECAR: "toxiproxy:8001"
+
+  first-service:
+    image: accompanist-benchmark
+    environment:
       BENCHMARK: "greeter"
+      PORT: "5430"
+  second-service:
+    image: accompanist-benchmark
+    environment:
+      BENCHMARK: "greeter"
+      PORT: "5430"
+  third-service:
+    image: accompanist-benchmark
+    environment:
+      BENCHMARK: "greeter"
+      PORT: "5430"
 
   toxiproxy:
     image: ghcr.io/shopify/toxiproxy:2.12.0
+    command: ["-host=0.0.0.0", "-config=/toxiproxy.json"]
     volumes:
-      - "./toxiproxy.json:/config/toxiproxy.json"
+      - "./toxiproxy.json:/toxiproxy.json"

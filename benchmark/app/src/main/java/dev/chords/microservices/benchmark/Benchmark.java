@@ -89,19 +89,27 @@ public class Benchmark {
         String benchmark = System.getenv("BENCHMARK");
         if (benchmark == null) {
             System.out.println("Usage of accompanist-benchmark:");
-            System.out.println("    BENCHMARK=chain-a, SIDECAR=address NEXT_ADDRESS=address");
-            System.out.println("    BENCHMARK=chain-b, SIDECAR=address NEXT_ADDRESS=address");
-            System.out.println("    BENCHMARK=chain-c, SIDECAR=address NEXT_ADDRESS=address");
-            System.out.println("    BENCHMARK=greeter");
+            System.out.println("    BENCHMARK=chain-a, SERVICE=address:port NEXT_SIDECAR=address:port");
+            System.out.println("    BENCHMARK=chain-b, SERVICE=address:port NEXT_SIDECAR=address:port");
+            System.out.println("    BENCHMARK=chain-c, SERVICE=address:port NEXT_SIDECAR=address:port");
+            System.out.println("    BENCHMARK=greeter PORT=port");
+            System.out.println("    BENCHMARK=chain-orchestrator FIRST=address:port SECOND=address:port THIRD=address:port");
+            System.out.println("    BENCHMARK=chain-benchmark FIRST=address:port SECOND=address:port THIRD=address:port NEXT_SIDECAR=address:port TOXIPROXY=address:port");
             System.exit(1);
         }
 
-        String nextAddress = System.getenv("NEXT_ADDRESS");
-        String sidecar = System.getenv("SIDECAR");
+        String nextSidecar = System.getenv("NEXT_SIDECAR");
+        String serviceAddress = System.getenv("SERVICE");
+        String port = System.getenv("PORT");
+        String toxiproxy = System.getenv("TORIPROXY");
+
+        String first = System.getenv("FIRST");
+        String second = System.getenv("SECOND");
+        String third = System.getenv("THIRD");
 
         switch (benchmark) {
             case "chain-a": {
-                var service = ChainService.makeChainA(telemetry, sidecar, nextAddress);
+                var service = ChainService.makeChainA(telemetry, serviceAddress, nextSidecar);
                 Thread server = service.listen();
 
                 Thread.sleep(5000);
@@ -112,19 +120,37 @@ public class Benchmark {
                 break;
             }
             case "chain-b": {
-                var service = ChainService.makeChainB(telemetry, sidecar, nextAddress);
+                var service = ChainService.makeChainB(telemetry, serviceAddress, nextSidecar);
                 service.listen().join();
                 break;
             }
             case "chain-c": {
-                var service = ChainService.makeChainC(telemetry, sidecar, nextAddress);
+                var service = ChainService.makeChainC(telemetry, serviceAddress, nextSidecar);
                 service.listen().join();
                 break;
             }
             case "greeter": {
                 GrpcServer server = new GrpcServer();
-                server.start(5430);
+                server.start(Integer.parseInt(port));
                 server.blockUntilShutdown();
+                break;
+            }
+            case "chain-orchestrator": {
+                ChainOrchestrator orchestrator = new ChainOrchestrator(first, second, third, telemetry);
+
+                Thread.sleep(5000);
+                orchestrator.runOrchestrator();
+
+                orchestrator.close();
+                break;
+            }
+            case "chain-benchmark": {
+                ChainBenchmark bm = new ChainBenchmark(telemetry, first, second, third, nextSidecar, toxiproxy);
+                var result = bm.runBenchmark();
+
+                System.out.println("BENCHMARK RESULTS:\n" + result);
+
+                break;
             }
         }
 
