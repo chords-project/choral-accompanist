@@ -101,7 +101,7 @@ public class Benchmark {
         String nextSidecar = System.getenv("NEXT_SIDECAR");
         String serviceAddress = System.getenv("SERVICE");
         String port = System.getenv("PORT");
-        String toxiproxy = System.getenv("TORIPROXY");
+        String toxiproxy = System.getenv("TOXIPROXY");
 
         String first = System.getenv("FIRST");
         String second = System.getenv("SECOND");
@@ -148,7 +148,21 @@ public class Benchmark {
                 ChainBenchmark bm = new ChainBenchmark(telemetry, first, second, third, nextSidecar, toxiproxy);
                 var result = bm.runBenchmark();
 
-                System.out.println("BENCHMARK RESULTS:\n" + result);
+                //System.out.println("BENCHMARK RESULTS:\n" + result);
+
+                System.out.println("\nChoreography:");
+                System.out.println("sidecar_latency;total;simulated_latency");
+                for (var r : result.choreography()) {
+                    for (var l : r.sidecarLatency()) {
+                        System.out.println(l + ";" + r.total() + ";" + r.simulatedLatency());
+                    }
+                }
+
+                System.out.println("\nOrchestrator:");
+                System.out.println("total;simulated_latency");
+                for (var r : result.orchestrator()) {
+                    System.out.println(r.total() + ";" + r.simulatedLatency());
+                }
 
                 break;
             }

@@ -39,6 +39,8 @@ dependencies {
 
     implementation(project(":reactive-middleware"))
 
+    implementation("eu.rekawek.toxiproxy:toxiproxy-java:2.1.7")
+
     // gRPC
     runtimeOnly("io.grpc:grpc-netty-shaded:${grpcVersion}")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")

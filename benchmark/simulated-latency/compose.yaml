@@ -1,20 +1,20 @@
 services:
-#  orchestrator:
-#    image: accompanist-benchmark
-#    environment:
-#      BENCHMARK: "chain-orchestrator"
-#      FIRST: "toxiproxy:9001"
-#      SECOND: "toxiproxy:9002"
-#      THIRD: "toxiproxy:9003"
+  #  orchestrator:
+  #    image: accompanist-benchmark
+  #    environment:
+  #      BENCHMARK: "chain-orchestrator"
+  #      FIRST: "toxiproxy:9001"
+  #      SECOND: "toxiproxy:9002"
+  #      THIRD: "toxiproxy:9003"
 
-#  first-sidecar:
-#    image: accompanist-benchmark
-#    environment:
-#      BENCHMARK: "chain-a"
-#      # SERVICE: "first-service:5430"
-#      # NEXT_SIDECAR: "second-sidecar:8201"
-#      SERVICE: "toxiproxy:9001"
-#      NEXT_SIDECAR: "toxiproxy:8002"
+  #  first-sidecar:
+  #    image: accompanist-benchmark
+  #    environment:
+  #      BENCHMARK: "chain-a"
+  #      # SERVICE: "first-service:5430"
+  #      # NEXT_SIDECAR: "second-sidecar:8201"
+  #      SERVICE: "toxiproxy:9001"
+  #      NEXT_SIDECAR: "toxiproxy:8002"
 
   benchmark:
     image: accompanist-benchmark
