@@ -23,9 +23,13 @@ public class GrpcClient implements GreeterService {
     Tracer tracer;
 
     GrpcClient(int port, OpenTelemetry telemetry) {
+        this("localhost", port, telemetry);
+    }
+
+    GrpcClient(String address, int port, OpenTelemetry telemetry) {
         this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
 
-        this.channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build();
+        this.channel = ManagedChannelBuilder.forAddress(address, port).usePlaintext().build();
         this.blockingStub = GreeterGrpc.newBlockingStub(channel);
         // this.futureStub = GreeterGrpc.newFutureStub(channel);
     }

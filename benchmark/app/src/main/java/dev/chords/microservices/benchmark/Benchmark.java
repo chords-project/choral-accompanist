@@ -88,24 +88,43 @@ public class Benchmark {
 
         String benchmark = System.getenv("BENCHMARK");
         if (benchmark == null) {
-            System.out.println("BENCHMARK=chain-initiator, SERVICE_NAME=name, NEXT_ADDRESS=address");
-            System.out.println("BENCHMARK=chain-forwarder, SERVICE_NAME=name, NEXT_ADDRESS=address");
+            System.out.println("Usage of accompanist-benchmark:");
+            System.out.println("    BENCHMARK=chain-a, SIDECAR=address NEXT_ADDRESS=address");
+            System.out.println("    BENCHMARK=chain-b, SIDECAR=address NEXT_ADDRESS=address");
+            System.out.println("    BENCHMARK=chain-c, SIDECAR=address NEXT_ADDRESS=address");
+            System.out.println("    BENCHMARK=greeter");
             System.exit(1);
         }
 
-        String serviceName = System.getenv("SERVICE_NAME");
         String nextAddress = System.getenv("NEXT_ADDRESS");
+        String sidecar = System.getenv("SIDECAR");
 
         switch (benchmark) {
-            case "chain-initiator": {
-                var service = ChainService.makeInitiator(telemetry, serviceName, nextAddress);
+            case "chain-a": {
+                var service = ChainService.makeChainA(telemetry, sidecar, nextAddress);
+                Thread server = service.listen();
+
+                Thread.sleep(5000);
+
+                service.initiateRequestChain();
+
+                server.join();
+                break;
+            }
+            case "chain-b": {
+                var service = ChainService.makeChainB(telemetry, sidecar, nextAddress);
                 service.listen().join();
                 break;
             }
-            case "chain-forwarder": {
-                var service = ChainService.makeForwarder(telemetry, serviceName, nextAddress);
+            case "chain-c": {
+                var service = ChainService.makeChainC(telemetry, sidecar, nextAddress);
                 service.listen().join();
                 break;
+            }
+            case "greeter": {
+                GrpcServer server = new GrpcServer();
+                server.start(5430);
+                server.blockUntilShutdown();
             }
         }
 

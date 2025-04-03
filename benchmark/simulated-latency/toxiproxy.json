@@ -1,0 +1,20 @@
+[
+  {
+    "name": "first_proxy",
+    "listen": "[::]:8301",
+    "upstream": "first:8201",
+    "enabled": true
+  },
+  {
+    "name": "second_proxy",
+    "listen": "[::]:8301",
+    "upstream": "second:8201",
+    "enabled": true
+  },
+  {
+    "name": "third_proxy",
+    "listen": "[::]:8301",
+    "upstream": "third:8201",
+    "enabled": true
+  }
+]

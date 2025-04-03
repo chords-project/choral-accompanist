@@ -8,6 +8,8 @@ import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 
+import java.util.ArrayList;
+
 public class ChainService {
     private ReactiveServer server;
     private String serviceName;
@@ -24,41 +26,67 @@ public class ChainService {
         this.telemetry = telemetry;
     }
 
-    public static ChainService makeForwarder(OpenTelemetry telemetry, String serviceName, String nextServiceAddress)
+    public static ChainService makeChainA(OpenTelemetry telemetry, String sidecar, String nextServiceAddress)
             throws Exception {
-        var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress, telemetry);
+        var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress + ":8201", telemetry);
 
-        var grpcClient = new GrpcClient(5430, telemetry);
+        var grpcClient = new GrpcClient(sidecar, 5430, telemetry);
 
-        var server = new ReactiveServer(serviceName, telemetry, ctx -> {
-            System.out.println(serviceName + " received new session");
+        var server = new ReactiveServer("CHAIN_A", telemetry, ctx -> {
+            System.out.println("CHAIN_A received new session");
+        });
+
+        return new ChainService(server, "CHAIN_A", nextServiceConnection, grpcClient, telemetry);
+    }
+
+    public static ChainService makeChainB(OpenTelemetry telemetry, String sidecar, String nextServiceAddress)
+            throws Exception {
+        var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress + ":8201", telemetry);
+
+        var grpcClient = new GrpcClient(sidecar, 5430, telemetry);
+
+        var server = new ReactiveServer("CHAIN_B", telemetry, ctx -> {
+            System.out.println("CHAIN_B received new session");
 
             switch (ctx.session.choreographyName()) {
                 case "chain":
-                    ChainChoreography_B chorRcv = new ChainChoreography_B(ctx.chanB(serviceName), grpcClient);
-                    String value = chorRcv.forward();
-
-                    ChainChoreography_A chorFwd = new ChainChoreography_A(ctx.chanA(nextServiceConnection));
-                    chorFwd.forward(value);
+                    ChainChoreography_B chainChor = new ChainChoreography_B(
+                            ctx.chanB("CHAIN_A"),
+                            ctx.chanA(nextServiceConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
                 default:
                     System.err.println("Unknown choreography name: " + ctx.session);
             }
         });
 
-        return new ChainService(server, serviceName, nextServiceConnection, grpcClient, telemetry);
+        return new ChainService(server, "CHAIN_B", nextServiceConnection, grpcClient, telemetry);
     }
 
-    public static ChainService makeInitiator(OpenTelemetry telemetry, String serviceName, String nextServiceAddress)
+    public static ChainService makeChainC(OpenTelemetry telemetry, String sidecar, String nextServiceAddress)
             throws Exception {
         var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress + ":8201", telemetry);
 
-        var grpcClient = new GrpcClient(5430, telemetry);
+        var grpcClient = new GrpcClient(sidecar, 5430, telemetry);
 
-        var server = new ReactiveServer(serviceName, telemetry, ctx -> {
-            System.out.println(serviceName + " received new session");
+        var server = new ReactiveServer("CHAIN_C", telemetry, ctx -> {
+            System.out.println("CHAIN_C received new session");
+
+            switch (ctx.session.choreographyName()) {
+                case "chain":
+                    ChainChoreography_C chainChor = new ChainChoreography_C(
+                            ctx.chanB("CHAIN_B"),
+                            ctx.chanA(nextServiceConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                default:
+                    System.err.println("Unknown choreography name: " + ctx.session);
+            }
         });
 
-        return new ChainService(server, serviceName, nextServiceConnection, grpcClient, telemetry);
+        return new ChainService(server, "CHAIN_C", nextServiceConnection, grpcClient, telemetry);
     }
 
     public Thread listen() {
@@ -75,12 +103,22 @@ public class ChainService {
 
     public void initiateRequestChain() throws Exception {
 
+        System.out.println("Starting request chain");
+
         Session session = Session.makeSession("chain", serviceName);
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, Span.getInvalid());
+        server.registerSession(session, telemetrySession);
+
         ReactiveClient client = new ReactiveClient(nextServiceConnection, serviceName, telemetrySession);
 
-        ChainChoreography_A chorFwd = new ChainChoreography_A(client.chanA(session));
-        chorFwd.forward("start");
+
+        ChainChoreography_A chainChor = new ChainChoreography_A(
+                client.chanA(session),
+                server.chanB(session, "CHAIN_C"),
+                grpcClient
+        );
+        ArrayList<Long> result = chainChor.chain();
+        System.out.println("GOT RESULT: " + result);
 
         client.close();
     }

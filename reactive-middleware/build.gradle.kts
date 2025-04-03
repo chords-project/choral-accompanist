@@ -22,7 +22,7 @@ repositories {
     mavenLocal()
 }
 
-var choralVersion = "0.1.3"
+var choralVersion = "0.1.4"
 var grpcVersion = "1.68.1"
 var otelVersion = "1.47.0"
 

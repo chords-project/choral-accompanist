@@ -16,10 +16,10 @@ class SimpleChoreography@(A, B) {
     public void pingPong() {
         System@A.out.println("Sending ping to B..."@A);
 
-        String@B ping = ch.<SerializableString>fcom(new SerializableString@A("Ping"@A)).get().string;
+        String@B ping = ch.<String>fcom("Ping"@A).get();
         System@B.out.println("Received "@B + ping + " from A, sending back pong..."@B);
 
-        String@A pong = ch.<SerializableString>fcom(new SerializableString@B("Pong"@B)).get().string;
+        String@A pong = ch.<String>fcom("Pong"@B).get();
         System@A.out.println("Received "@A + pong + " from B"@A);
     }
 }

@@ -18,12 +18,12 @@ class GreeterChoreography@(A, B) {
     public void greet() {
         System@A.out.println("Sending name to B..."@A);
 
-        String@B name = ch.<SerializableString>fcom(new SerializableString@A("Alfred"@A)).get().string;
+        String@B name = ch.<String>fcom("Alfred"@A).get();
         System@B.out.println("Received "@B + name + " from A, sending back greeting..."@B);
 
         String@B greeting = greeter.greet(name);
 
-        String@A reply = ch.<SerializableString>fcom(new SerializableString@B(greeting)).get().string;
+        String@A reply = ch.<String>fcom(greeting).get();
         System@A.out.println("Received "@A + reply + " from B"@A);
     }
 }
