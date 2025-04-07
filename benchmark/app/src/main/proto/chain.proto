@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package accompanist.benchmark.chain;
+
+service Orchestrator {
+  rpc Start (OrchestratorRequest) returns (OrchestratorReply) {}
+}
+
+message OrchestratorRequest {}
+
+message OrchestratorReply {
+  int64 time = 1;
+}

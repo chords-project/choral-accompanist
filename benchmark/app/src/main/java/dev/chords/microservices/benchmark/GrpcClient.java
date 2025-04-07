@@ -3,17 +3,16 @@ package dev.chords.microservices.benchmark;
 import java.util.concurrent.TimeUnit;
 
 import choral.reactive.tracing.JaegerConfiguration;
-import greeting.GreeterGrpc;
-import greeting.GreeterGrpc.GreeterBlockingStub;
-import greeting.Greeting.HelloReply;
-import greeting.Greeting.HelloRequest;
+import accompanist.benchmark.greeting.GreeterGrpc;
+import accompanist.benchmark.greeting.GreeterGrpc.GreeterBlockingStub;
+import accompanist.benchmark.greeting.Greeting.HelloReply;
+import accompanist.benchmark.greeting.Greeting.HelloRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class GrpcClient implements GreeterService {
 

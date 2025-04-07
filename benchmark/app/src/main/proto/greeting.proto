@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package greeting;
+package accompanist.benchmark.greeting;
 
 // The greeting service definition.
 service Greeter {

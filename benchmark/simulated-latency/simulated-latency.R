@@ -22,7 +22,7 @@ c1 <- choreography %>%
   summarize(
     type = "Chor.",
     subtype = "sidecar",
-    latency = mean(sidecar_latency) / 1000000,
+    latency = mean(sidecar) / 1000000,
   )
 
 c2 <- choreography %>%
@@ -30,7 +30,7 @@ c2 <- choreography %>%
   summarize(
     type = "Chor.",
     subtype = "choreography",
-    latency = (mean(total) - mean(sidecar_latency)) / 1000000,
+    latency = (mean(total) - mean(sidecar)) / 1000000,
   )
 
 data <- bind_rows(o, c1, c2)

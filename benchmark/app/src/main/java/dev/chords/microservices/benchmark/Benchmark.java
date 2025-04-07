@@ -93,13 +93,15 @@ public class Benchmark {
             System.out.println("    BENCHMARK=chain-b, SERVICE=address:port NEXT_SIDECAR=address:port");
             System.out.println("    BENCHMARK=chain-c, SERVICE=address:port NEXT_SIDECAR=address:port");
             System.out.println("    BENCHMARK=greeter PORT=port");
-            System.out.println("    BENCHMARK=chain-orchestrator FIRST=address:port SECOND=address:port THIRD=address:port");
-            System.out.println("    BENCHMARK=chain-benchmark FIRST=address:port SECOND=address:port THIRD=address:port NEXT_SIDECAR=address:port TOXIPROXY=address:port");
+            System.out.println("    BENCHMARK=chain-client-choreography SERVICE=address:port");
+            System.out.println("    BENCHMARK=chain-orchestrator PORT=port FIRST=address:port SECOND=address:port THIRD=address:port");
+            System.out.println("    BENCHMARK=chain-benchmark ORCHESTRATOR=address:port FIRST=address:port NEXT_SIDECAR=address:port TOXIPROXY=address:port");
             System.exit(1);
         }
 
         String nextSidecar = System.getenv("NEXT_SIDECAR");
         String serviceAddress = System.getenv("SERVICE");
+        String orchestratorAddress = System.getenv("ORCHESTRATOR");
         String port = System.getenv("PORT");
         String toxiproxy = System.getenv("TOXIPROXY");
 
@@ -108,7 +110,7 @@ public class Benchmark {
         String third = System.getenv("THIRD");
 
         switch (benchmark) {
-            case "chain-a": {
+            case "chain-a" -> {
                 var service = ChainService.makeChainA(telemetry, serviceAddress, nextSidecar);
                 Thread server = service.listen();
 
@@ -117,45 +119,35 @@ public class Benchmark {
                 service.initiateRequestChain();
 
                 server.join();
-                break;
             }
-            case "chain-b": {
+            case "chain-b" -> {
                 var service = ChainService.makeChainB(telemetry, serviceAddress, nextSidecar);
                 service.listen().join();
-                break;
             }
-            case "chain-c": {
+            case "chain-c" -> {
                 var service = ChainService.makeChainC(telemetry, serviceAddress, nextSidecar);
                 service.listen().join();
-                break;
             }
-            case "greeter": {
+            case "greeter" -> {
                 GrpcServer server = new GrpcServer();
                 server.start(Integer.parseInt(port));
                 server.blockUntilShutdown();
-                break;
             }
-            case "chain-orchestrator": {
+            case "chain-orchestrator" -> {
                 ChainOrchestrator orchestrator = new ChainOrchestrator(first, second, third, telemetry);
-
-                Thread.sleep(5000);
-                orchestrator.runOrchestrator();
-
+                orchestrator.start(Integer.parseInt(port));
+                orchestrator.blockUntilShutdown();
                 orchestrator.close();
-                break;
             }
-            case "chain-benchmark": {
-                ChainBenchmark bm = new ChainBenchmark(telemetry, first, second, third, nextSidecar, toxiproxy);
+            case "chain-benchmark" -> {
+                ChainBenchmark bm = new ChainBenchmark(telemetry, orchestratorAddress, first, nextSidecar, toxiproxy);
                 var result = bm.runBenchmark();
 
-                //System.out.println("BENCHMARK RESULTS:\n" + result);
-
                 System.out.println("\nChoreography:");
-                System.out.println("sidecar_latency;total;simulated_latency");
+                System.out.println("sidecar;total;simulated_latency");
                 for (var r : result.choreography()) {
-                    for (var l : r.sidecarLatency()) {
-                        System.out.println(l + ";" + r.total() + ";" + r.simulatedLatency());
-                    }
+                    Long sidecarLatency = r.sidecarLatency().stream().reduce(0L, Long::sum);
+                    System.out.println(sidecarLatency + ";" + r.total() + ";" + r.simulatedLatency());
                 }
 
                 System.out.println("\nOrchestrator:");
@@ -163,8 +155,10 @@ public class Benchmark {
                 for (var r : result.orchestrator()) {
                     System.out.println(r.total() + ";" + r.simulatedLatency());
                 }
-
-                break;
+            }
+            default -> {
+                System.err.println("Invalid benchmark type: " + benchmark);
+                System.exit(1);
             }
         }
 

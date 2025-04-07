@@ -3,9 +3,9 @@ package dev.chords.microservices.benchmark;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import greeting.GreeterGrpc.GreeterImplBase;
-import greeting.Greeting.HelloReply;
-import greeting.Greeting.HelloRequest;
+import accompanist.benchmark.greeting.GreeterGrpc.GreeterImplBase;
+import accompanist.benchmark.greeting.Greeting.HelloReply;
+import accompanist.benchmark.greeting.Greeting.HelloRequest;
 import io.grpc.stub.StreamObserver;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
