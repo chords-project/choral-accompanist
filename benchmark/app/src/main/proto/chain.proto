@@ -6,8 +6,29 @@ service Orchestrator {
   rpc Start (OrchestratorRequest) returns (OrchestratorReply) {}
 }
 
-message OrchestratorRequest {}
+message OrchestratorRequest {
+  ChainLength chainLength = 1;
+}
 
 message OrchestratorReply {
   int64 time = 1;
+}
+
+service Choreography {
+  rpc Start (ChoreographyRequest) returns (ChoreographyReply) {}
+}
+
+message ChoreographyRequest {
+  ChainLength chainLength = 1;
+}
+
+message ChoreographyReply {
+  repeated int64 sidecarTimes = 1;
+  int64 time = 2;
+}
+
+enum ChainLength {
+  ONE = 0;
+  THREE = 1;
+  FIVE = 2;
 }

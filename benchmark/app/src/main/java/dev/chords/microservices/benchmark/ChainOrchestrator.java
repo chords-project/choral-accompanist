@@ -18,10 +18,12 @@ public class ChainOrchestrator implements Closeable {
     GrpcClient firstClient;
     GrpcClient secondClient;
     GrpcClient thirdClient;
+    GrpcClient fourthClient;
+    GrpcClient fifthClient;
 
     private Server server;
 
-    public ChainOrchestrator(String first, String second, String third, OpenTelemetry telemetry) {
+    public ChainOrchestrator(String first, String second, String third, String fourth, String fifth, OpenTelemetry telemetry) {
         String[] firstSplit = first.split(":");
         firstClient = new GrpcClient(firstSplit[0], Integer.parseInt(firstSplit[1]), telemetry);
 
@@ -30,6 +32,12 @@ public class ChainOrchestrator implements Closeable {
 
         String[] thirdSplit = third.split(":");
         thirdClient = new GrpcClient(thirdSplit[0], Integer.parseInt(thirdSplit[1]), telemetry);
+
+        String[] fourthSplit = fourth.split(":");
+        fourthClient = new GrpcClient(fourthSplit[0], Integer.parseInt(fourthSplit[1]), telemetry);
+
+        String[] fifthSplit = fifth.split(":");
+        fifthClient = new GrpcClient(fifthSplit[0], Integer.parseInt(fifthSplit[1]), telemetry);
     }
 
     public void start(int port) throws IOException {
@@ -69,9 +77,12 @@ public class ChainOrchestrator implements Closeable {
             firstClient.shutdown();
             secondClient.shutdown();
             thirdClient.shutdown();
+            fourthClient.shutdown();
+            fifthClient.shutdown();
 
             this.stopServer();
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
     }
 
     class GrpcOrchestratorImpl extends OrchestratorGrpc.OrchestratorImplBase {
@@ -83,6 +94,8 @@ public class ChainOrchestrator implements Closeable {
             firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
             secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
             thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+            fourthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fourth").build());
+            fifthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fifth").build());
             Long t2 = System.nanoTime();
 
             Long time = t2 - t1;

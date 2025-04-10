@@ -8,32 +8,41 @@ import choral.channels.DiChannel;
 
 import java.util.ArrayList;
 
-class ChainChoreography@(A, B, C) {
+class ChainChoreography3@(Start, A, B, C) {
+    private DiChannel@(Start, A)<Serializable> ch_StartA;
+    private DiChannel@(C, Start)<Serializable> ch_CStart;
+
     private DiChannel@(A, B)<Serializable> ch_AB;
     private DiChannel@(B, C)<Serializable> ch_BC;
-    private DiChannel@(C, A)<Serializable> ch_CA;
 
     private GreeterService@A greeter_A;
     private GreeterService@B greeter_B;
     private GreeterService@C greeter_C;
 
-    public ChainChoreography(
+    public ChainChoreography3(
+        DiChannel@(Start, A)<Serializable> ch_StartA,
+        DiChannel@(C, Start)<Serializable> ch_CStart,
         DiChannel@(A, B)<Serializable> ch_AB,
         DiChannel@(B, C)<Serializable> ch_BC,
-        DiChannel@(C, A)<Serializable> ch_CA,
         GreeterService@A greeter_A,
         GreeterService@B greeter_B,
         GreeterService@C greeter_C
     ) {
+        this.ch_StartA = ch_StartA;
+        this.ch_CStart = ch_CStart;
+
         this.ch_AB = ch_AB;
         this.ch_BC = ch_BC;
-        this.ch_CA = ch_CA;
+
         this.greeter_A = greeter_A;
         this.greeter_B = greeter_B;
         this.greeter_C = greeter_C;
     }
 
-    public ArrayList@A<Long> chain() {
+    public ArrayList@Start<Long> chain() {
+        // Signal to A that the chain should begin
+        ch_StartA.<String>com("start"@Start);
+
         ArrayList@A<Long> latencies_a = new ArrayList@A<Long>();
         Long@A t1_a = System@A.nanoTime();
         greeter_A.greet("Name A"@A);
@@ -52,6 +61,6 @@ class ChainChoreography@(A, B, C) {
         Long@C t2_c = System@C.nanoTime();
         latencies_c.add(t2_c - t1_c);
 
-        return ch_CA.<ArrayList<Long>>com(latencies_c);
+        return ch_CStart.<ArrayList<Long>>com(latencies_c);
     }
 }

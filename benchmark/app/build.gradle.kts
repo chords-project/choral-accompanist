@@ -26,7 +26,22 @@ java {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+
+    // Choral can either be installed locally...
     mavenLocal()
+
+    // ...or from the GitHub maven package repository
+    val githubUsername = rootProject.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+    val githubToken = rootProject.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+    if (githubUsername != null && githubToken != null) {
+        maven {
+            url = uri("https://maven.pkg.github.com/choral-lang/choral")
+            credentials {
+                username = githubUsername
+                password = githubToken
+            }
+        }
+    }
 }
 
 var grpcVersion = "1.68.1"
@@ -80,19 +95,23 @@ tasks.register("compileChoral") {
     val choreographies = listOf(
         "SimpleChoreography",
         "GreeterChoreography",
-        "ChainChoreography"
+        "ChainChoreography1",
+        "ChainChoreography3",
+        "ChainChoreography5",
     )
 
     doLast {
         choreographies.forEach { name: String ->
             val process = ProcessBuilder()
-                .command(listOf(
-                    "choral", "epp",
-                    "--sources=${layout.projectDirectory.dir("src/main/choral")}",
-                    "--headers=${layout.projectDirectory.dir("src/main/choral")}",
-                    "--target=${layout.buildDirectory.dir("generated/choral").get()}",
-                    name
-                ))
+                .command(
+                    listOf(
+                        "choral", "epp",
+                        "--sources=${layout.projectDirectory.dir("src/main/choral")}",
+                        "--headers=${layout.projectDirectory.dir("src/main/choral")}",
+                        "--target=${layout.buildDirectory.dir("generated/choral").get()}",
+                        name
+                    )
+                )
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
                 .directory(rootProject.projectDir)
@@ -113,11 +132,11 @@ tasks.compileJava {
 }
 
 sourceSets {
-   main {
-      java {
-         srcDir(layout.buildDirectory.dir("generated/choral").get())
-      }
-   }
+    main {
+        java {
+            srcDir(layout.buildDirectory.dir("generated/choral").get())
+        }
+    }
 }
 
 // Compile protobuf code

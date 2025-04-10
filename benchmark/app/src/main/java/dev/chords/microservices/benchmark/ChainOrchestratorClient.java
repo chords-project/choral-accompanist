@@ -25,13 +25,14 @@ public class ChainOrchestratorClient {
         this.blockingStub = OrchestratorGrpc.newBlockingStub(channel);
     }
 
-    public record Result(Long endToEndTime, Long orchestratorTime) {}
+    public record Result(Long endToEndTime, Long orchestratorTime) {
+    }
 
-    public Result runOrchestrator() {
+    public Result runOrchestrator(Chain.ChainLength chainLength) {
         Long t1 = System.nanoTime();
-        Long time = blockingStub.start(Chain.OrchestratorRequest.newBuilder().build()).getTime();
+        Long time = blockingStub.start(Chain.OrchestratorRequest.newBuilder().setChainLength(chainLength).build()).getTime();
         Long t2 = System.nanoTime();
 
-        return new Result(t2-t1, time);
+        return new Result(t2 - t1, time);
     }
 }

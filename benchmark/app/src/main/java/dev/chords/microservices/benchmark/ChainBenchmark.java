@@ -1,35 +1,39 @@
 package dev.chords.microservices.benchmark;
 
+import accompanist.benchmark.chain.Chain;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import io.opentelemetry.api.OpenTelemetry;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ChainBenchmark {
 
-    public record ChoreographyResult(long simulatedLatency, long total, ArrayList<Long> sidecarLatency) {
+    public record ChoreographyResult(Chain.ChainLength chainLength, long simulatedLatency, long total,
+                                     List<Long> sidecarLatency) {
     }
 
-    public record OrchestratorResult(long simulatedLatency, long total) {
+    public record OrchestratorResult(Chain.ChainLength chainLength, long simulatedLatency, long endToEndTime,
+                                     long orchestratorTime) {
     }
 
-    public record Results(ArrayList<ChoreographyResult> choreography, ArrayList<OrchestratorResult> orchestrator) {
+    public record Results(List<ChoreographyResult> choreography,
+                          List<OrchestratorResult> orchestrator) {
     }
 
-    ChainService choreographyService;
     ChainOrchestratorClient orchestratorClient;
-    Thread choreographyServerThread;
+    ChainChoreographyClient choreographyClient;
 
     ToxiproxyClient toxiClient;
 
-    public ChainBenchmark(OpenTelemetry telemetry, String orchestratorAddress, String first, String nextSidecar, String toxiproxy) throws Exception {
+    public ChainBenchmark(OpenTelemetry telemetry, String orchestratorAddress, String choreographyAddress, String toxiproxy) throws Exception {
         String[] orchestratorSplit = orchestratorAddress.split(":");
         orchestratorClient = new ChainOrchestratorClient(orchestratorSplit[0], Integer.parseInt(orchestratorSplit[1]), telemetry);
 
-        choreographyService = ChainService.makeChainA(telemetry, first, nextSidecar);
-        choreographyServerThread = choreographyService.listen();
+        String[] choreographySplit = choreographyAddress.split(":");
+        choreographyClient = new ChainChoreographyClient(choreographySplit[0], Integer.parseInt(choreographySplit[1]), telemetry);
 
         String[] toxiSplit = toxiproxy.split(":");
         toxiClient = new ToxiproxyClient(toxiSplit[0], Integer.parseInt(toxiSplit[1]));
@@ -41,49 +45,52 @@ public class ChainBenchmark {
 
         final int STEP = 1;
         final int STEP_COUNT = 10;
-        final int SAMPLES = 20;
-        final int WARMUP = 100;
-
-        clearLatencies();
-
-        System.out.println("Warmup choreography");
-        for (int i = 0; i < WARMUP; i++) {
-            choreographyService.initiateRequestChain();
-        }
+        final int SAMPLES = 50;
+        final int WARMUP = 5_000;
 
         ArrayList<ChoreographyResult> choreographyResults = new ArrayList<>();
-
-        System.out.println("Execute choreography");
-        for (int latency = 0; latency < STEP_COUNT; latency++) {
-
-            choreographicLatency(latency * STEP);
-
-            for (int i = 0; i < SAMPLES; i++) {
-                Long t1 = System.nanoTime();
-                var results = choreographyService.initiateRequestChain();
-                Long t2 = System.nanoTime();
-
-                choreographyResults.add(new ChoreographyResult(latency * STEP, t2 - t1, results));
-            }
-        }
-
-        clearLatencies();
-
-        System.out.println("Warmup orchestrator");
-        for (int i = 0; i < WARMUP; i++) {
-            orchestratorClient.runOrchestrator();
-        }
-
         ArrayList<OrchestratorResult> orchestratorResults = new ArrayList<>();
 
-        System.out.println("Execute orchestrator");
-        for (int latency = 0; latency < STEP_COUNT; latency++) {
+        var chainLengthValues = List.of(Chain.ChainLength.ONE, Chain.ChainLength.THREE, Chain.ChainLength.FIVE);
+        for (Chain.ChainLength chainLength : chainLengthValues) {
+            System.out.println("--- Running benchmark for chain length " + chainLength + " ---");
+            clearLatencies();
 
-            orchestratedLatency(latency * STEP);
+            System.out.println("Warmup choreography");
+            for (int i = 0; i < WARMUP; i++) {
+                choreographyClient.runChoreography(chainLength);
+            }
 
-            for (int i = 0; i < SAMPLES; i++) {
-                var result = orchestratorClient.runOrchestrator();
-                orchestratorResults.add(new OrchestratorResult(latency * STEP, result.endToEndTime()));
+            System.out.println("Execute choreography");
+            for (int latency = 0; latency < STEP_COUNT; latency++) {
+
+                choreographicLatency(latency * STEP);
+
+                for (int i = 0; i < SAMPLES; i++) {
+                    Long t1 = System.nanoTime();
+                    var result = choreographyClient.runChoreography(chainLength);
+                    Long t2 = System.nanoTime();
+
+                    choreographyResults.add(new ChoreographyResult(chainLength, latency * STEP, t2 - t1, result.sidecarTimes()));
+                }
+            }
+
+            clearLatencies();
+
+            System.out.println("Warmup orchestrator");
+            for (int i = 0; i < WARMUP; i++) {
+                orchestratorClient.runOrchestrator(chainLength);
+            }
+
+            System.out.println("Execute orchestrator");
+            for (int latency = 0; latency < STEP_COUNT; latency++) {
+
+                orchestratedLatency(latency * STEP);
+
+                for (int i = 0; i < SAMPLES; i++) {
+                    var result = orchestratorClient.runOrchestrator(chainLength);
+                    orchestratorResults.add(new OrchestratorResult(chainLength, latency * STEP, result.endToEndTime(), result.orchestratorTime()));
+                }
             }
         }
 
@@ -116,14 +123,20 @@ public class ChainBenchmark {
         clearLatencies();
 
         try {
-            toxiClient.getProxy("first_sidecar_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("first_sidecar_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("sidecar_a_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_a_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
-            toxiClient.getProxy("second_sidecar_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("second_sidecar_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("sidecar_b_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_b_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
-            toxiClient.getProxy("third_sidecar_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("third_sidecar_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("sidecar_c_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_c_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("sidecar_d_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_d_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -134,14 +147,23 @@ public class ChainBenchmark {
         clearLatencies();
 
         try {
-            toxiClient.getProxy("first_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("first_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("service_a_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("service_a_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
-            toxiClient.getProxy("second_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("second_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("service_b_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("service_b_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
-            toxiClient.getProxy("third_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
-            toxiClient.getProxy("third_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+            toxiClient.getProxy("service_c_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("service_c_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("service_d_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("service_d_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("service_e_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("service_e_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("orchestrator_proxy").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("orchestrator_proxy").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
         } catch (IOException e) {
             throw new RuntimeException(e);

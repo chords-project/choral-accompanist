@@ -18,11 +18,25 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
-    // Choral does not exist on Maven Central yet, has to be installed locally for now.
+
+    // Choral can either be installed locally...
     mavenLocal()
+
+    // ...or from the GitHub maven package repository
+    val githubUsername = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+    val githubToken = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+    if (githubUsername != null && githubToken != null) {
+        maven {
+            url = uri("https://maven.pkg.github.com/choral-lang/choral")
+            credentials {
+                username = githubUsername
+                password = githubToken
+            }
+        }
+    }
 }
 
-var choralVersion = "0.1.4"
+var choralVersion = "0.1.7"
 var grpcVersion = "1.68.1"
 var otelVersion = "1.47.0"
 
@@ -47,7 +61,7 @@ dependencies {
     api("io.opentelemetry.instrumentation:opentelemetry-grpc-1.6:2.13.3-alpha")
 
     // ## gRPC ##
-    runtimeOnly ("io.grpc:grpc-netty-shaded:${grpcVersion}")
+    runtimeOnly("io.grpc:grpc-netty-shaded:${grpcVersion}")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
     implementation("io.grpc:grpc-stub:${grpcVersion}")
     implementation("io.grpc:grpc-opentelemetry:${grpcVersion}")
