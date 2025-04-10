@@ -91,11 +91,25 @@ public class ChainOrchestrator implements Closeable {
             System.out.println("Starting orchestrator...");
 
             Long t1 = System.nanoTime();
-            firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
-            secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
-            thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
-            fourthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fourth").build());
-            fifthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fifth").build());
+
+            switch (request.getChainLength()) {
+                case ONE -> {
+                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                }
+                case THREE -> {
+                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
+                    thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+                }
+                case FIVE -> {
+                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
+                    thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+                    fourthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fourth").build());
+                    fifthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fifth").build());
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + request.getChainLength());
+            }
             Long t2 = System.nanoTime();
 
             Long time = t2 - t1;
