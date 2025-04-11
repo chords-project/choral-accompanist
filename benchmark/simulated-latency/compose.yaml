@@ -23,7 +23,6 @@ services:
     environment:
       BENCHMARK: "chain-sidecar-start"
       PORT: "6000"
-      SERVICE: "toxiproxy:9001"
       NEXT_SIDECAR: "toxiproxy:8001"
   sidecar-a:
     image: accompanist-benchmark

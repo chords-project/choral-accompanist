@@ -43,10 +43,10 @@ public class ChainBenchmark {
         System.out.println("Waiting for services to start up...");
         Thread.sleep(3000);
 
-        final int STEP = 1;
+        final int STEP = 3;
         final int STEP_COUNT = 10;
-        final int SAMPLES = 50;
-        final int WARMUP = 5_000;
+        final int SAMPLES = 20;
+        final int WARMUP = 1_000;
 
         ArrayList<ChoreographyResult> choreographyResults = new ArrayList<>();
         ArrayList<OrchestratorResult> orchestratorResults = new ArrayList<>();
@@ -54,6 +54,24 @@ public class ChainBenchmark {
         var chainLengthValues = List.of(Chain.ChainLength.ONE, Chain.ChainLength.THREE, Chain.ChainLength.FIVE);
         for (Chain.ChainLength chainLength : chainLengthValues) {
             System.out.println("--- Running benchmark for chain length " + chainLength + " ---");
+            clearLatencies();
+
+            System.out.println("Warmup orchestrator");
+            for (int i = 0; i < WARMUP; i++) {
+                orchestratorClient.runOrchestrator(chainLength);
+            }
+
+            System.out.println("Execute orchestrator");
+            for (int latency = 0; latency < STEP_COUNT; latency++) {
+
+                orchestratedLatency(latency * STEP);
+
+                for (int i = 0; i < SAMPLES; i++) {
+                    var result = orchestratorClient.runOrchestrator(chainLength);
+                    orchestratorResults.add(new OrchestratorResult(chainLength, latency * STEP, result.endToEndTime(), result.orchestratorTime()));
+                }
+            }
+
             clearLatencies();
 
             System.out.println("Warmup choreography");
@@ -72,24 +90,6 @@ public class ChainBenchmark {
                     Long t2 = System.nanoTime();
 
                     choreographyResults.add(new ChoreographyResult(chainLength, latency * STEP, t2 - t1, result.sidecarTimes()));
-                }
-            }
-
-            clearLatencies();
-
-            System.out.println("Warmup orchestrator");
-            for (int i = 0; i < WARMUP; i++) {
-                orchestratorClient.runOrchestrator(chainLength);
-            }
-
-            System.out.println("Execute orchestrator");
-            for (int latency = 0; latency < STEP_COUNT; latency++) {
-
-                orchestratedLatency(latency * STEP);
-
-                for (int i = 0; i < SAMPLES; i++) {
-                    var result = orchestratorClient.runOrchestrator(chainLength);
-                    orchestratorResults.add(new OrchestratorResult(chainLength, latency * STEP, result.endToEndTime(), result.orchestratorTime()));
                 }
             }
         }
@@ -137,6 +137,9 @@ public class ChainBenchmark {
 
             toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
             toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+            toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
