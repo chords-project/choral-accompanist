@@ -43,10 +43,10 @@ public class ChainBenchmark {
         System.out.println("Waiting for services to start up...");
         Thread.sleep(3000);
 
-        final int STEP = 3;
-        final int STEP_COUNT = 10;
+        final int STEP = 1;
+        final int STEP_COUNT = 5;
         final int SAMPLES = 20;
-        final int WARMUP = 1_000;
+        final int WARMUP = 2_000;
 
         ArrayList<ChoreographyResult> choreographyResults = new ArrayList<>();
         ArrayList<OrchestratorResult> orchestratorResults = new ArrayList<>();
@@ -120,9 +120,12 @@ public class ChainBenchmark {
     }
 
     private void choreographicLatency(long latency) {
+        // Clear latencies for each service, so sidecars can talk to their local services with zero
+        // added latency.
         clearLatencies();
 
         try {
+            // The "intra" proxies are only used by *sidecars* to talk to *other sidecars*.
             toxiClient.getProxy("sidecar_a_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
             toxiClient.getProxy("sidecar_a_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
