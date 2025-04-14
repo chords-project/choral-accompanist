@@ -29,6 +29,8 @@ message ChoreographyReply {
 
 enum ChainLength {
   ONE = 0;
-  THREE = 1;
-  FIVE = 2;
+  TWO = 1;
+  THREE = 2;
+  FOUR = 3;
+  FIVE = 4;
 }

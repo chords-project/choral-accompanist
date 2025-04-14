@@ -37,6 +37,7 @@ services:
       BENCHMARK: "chain-sidecar-b"
       SERVICE: "toxiproxy:9002"
       NEXT_SIDECAR: "toxiproxy:8003"
+      START: "toxiproxy:8000"
   sidecar-c:
     image: accompanist-benchmark
     environment:
@@ -50,12 +51,14 @@ services:
       BENCHMARK: "chain-sidecar-d"
       SERVICE: "toxiproxy:9004"
       NEXT_SIDECAR: "toxiproxy:8005"
+      START: "toxiproxy:8000"
   sidecar-e:
     image: accompanist-benchmark
     environment:
       BENCHMARK: "chain-sidecar-e"
       SERVICE: "toxiproxy:9005"
       NEXT_SIDECAR: "toxiproxy:8000"
+      START: "toxiproxy:8000"
 
   service-a:
     image: accompanist-benchmark

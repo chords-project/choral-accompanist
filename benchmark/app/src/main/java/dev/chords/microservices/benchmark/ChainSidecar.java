@@ -59,8 +59,24 @@ public class ChainSidecar {
                     );
                     chainChor.chain();
                 }
+                case "chain2" -> {
+                    ChainChoreography2_A chainChor = new ChainChoreography2_A(
+                            ctx.chanB("CHAIN_START"),
+                            ctx.chanA(nextSidecarConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
                 case "chain3" -> {
                     ChainChoreography3_A chainChor = new ChainChoreography3_A(
+                            ctx.chanB("CHAIN_START"),
+                            ctx.chanA(nextSidecarConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
+                case "chain4" -> {
+                    ChainChoreography4_A chainChor = new ChainChoreography4_A(
                             ctx.chanB("CHAIN_START"),
                             ctx.chanA(nextSidecarConnection),
                             grpcClient
@@ -82,9 +98,10 @@ public class ChainSidecar {
         return new ChainSidecar(server, "CHAIN_A", nextSidecarConnection, grpcClient, telemetry);
     }
 
-    public static ChainSidecar makeChainB(OpenTelemetry telemetry, String service, String nextSidecarAddress)
+    public static ChainSidecar makeChainB(OpenTelemetry telemetry, String service, String nextSidecarAddress, String startAddress)
             throws Exception {
         var nextSidecarConnection = ClientConnectionManager.makeConnectionManager(nextSidecarAddress, telemetry);
+        var startConnection = ClientConnectionManager.makeConnectionManager(startAddress, telemetry);
 
         String[] sidecarSplit = service.split(":");
         var grpcClient = new GrpcClient(sidecarSplit[0], Integer.parseInt(sidecarSplit[1]), telemetry);
@@ -93,8 +110,24 @@ public class ChainSidecar {
             //System.out.println("CHAIN_B received new session");
 
             switch (ctx.session.choreographyName()) {
+                case "chain2" -> {
+                    ChainChoreography2_B chainChor = new ChainChoreography2_B(
+                            ctx.chanA(startConnection),
+                            ctx.chanB("CHAIN_A"),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
                 case "chain3" -> {
                     ChainChoreography3_B chainChor = new ChainChoreography3_B(
+                            ctx.chanB("CHAIN_A"),
+                            ctx.chanA(nextSidecarConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
+                case "chain4" -> {
+                    ChainChoreography4_B chainChor = new ChainChoreography4_B(
                             ctx.chanB("CHAIN_A"),
                             ctx.chanA(nextSidecarConnection),
                             grpcClient
@@ -136,6 +169,14 @@ public class ChainSidecar {
                     );
                     chainChor.chain();
                 }
+                case "chain4" -> {
+                    ChainChoreography4_C chainChor = new ChainChoreography4_C(
+                            ctx.chanB("CHAIN_B"),
+                            ctx.chanA(nextServiceConnection),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
                 case "chain5" -> {
                     ChainChoreography5_C chainChor = new ChainChoreography5_C(
                             ctx.chanB("CHAIN_B"),
@@ -151,9 +192,10 @@ public class ChainSidecar {
         return new ChainSidecar(server, "CHAIN_C", nextServiceConnection, grpcClient, telemetry);
     }
 
-    public static ChainSidecar makeChainD(OpenTelemetry telemetry, String sidecar, String nextServiceAddress)
+    public static ChainSidecar makeChainD(OpenTelemetry telemetry, String sidecar, String nextServiceAddress, String startAddress)
             throws Exception {
         var nextServiceConnection = ClientConnectionManager.makeConnectionManager(nextServiceAddress, telemetry);
+        var startConnection = ClientConnectionManager.makeConnectionManager(startAddress, telemetry);
 
         String[] sidecarSplit = sidecar.split(":");
         var grpcClient = new GrpcClient(sidecarSplit[0], Integer.parseInt(sidecarSplit[1]), telemetry);
@@ -162,6 +204,14 @@ public class ChainSidecar {
             //System.out.println("CHAIN_C received new session");
 
             switch (ctx.session.choreographyName()) {
+                case "chain4" -> {
+                    ChainChoreography4_D chainChor = new ChainChoreography4_D(
+                            ctx.chanA(startConnection),
+                            ctx.chanB("CHAIN_C"),
+                            grpcClient
+                    );
+                    chainChor.chain();
+                }
                 case "chain5" -> {
                     ChainChoreography5_D chainChor = new ChainChoreography5_D(
                             ctx.chanB("CHAIN_C"),
@@ -227,7 +277,9 @@ public class ChainSidecar {
 
         var choreographyName = switch (chainLength) {
             case ONE -> "chain1";
+            case TWO -> "chain2";
             case THREE -> "chain3";
+            case FOUR -> "chain4";
             case FIVE -> "chain5";
             default -> throw new RuntimeException("Invalid chain length: " + chainLength);
         };
@@ -247,10 +299,24 @@ public class ChainSidecar {
                 );
                 yield chainChor.chain();
             }
+            case TWO -> {
+                ChainChoreography2_Start chainChor = new ChainChoreography2_Start(
+                        client.chanA(session),
+                        server.chanB(session, "CHAIN_B")
+                );
+                yield chainChor.chain();
+            }
             case THREE -> {
                 ChainChoreography3_Start chainChor = new ChainChoreography3_Start(
                         client.chanA(session),
                         server.chanB(session, "CHAIN_C")
+                );
+                yield chainChor.chain();
+            }
+            case FOUR -> {
+                ChainChoreography4_Start chainChor = new ChainChoreography4_Start(
+                        client.chanA(session),
+                        server.chanB(session, "CHAIN_D")
                 );
                 yield chainChor.chain();
             }

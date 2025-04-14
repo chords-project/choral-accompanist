@@ -96,10 +96,20 @@ public class ChainOrchestrator implements Closeable {
                 case ONE -> {
                     firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
                 }
+                case TWO -> {
+                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
+                }
                 case THREE -> {
                     firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
                     secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
                     thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+                }
+                case FOUR -> {
+                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
+                    thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+                    fourthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fourth").build());
                 }
                 case FIVE -> {
                     firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());

@@ -96,7 +96,9 @@ tasks.register("compileChoral") {
         "SimpleChoreography",
         "GreeterChoreography",
         "ChainChoreography1",
+        "ChainChoreography2",
         "ChainChoreography3",
+        "ChainChoreography4",
         "ChainChoreography5",
     )
 

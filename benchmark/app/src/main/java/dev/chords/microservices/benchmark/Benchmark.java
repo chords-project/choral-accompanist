@@ -52,7 +52,7 @@ public class Benchmark {
                 sidecar.listen().join();
             }
             case "chain-sidecar-b" -> {
-                var sidecar = ChainSidecar.makeChainB(telemetry, serviceAddress, nextSidecar);
+                var sidecar = ChainSidecar.makeChainB(telemetry, serviceAddress, nextSidecar, startAddress);
                 sidecar.listen().join();
             }
             case "chain-sidecar-c" -> {
@@ -60,7 +60,7 @@ public class Benchmark {
                 service.listen().join();
             }
             case "chain-sidecar-d" -> {
-                var service = ChainSidecar.makeChainD(telemetry, serviceAddress, nextSidecar);
+                var service = ChainSidecar.makeChainD(telemetry, serviceAddress, nextSidecar, startAddress);
                 service.listen().join();
             }
             case "chain-sidecar-e" -> {
@@ -84,7 +84,9 @@ public class Benchmark {
 
                 Function<Chain.ChainLength, Integer> lengthToNumber = len -> switch (len) {
                     case ONE -> 1;
+                    case TWO -> 2;
                     case THREE -> 3;
+                    case FOUR -> 4;
                     case FIVE -> 5;
                     default -> throw new IllegalStateException("Unexpected value: " + len);
                 };

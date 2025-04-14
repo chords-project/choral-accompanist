@@ -51,7 +51,13 @@ public class ChainBenchmark {
         ArrayList<ChoreographyResult> choreographyResults = new ArrayList<>();
         ArrayList<OrchestratorResult> orchestratorResults = new ArrayList<>();
 
-        var chainLengthValues = List.of(Chain.ChainLength.ONE, Chain.ChainLength.THREE, Chain.ChainLength.FIVE);
+        var chainLengthValues = List.of(
+                Chain.ChainLength.ONE,
+                Chain.ChainLength.TWO,
+                Chain.ChainLength.THREE,
+                Chain.ChainLength.FOUR,
+                Chain.ChainLength.FIVE
+        );
         for (Chain.ChainLength chainLength : chainLengthValues) {
             System.out.println("--- Running benchmark for chain length " + chainLength + " ---");
             clearLatencies();

@@ -54,27 +54,31 @@ latency_bar_plot <- function(chain_len) {
       plot.subtitle = element_text(hjust = 0.5),
     ) +
     labs(
-      title = "Network latency",
-      subtitle = sprintf("Chain of %d services", chain_len),
+      subtitle = "Network latency (ms)",
+      #subtitle = sprintf("Chain of %d services", chain_len),
       fill = NULL,
       x = NULL, # "Network latency",
-      y = "End-to-end latency",
+      y = "End-to-end latency (ms)",
     ) +
     scale_y_continuous(
-      labels = milliseconds,
+      # labels = milliseconds,
       # breaks = scales::pretty_breaks(n = 20)
     )
 }
 
 p1 <- latency_bar_plot(1)
+p2 <- latency_bar_plot(2)
 p3 <- latency_bar_plot(3)
+p4 <- latency_bar_plot(4)
 p5 <- latency_bar_plot(5)
 
 WIDTH <- 6
 HEIGHT <- 4
 
 ggsave("latency_bars_1_sidecar.png", p1, width = WIDTH, height = HEIGHT)
+ggsave("latency_bars_2_sidecar.png", p2, width = WIDTH, height = HEIGHT)
 ggsave("latency_bars_3_sidecar.png", p3, width = WIDTH, height = HEIGHT)
+ggsave("latency_bars_4_sidecar.png", p4, width = WIDTH, height = HEIGHT)
 ggsave("latency_bars_5_sidecar.png", p5, width = WIDTH, height = HEIGHT)
 
 # print(p1)
