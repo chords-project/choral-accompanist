@@ -19,8 +19,11 @@ public class ChainBenchmark {
                                      long orchestratorTime) {
     }
 
-    public record Results(List<ChoreographyResult> choreography,
-                          List<OrchestratorResult> orchestrator) {
+    public record Results(
+      List<ChoreographyResult> equidistantChoreography,
+      List<OrchestratorResult> orchestrator,
+      List<ChoreographyResult> asymmetricChoreography
+    ) {
     }
 
     ChainOrchestratorClient orchestratorClient;
@@ -48,8 +51,9 @@ public class ChainBenchmark {
         final int SAMPLES = 20;
         final int WARMUP = 2_000;
 
-        ArrayList<ChoreographyResult> choreographyResults = new ArrayList<>();
         ArrayList<OrchestratorResult> orchestratorResults = new ArrayList<>();
+        ArrayList<ChoreographyResult> equidistantChoreographyResults = new ArrayList<>();
+        ArrayList<ChoreographyResult> asymmetricChoreographyResults = new ArrayList<>();
 
         var chainLengthValues = List.of(
                 Chain.ChainLength.ONE,
@@ -85,22 +89,32 @@ public class ChainBenchmark {
                 choreographyClient.runChoreography(chainLength);
             }
 
-            System.out.println("Execute choreography");
+            System.out.println("Execute equidistant (symmetric) choreography");
             for (int latency = 0; latency < STEP_COUNT; latency++) {
 
-                choreographicLatency(latency * STEP);
+                equidistantChoreographicLatency(latency * STEP);
 
                 for (int i = 0; i < SAMPLES; i++) {
                     Long t1 = System.nanoTime();
                     var result = choreographyClient.runChoreography(chainLength);
                     Long t2 = System.nanoTime();
 
-                    choreographyResults.add(new ChoreographyResult(chainLength, latency * STEP, t2 - t1, result.sidecarTimes()));
+                    equidistantChoreographyResults.add(new ChoreographyResult(chainLength, latency * STEP, t2 - t1, result.sidecarTimes()));
                 }
+            }
+
+            System.out.println("Execute asymmetric choreography at latency " + STEP + "ms");
+            asymmetricChoreographicLatency(STEP);
+            for (int i = 0; i < SAMPLES; i++) {
+                Long t1 = System.nanoTime();
+                var result = choreographyClient.runChoreography(chainLength);
+                Long t2 = System.nanoTime();
+
+                asymmetricChoreographyResults.add(new ChoreographyResult(chainLength, STEP, t2 - t1, result.sidecarTimes()));
             }
         }
 
-        return new Results(choreographyResults, orchestratorResults);
+        return new Results(equidistantChoreographyResults, orchestratorResults, asymmetricChoreographyResults);
     }
 
     private void clearLatencies() {
@@ -125,7 +139,11 @@ public class ChainBenchmark {
         }
     }
 
-    private void choreographicLatency(long latency) {
+    /**
+     * Set latencies so sidecars talk to one another with the given latency, but they talk
+     * to their local services with zero latency.
+     */
+    private void equidistantChoreographicLatency(long latency) {
         // Clear latencies for each service, so sidecars can talk to their local services with zero
         // added latency.
         clearLatencies();
@@ -147,6 +165,22 @@ public class ChainBenchmark {
             toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
             toxiClient.getProxy("sidecar_e_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 
+            toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
+            toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Set the latencies so that worker sidecars talk to one another with zero latency, but
+     * the start (frontend) sidecar talks to the worker sidecars with the given latency.
+     */
+    private void asymmetricChoreographicLatency(long latency) {
+        clearLatencies();
+
+        try {
             toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-down", ToxicDirection.DOWNSTREAM, latency);
             toxiClient.getProxy("sidecar_start_intra").toxics().latency("latency-up", ToxicDirection.UPSTREAM, latency);
 

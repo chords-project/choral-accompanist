@@ -91,9 +91,17 @@ public class Benchmark {
                     default -> throw new IllegalStateException("Unexpected value: " + len);
                 };
 
-                System.out.println("\nChoreography:");
+                System.out.println("\nEquidistant (Symmetric) Choreography:");
                 System.out.println("chain_length;sidecar;total;simulated_latency");
-                for (var r : result.choreography()) {
+                for (var r : result.equidistantChoreography()) {
+                    Long sidecarLatency = r.sidecarLatency().stream().reduce(0L, Long::sum);
+                    Integer chainLength = lengthToNumber.apply(r.chainLength());
+                    System.out.println(chainLength + ";" + sidecarLatency + ";" + r.total() + ";" + r.simulatedLatency());
+                }
+
+                System.out.println("\nAsymmetric Choreography:");
+                System.out.println("chain_length;sidecar;total;simulated_latency");
+                for (var r : result.asymmetricChoreography()) {
                     Long sidecarLatency = r.sidecarLatency().stream().reduce(0L, Long::sum);
                     Integer chainLength = lengthToNumber.apply(r.chainLength());
                     System.out.println(chainLength + ";" + sidecarLatency + ";" + r.total() + ";" + r.simulatedLatency());
