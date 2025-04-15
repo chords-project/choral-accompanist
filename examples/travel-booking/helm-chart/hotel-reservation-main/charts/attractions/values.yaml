@@ -1,0 +1,18 @@
+name: attractions
+
+ports:
+  - port: 8089
+    targetPort: 8089
+
+container:
+  command: attractions
+  image: hotel-reservation
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  name: hotel-reserv-attractions
+  ports:
+    - containerPort: 8089
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

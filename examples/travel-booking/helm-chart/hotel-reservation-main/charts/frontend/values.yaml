@@ -1,0 +1,26 @@
+name: frontend
+
+serviceType: "LoadBalancer"
+
+ports:
+  - port: 5000
+    targetPort: 5000
+
+container:
+  command: frontend
+  image: hotel-reservation
+  name: hotel-reserv-frontend
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  ports:
+    - containerPort: 5000
+
+sidecar:
+  image: travel-sidecar-client
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  ports:
+    - 8945
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

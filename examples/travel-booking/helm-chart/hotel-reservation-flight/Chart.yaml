@@ -1,0 +1,12 @@
+apiVersion: v2
+name: hotel-reservation
+description: Helm chart for hotel-reservation service in DeathStarBench
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+
+dependencies:
+  - name: mongodb-flights
+    version: 0.1.0
+  - name: flights
+    version: 0.1.0

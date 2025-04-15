@@ -1,0 +1,18 @@
+name: recommendation
+
+ports:
+  - port: 8085
+    targetPort: 8085
+
+container:
+  command: recommendation
+  image: hotel-reservation
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  name: hotel-reserv-recommendation
+  ports:
+    - containerPort: 8085
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

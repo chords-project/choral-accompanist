@@ -43,6 +43,7 @@ func main() {
 		otlpAddr         = flag.String("otlpaddr", result["otlpAddress"], "OTLP address")
 		pyroscopeAddress = flag.String("pyroscopeAddress", result["pyroscopeAddress"], "Pyroscope address")
 		consulAddr       = flag.String("consuladdr", result["consulAddress"], "Consul address")
+		flightAddress    = flag.String("FlightsGrpcAddress", result["FlightsGrpcAddress"], "Flight GRPC address")
 	)
 	flag.Parse()
 
@@ -63,11 +64,12 @@ func main() {
 	slog.Info("Consul agent initialized")
 
 	srv := &frontend.Server{
-		KnativeDns: knativeDNS,
-		Registry:   registry,
-		IpAddr:     servIP,
-		ConsulAddr: *consulAddr,
-		Port:       servPort,
+		KnativeDns:        knativeDNS,
+		Registry:          registry,
+		IpAddr:            servIP,
+		ConsulAddr:        *consulAddr,
+		Port:              servPort,
+		FlightGrpcAddress: *flightAddress,
 	}
 
 	slog.Info("Starting server...")

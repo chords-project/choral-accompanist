@@ -15,7 +15,22 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+
+    // Choral can either be installed locally...
     mavenLocal()
+
+    // ...or from the GitHub maven package repository
+    val githubUsername = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+    val githubToken = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+    if (githubUsername != null && githubToken != null) {
+        maven {
+            url = uri("https://maven.pkg.github.com/choral-lang/choral")
+            credentials {
+                username = githubUsername
+                password = githubToken
+            }
+        }
+    }
 }
 
 dependencies {
@@ -40,7 +55,7 @@ java {
 }
 
 jib {
-    to.image = "travel-sidecar-client"
+    to.image = "europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/travel-sidecar-client"
 }
 
 //jib {

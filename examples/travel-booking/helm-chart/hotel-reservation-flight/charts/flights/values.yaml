@@ -1,0 +1,24 @@
+name: flights
+
+serviceType: "LoadBalancer"
+
+ports:
+  - port: 8081
+    targetPort: 8081
+
+container:
+  command: flights
+  image: hotel-reservation
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  name: hotel-reserv-flights
+  ports:
+    - containerPort: 8081
+
+sidecar:
+  image: travel-sidecar-flight
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

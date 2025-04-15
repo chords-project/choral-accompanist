@@ -113,6 +113,13 @@ func initProfiling(serviceName string, pyroscopeAddress string) (*pyroscope.Prof
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func SetupOTelSDK(serviceName string, otlpAddr string, pyroscopeAddress string) (shutdown func(context.Context) error, err error) {
+
+	enableTelemetry := os.Getenv("ENABLE_TELEMETRY")
+	if enableTelemetry != "1" {
+		slog.Debug("Telemetry disabled, enable by setting ENABLE_TELEMETRY=1")
+		return func(context.Context) error { return nil }, nil
+	}
+
 	// Handle SIGINT (CTRL+C) gracefully.
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
 

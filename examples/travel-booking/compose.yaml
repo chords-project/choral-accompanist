@@ -35,7 +35,7 @@ services:
         condition: any
 
   frontend-sidecar:
-    image: travel-sidecar-client
+    image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/travel-sidecar-client
     restart: unless-stopped
     ports:
       - "8945:8945"
@@ -71,7 +71,7 @@ services:
         condition: any
 
   flight-sidecar:
-    image: travel-sidecar-flight
+    image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/travel-sidecar-flight
     restart: unless-stopped
     environment:
       ENABLE_TRACING: 1
@@ -145,7 +145,7 @@ services:
         condition: any
 
   geo-sidecar:
-    image: travel-sidecar-geo
+    image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/travel-sidecar-geo
     restart: unless-stopped
     environment:
       ENABLE_TRACING: 1
@@ -275,7 +275,7 @@ services:
         condition: any
 
   reservation-sidecar:
-    image: travel-sidecar-reservation
+    image: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo/travel-sidecar-reservation
     restart: unless-stopped
     environment:
       ENABLE_TRACING: 1
@@ -514,7 +514,7 @@ services:
     #   - "55680:55680"
     #   - "55681:55681"
     #   - "14250:14250"
-    command: ["-config.file=/etc/tempo.yaml"]
+    command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - "./telemetry/tempo/tempo.yaml:/etc/tempo.yaml"
 
@@ -523,7 +523,7 @@ services:
   loki:
     image: grafana/loki:latest
     command:
-      ["--pattern-ingester.enabled=true", "-config.file=/etc/loki/loki.yaml"]
+      [ "--pattern-ingester.enabled=true", "-config.file=/etc/loki/loki.yaml" ]
     # ports:
     #   - "3100:3100"
     volumes:
@@ -563,7 +563,7 @@ services:
     image: grafana/pyroscope:latest
     # ports:
     #   - "4040:4040"
-    command: ["server"]
+    command: [ "server" ]
 
 volumes:
   flights:

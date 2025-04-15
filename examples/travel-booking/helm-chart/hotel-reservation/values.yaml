@@ -6,7 +6,7 @@ global:
   imagePullPolicy: "IfNotPresent"
   restartPolicy: Always
   serviceType: ClusterIP
-  dockerRegistry: docker.io
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
   defaultImageVersion: latest
   serviceDnsDomain: "cluster.local"
   services:
@@ -20,9 +20,9 @@ global:
       JAEGER_SAMPLE_RATIO: "0.01"
       MEMC_TIMEOUT: "2"
       GC: "100"
-  affinity: {}
-  tolerations: []
-  nodeSelector: {}
+  affinity: { }
+  tolerations: [ ]
+  nodeSelector: { }
   memcached:
     HACount: 1
     environments:

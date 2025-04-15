@@ -9,7 +9,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/registry"
 	pb "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/flights/proto"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/tls"
 	"github.com/google/uuid"
@@ -34,7 +33,7 @@ type Server struct {
 	Port        int
 	IpAddr      string
 	MongoClient *mongo.Client
-	Registry    *registry.Client
+	//Registry    *registry.Client
 }
 
 // Run starts the server
@@ -48,7 +47,7 @@ func (s *Server) Run() error {
 
 	s.uuid = uuid.New().String()
 
-	slog.DebugContext(ctx, fmt.Sprintf("Setup flights with s.IpAddr = %s, port = %d", s.IpAddr, s.Port))
+	slog.InfoContext(ctx, fmt.Sprintf("Setup flights with s.IpAddr=%s, port=%d", s.IpAddr, s.Port))
 
 	opts := []grpc.ServerOption{
 		grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -74,11 +73,11 @@ func (s *Server) Run() error {
 		log.Fatalf("failed to configure listener: %v", err)
 	}
 
-	err = s.Registry.Register(ctx, name, s.uuid, s.IpAddr, s.Port)
-	if err != nil {
-		return fmt.Errorf("failed register: %v", err)
-	}
-	slog.InfoContext(ctx, "Successfully registered in consul")
+	//err = s.Registry.Register(ctx, name, s.uuid, s.IpAddr, s.Port)
+	//if err != nil {
+	//	return fmt.Errorf("failed register: %v", err)
+	//}
+	//slog.InfoContext(ctx, "Successfully registered in consul")
 
 	span.End()
 
@@ -87,7 +86,7 @@ func (s *Server) Run() error {
 
 // Shutdown cleans up any processes
 func (s *Server) Shutdown() {
-	s.Registry.Deregister(s.uuid)
+	//s.Registry.Deregister(s.uuid)
 }
 
 type Airport struct {
@@ -161,6 +160,8 @@ func (s *Server) NearestAirport(ctx context.Context, req *pb.AirportSearchReques
 
 func (s *Server) GetAirport(ctx context.Context, req *pb.AirportRequest) (*pb.Airport, error) {
 
+	slog.InfoContext(ctx, "get airport", slog.String("id", req.Id))
+
 	c := s.MongoClient.Database("flights-db").Collection("airports")
 
 	var airport Airport
@@ -179,7 +180,7 @@ func (s *Server) GetAirport(ctx context.Context, req *pb.AirportRequest) (*pb.Ai
 
 func (s *Server) SearchFlights(ctx context.Context, req *pb.SearchRequest) (*pb.SearchResult, error) {
 
-	slog.DebugContext(ctx, "searching for flights", slog.String("from_airport", req.FromAirport), slog.String("to_airport", req.ToAirport), slog.String("departure_date", req.DepartureDate))
+	slog.InfoContext(ctx, "searching for flights", slog.String("from_airport", req.FromAirport), slog.String("to_airport", req.ToAirport), slog.String("departure_date", req.DepartureDate))
 
 	c := s.MongoClient.Database("flights-db").Collection("flights")
 
@@ -218,6 +219,9 @@ func (s *Server) SearchFlights(ctx context.Context, req *pb.SearchRequest) (*pb.
 }
 
 func (s *Server) BookFlight(ctx context.Context, req *pb.BookingRequest) (*pb.Booking, error) {
+
+	slog.InfoContext(ctx, "book flight", slog.String("id", req.Id))
+
 	c := s.MongoClient.Database("flights-db").Collection("bookings")
 
 	_, err := c.InsertOne(ctx, Booking{Id: req.Id})

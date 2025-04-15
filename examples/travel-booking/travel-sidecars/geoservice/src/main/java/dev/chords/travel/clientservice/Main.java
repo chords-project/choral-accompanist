@@ -10,13 +10,13 @@ import dev.chords.travel.choreographies.Tracing;
 import dev.chords.travel.choreographies.TravelSession;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.OpenTelemetry;
+
 import java.net.InetSocketAddress;
 
 public class Main {
 
     private static GeoService geoService;
-
-    private static ClientConnectionManager flightConn;
+    
     private static ClientConnectionManager reservationConn;
     private static Logger logger;
 
@@ -30,7 +30,6 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8083"));
         geoService = new GeoService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
-        flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
         reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry, Main::handleNewSession);
@@ -46,9 +45,9 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Geo bookTravelChor = new ChorBookTravel_Geo(
-                    geoService,
-                    ctx.symChan(Service.FLIGHT.name(), flightConn),
-                    ctx.symChan(Service.RESERVATION.name(), reservationConn)
+                        geoService,
+                        ctx.chanB(Service.CLIENT.name()),
+                        ctx.chanA(reservationConn)
                 );
 
                 bookTravelChor.bookTravel();

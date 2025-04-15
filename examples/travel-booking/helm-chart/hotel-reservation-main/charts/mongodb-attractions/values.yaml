@@ -1,0 +1,14 @@
+name: mongodb-attractions
+
+replicas: 1
+
+ports:
+  - port: 27025
+    targetPort: 27017
+
+container:
+  image: mongo
+  imageVersion: 5.0
+  name: hotel-reserv-attractions-mongo
+  ports:
+    - containerPort: 27017

@@ -1,0 +1,18 @@
+name: profile
+
+ports:
+  - port: 8081
+    targetPort: 8081
+
+container:
+  command: profile
+  image: hotel-reservation
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  name: hotel-reserv-profile
+  ports:
+    - containerPort: 8081
+
+configMaps:
+  - name: service-config.json
+    mountPath: /workspace/config.json
+    value: service-config

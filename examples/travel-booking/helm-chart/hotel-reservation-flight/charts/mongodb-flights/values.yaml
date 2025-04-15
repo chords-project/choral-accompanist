@@ -1,0 +1,14 @@
+name: mongodb-flights
+
+replicas: 1
+
+ports:
+  - port: 27026
+    targetPort: 27017
+
+container:
+  image: mongo
+  imageVersion: 5.0
+  name: hotel-reserv-flights-mongo
+  ports:
+    - containerPort: 27017

@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/registry"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/flights"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/tracing"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/tune"
@@ -29,7 +28,7 @@ func main() {
 	byteValue, _ := io.ReadAll(jsonFile)
 
 	var result map[string]string
-	if err := json.Unmarshal([]byte(byteValue), &result); err != nil {
+	if err := json.Unmarshal(byteValue, &result); err != nil {
 		slog.Error("Failed to decode config file json", slog.Any("error", err))
 		return
 	}
@@ -44,7 +43,7 @@ func main() {
 	var (
 		otlpAddr         = flag.String("otlpaddr", result["otlpAddress"], "OTLP address")
 		pyroscopeAddress = flag.String("pyroscopeAddress", result["pyroscopeAddress"], "Pyroscope address")
-		consulAddr       = flag.String("consuladdr", result["consulAddress"], "Consul address")
+		// consulAddr       = flag.String("consuladdr", result["consulAddress"], "Consul address")
 	)
 	flag.Parse()
 
@@ -57,15 +56,15 @@ func main() {
 	}
 	defer otelShutdown(context.Background())
 
-	slog.Info("Initializing consul agent...", slog.String("host", *consulAddr))
-	registry, err := registry.NewClient(*consulAddr)
-	if err != nil {
-		log.Panicf("Got error while initializing consul agent: %v", err)
-	}
-	slog.Info("Consul agent initialized")
+	//slog.Info("Initializing consul agent...", slog.String("host", *consulAddr))
+	//registry, err := registry.NewClient(*consulAddr)
+	//if err != nil {
+	//	log.Panicf("Got error while initializing consul agent: %v", err)
+	//}
+	//slog.Info("Consul agent initialized")
 
 	srv := &flights.Server{
-		Registry:    registry,
+		//Registry:    registry,
 		IpAddr:      servIP,
 		Port:        servPort,
 		MongoClient: mongoClient,

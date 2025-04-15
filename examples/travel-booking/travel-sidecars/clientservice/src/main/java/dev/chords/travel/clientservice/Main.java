@@ -15,6 +15,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Scope;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
     private static ClientConnectionManager flightConn;
+    private static ClientConnectionManager geoConn;
     private static ClientConnectionManager reservationConn;
     private static ClientConnectionManager searchConn;
     private static ReactiveServer server;
@@ -38,6 +40,7 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
         try {
             flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
+            geoConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.geo, telemetry);
             reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
             searchConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.search, telemetry);
         } catch (URISyntaxException | IOException e) {
@@ -50,18 +53,18 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         });
 
         grpcServer = new GrpcServer(
-            telemetry,
-            new GrpcServer.RequestHandler() {
-                @Override
-                public BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
-                    return Main.bookTravel(req);
-                }
+                telemetry,
+                new GrpcServer.RequestHandler() {
+                    @Override
+                    public BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
+                        return Main.bookTravel(req);
+                    }
 
-                @Override
-                public ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
-                    return Main.searchHotels(request);
+                    @Override
+                    public ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
+                        return Main.searchHotels(request);
+                    }
                 }
-            }
         );
 
         try {
@@ -121,27 +124,27 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         TravelSession session = TravelSession.makeSession(Choreography.BOOK_TRAVEL, Service.CLIENT);
 
         Span span = telemetry
-            .getTracer(JaegerConfiguration.TRACER_NAME)
-            .spanBuilder("BookTravel")
-            .setSpanKind(SpanKind.CLIENT)
-            .setAttribute("choreography.session", session.toString())
-            .startSpan();
+                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .spanBuilder("BookTravel")
+                .setSpanKind(SpanKind.CLIENT)
+                .setAttribute("choreography.session", session.toString())
+                .startSpan();
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
         server.registerSession(session, telemetrySession);
 
         try (
-            Scope scope = span.makeCurrent();
-            ReactiveClient flightClient = new ReactiveClient(flightConn, Service.CLIENT.name(), telemetrySession);
-            ReactiveClient reservationClient = new ReactiveClient(reservationConn, Service.CLIENT.name(), telemetrySession);
+                Scope scope = span.makeCurrent();
+                ReactiveClient flightClient = new ReactiveClient(flightConn, Service.CLIENT.name(), telemetrySession);
+                ReactiveClient geoClient = new ReactiveClient(geoConn, Service.CLIENT.name(), telemetrySession);
+                ReactiveClient reservationClient = new ReactiveClient(reservationConn, Service.CLIENT.name(), telemetrySession);
         ) {
             telemetrySession.log("Initializing BOOK_TRAVEL choreography");
 
             var flightChan = new ReactiveSymChannel<>(flightClient.chanA(session), server.chanB(session, Service.FLIGHT.name()));
-
             var reservationChan = new ReactiveSymChannel<>(reservationClient.chanA(session), server.chanB(session, Service.RESERVATION.name()));
 
-            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(flightChan, reservationChan);
+            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(flightChan, geoClient.chanA(session), reservationChan);
 
             telemetrySession.log("Starting BOOK_TRAVEL choreography");
             var result = bookTravelChor.bookTravel(req);

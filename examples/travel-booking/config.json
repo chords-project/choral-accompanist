@@ -26,5 +26,6 @@
   "SearchPort": "8082",
   "UserPort": "8086",
   "UserMongoAddress": "mongodb-user:27017",
-  "KnativeDomainName": ""
+  "KnativeDomainName": "",
+  "FlightsGrpcAddress": "flights:8090"
 }

@@ -6,7 +6,7 @@ ports:
 
 container:
   command: attractions
-  image: deathstarbench/hotel-reservation
+  image: hotel-reservation
   name: hotel-reserv-attractions
   ports:
     - containerPort: 8089

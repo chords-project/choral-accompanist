@@ -5,10 +5,14 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/dialer"
 	"github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/registry"
@@ -50,6 +54,8 @@ type Server struct {
 	ConsulAddr string
 	Port       int
 	Registry   *registry.Client
+
+	FlightGrpcAddress string
 }
 
 // Run the server
@@ -69,7 +75,7 @@ func (s *Server) Run() error {
 
 	slog.InfoContext(ctx, "Initializing gRPC clients...")
 
-	if err := s.initFlightClient(ctx, "srv-flights"); err != nil {
+	if err := s.initFlightClient(ctx, s.FlightGrpcAddress /*"srv-flights"*/); err != nil {
 		slog.ErrorContext(ctx, "failed to initialize FlightClient", slog.Any("error", err))
 		return err
 	}
@@ -166,14 +172,35 @@ func (s *Server) Run() error {
 	}
 }
 
-func (s *Server) initFlightClient(ctx context.Context, name string) error {
-	slog.InfoContext(ctx, "initializing Flight client", slog.String("grpc_connection_name", name))
-	conn, err := s.getGprcConn(ctx, name)
-	if err != nil {
-		return fmt.Errorf("error dialing %s: %v", name, err)
+func (s *Server) initFlightClient(ctx context.Context, url string) error {
+
+	slog.InfoContext(ctx, "Initializing flight client", slog.String("url", url))
+
+	dialopts := []grpc.DialOption{
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Timeout:             120 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	}
+
+	conn, err := grpc.NewClient(url, dialopts...)
+	if err != nil {
+		return fmt.Errorf("failed to dial %s: %v", url, err)
+	}
+
 	s.flightClient = flights.NewFlightsClient(conn)
+
 	return nil
+
+	//slog.InfoContext(ctx, "initializing Flight client", slog.String("grpc_connection_name", name))
+	//conn, err := s.getGprcConn(ctx, name)
+	//if err != nil {
+	//	return fmt.Errorf("error dialing %s: %v", name, err)
+	//}
+	//s.flightClient = flights.NewFlightsClient(conn)
+	//return nil
 }
 
 func (s *Server) initGeoClient(ctx context.Context, name string) error {
