@@ -71,6 +71,14 @@ application {
 jib {
     to.image = "accompanist-benchmark"
     container.mainClass = "dev.chords.microservices.benchmark.Benchmark"
+    from {
+        platforms {
+            platform {
+                architecture = "arm64"
+                os = "linux"
+            }
+        }
+    }
 }
 
 tasks.register<JavaExec>("runA") {
