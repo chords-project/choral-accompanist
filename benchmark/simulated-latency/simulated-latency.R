@@ -51,6 +51,7 @@ equidistant_bar_plot <- function(chain_len) {
     scale_fill_manual(values = c("#F15350", "#38B84D")) +
     facet_grid(~simulated_latency, labeller = as_labeller(milliseconds)) +
     theme(
+      legend.position = "left",
       text = element_text(size = 20),
       strip.background = element_rect(fill = NA, color = "white"),
       plot.title = element_text(hjust = 0.5),
@@ -104,6 +105,7 @@ asymmetric_bar_plot <- function(latency) {
     scale_fill_manual(values = c("#F15350", "#38B84D")) +
     facet_grid(~chain_length) +
     theme(
+      legend.position = "none",
       text = element_text(size = 20),
       strip.background = element_rect(fill = NA, color = "white"),
       plot.title = element_text(hjust = 0.5),
@@ -123,6 +125,12 @@ asymmetric_bar_plot <- function(latency) {
 
 p <- equidistant_bar_plot(2)
 ggsave("equidistant_latency_2_workers.png", p, width = WIDTH, height = HEIGHT)
+tikzDevice::tikz("equidistant_latency_2_workers.tex", width = WIDTH, height = HEIGHT)
+print(p)
+dev.off()
 
 p <- asymmetric_bar_plot(1)
-ggsave("asymmetric_latency_1_ms.png", p, width = WIDTH, height = HEIGHT)
+ggsave("asymmetric_latency_1_ms.png", p, width = WIDTH - 1, height = HEIGHT)
+tikzDevice::tikz("asymmetric_latency_1_ms.tex", width = WIDTH - 1, height = HEIGHT)
+print(p)
+dev.off()
