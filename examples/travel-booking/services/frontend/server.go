@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	frontend "github.com/delimitrou/DeathStarBench/tree/master/hotelReservation/services/frontend/proto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -39,6 +40,7 @@ var (
 
 // Server implements frontend service
 type Server struct {
+	choreographyClient   frontend.ChoreographyClient
 	flightClient         flights.FlightsClient
 	geoClient            geo.GeoClient
 	searchClient         search.SearchClient
@@ -55,7 +57,8 @@ type Server struct {
 	Port       int
 	Registry   *registry.Client
 
-	FlightGrpcAddress string
+	ChoreographyGrpcAddress string
+	FlightGrpcAddress       string
 }
 
 // Run the server
@@ -74,6 +77,11 @@ func (s *Server) Run() error {
 	}
 
 	slog.InfoContext(ctx, "Initializing gRPC clients...")
+
+	if err := s.initChoreographyClient(ctx, s.ChoreographyGrpcAddress); err != nil {
+		slog.ErrorContext(ctx, "failed to initialize ChoreographyClient", slog.Any("error", err))
+		return err
+	}
 
 	if err := s.initFlightClient(ctx, s.FlightGrpcAddress /*"srv-flights"*/); err != nil {
 		slog.ErrorContext(ctx, "failed to initialize FlightClient", slog.Any("error", err))
@@ -143,7 +151,8 @@ func (s *Server) Run() error {
 	}
 
 	handleFunc("/", http.FileServer(http.FS(staticContent)))
-	handleFunc("/bookTravel", http.HandlerFunc(s.bookTravelHandler))
+	handleFunc("/bookTravel/orchestrator", http.HandlerFunc(s.bookTravelOrchestratorHandler))
+	handleFunc("/bookTravel/choreography", http.HandlerFunc(s.bookTravelChoreographyHandler))
 	handleFunc("/hotels", http.HandlerFunc(s.searchHandler))
 	handleFunc("/recommendations", http.HandlerFunc(s.recommendHandler))
 	handleFunc("/user", http.HandlerFunc(s.userHandler))
@@ -193,14 +202,29 @@ func (s *Server) initFlightClient(ctx context.Context, url string) error {
 	s.flightClient = flights.NewFlightsClient(conn)
 
 	return nil
+}
 
-	//slog.InfoContext(ctx, "initializing Flight client", slog.String("grpc_connection_name", name))
-	//conn, err := s.getGprcConn(ctx, name)
-	//if err != nil {
-	//	return fmt.Errorf("error dialing %s: %v", name, err)
-	//}
-	//s.flightClient = flights.NewFlightsClient(conn)
-	//return nil
+func (s *Server) initChoreographyClient(ctx context.Context, url string) error {
+
+	slog.InfoContext(ctx, "Initializing choreography client", slog.String("url", url))
+
+	dialopts := []grpc.DialOption{
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Timeout:             120 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	}
+
+	conn, err := grpc.NewClient(url, dialopts...)
+	if err != nil {
+		return fmt.Errorf("failed to dial %s: %v", url, err)
+	}
+
+	s.choreographyClient = frontend.NewChoreographyClient(conn)
+
+	return nil
 }
 
 func (s *Server) initGeoClient(ctx context.Context, name string) error {
@@ -295,11 +319,82 @@ func (s *Server) getGprcConn(ctx context.Context, name string, dialOptions ...di
 	return dialer.Dial(address, dialOptions...)
 }
 
-func (s *Server) bookTravelHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) bookTravelChoreographyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	ctx := r.Context()
 
-	slog.DebugContext(ctx, "starts searchHandler")
+	slog.DebugContext(ctx, "Start orchestrator book travel handler")
+
+	sFromLat, sFromLon := r.URL.Query().Get("fromLat"), r.URL.Query().Get("fromLon")
+	sToLat, sToLon := r.URL.Query().Get("toLat"), r.URL.Query().Get("toLon")
+
+	startDate, endDate := r.URL.Query().Get("startDate"), r.URL.Query().Get("endDate")
+
+	if sFromLat == "" || sFromLon == "" || sToLat == "" || sToLon == "" || startDate == "" || endDate == "" {
+		message := "Please specify all required params: fromLat, fromLon, toLat, toLon, startDate, endDate"
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", message))
+		http.Error(w, message, http.StatusBadRequest)
+		return
+	}
+
+	fromLat, err := strconv.ParseFloat(sFromLat, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fromLon, err := strconv.ParseFloat(sFromLon, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	toLat, err := strconv.ParseFloat(sToLat, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	toLon, err := strconv.ParseFloat(sToLon, 64)
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.choreographyClient.BookTravel(ctx, &frontend.BookTravelRequest{
+		From: &frontend.Coordinate{
+			Latitude:  fromLat,
+			Longitude: fromLon,
+		},
+		To: &frontend.Coordinate{
+			Latitude:  toLat,
+			Longitude: toLon,
+		},
+		StartDate: startDate,
+		EndDate:   endDate,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"outFlight":  result.OutFlight,
+		"homeFlight": result.HomeFlight,
+		"hotelID":    result.HotelId,
+	})
+}
+
+func (s *Server) bookTravelOrchestratorHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	ctx := r.Context()
+
+	slog.DebugContext(ctx, "Start orchestrator book travel handler")
 
 	sFromLat, sFromLon := r.URL.Query().Get("fromLat"), r.URL.Query().Get("fromLon")
 	sToLat, sToLon := r.URL.Query().Get("toLat"), r.URL.Query().Get("toLon")

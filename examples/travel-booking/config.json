@@ -27,5 +27,6 @@
   "UserPort": "8086",
   "UserMongoAddress": "mongodb-user:27017",
   "KnativeDomainName": "",
+  "ChoreographyGrpcAddress": "frontend-sidecar:8945",
   "FlightsGrpcAddress": "flights:8090"
 }

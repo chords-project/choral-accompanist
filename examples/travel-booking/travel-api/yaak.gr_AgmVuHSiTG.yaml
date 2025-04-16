@@ -2,7 +2,7 @@ type: grpc_request
 model: grpc_request
 id: gr_AgmVuHSiTG
 createdAt: 2025-03-07T08:04:42.954401
-updatedAt: 2025-03-11T10:16:05.751149
+updatedAt: 2025-04-16T09:56:09.259786
 workspaceId: wk_VcrpentPCq
 folderId: fl_sCVhMTWWNF
 authenticationType: null
@@ -23,7 +23,7 @@ message: |-
   }
 metadata: []
 method: BookTravel
-name: Book Travel
+name: Book Travel Choreography gRPC
 service: choreography.Choreography
-sortPriority: 0.0
+sortPriority: 2000.0
 url: ${[ choreography ]}

@@ -26,7 +26,22 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+
+    // Choral can either be installed locally...
     mavenLocal()
+
+    // ...or from the GitHub maven package repository
+    val githubUsername = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+    val githubToken = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+    if (githubUsername != null && githubToken != null) {
+        maven {
+            url = uri("https://maven.pkg.github.com/choral-lang/choral")
+            credentials {
+                username = githubUsername
+                password = githubToken
+            }
+        }
+    }
 }
 
 var grpcVersion = "1.68.0"
@@ -40,10 +55,10 @@ dependencies {
     implementation(project(":reactive-middleware"))
 
     // ## gRPC ##
-    runtimeOnly ("io.grpc:grpc-netty-shaded:${grpcVersion}")
+    runtimeOnly("io.grpc:grpc-netty-shaded:${grpcVersion}")
     api("com.google.protobuf:protobuf-java:3.6.1")
-    api ("io.grpc:grpc-protobuf:${grpcVersion}")
-    api ("io.grpc:grpc-stub:${grpcVersion}")
+    api("io.grpc:grpc-protobuf:${grpcVersion}")
+    api("io.grpc:grpc-stub:${grpcVersion}")
 
     if (JavaVersion.current().isJava9Compatible()) {
         // Workaround for @javax.annotation.Generated
@@ -52,32 +67,36 @@ dependencies {
     }
 }
 
-var archSuffix = if (Os.isFamily(Os.FAMILY_MAC)) { ":osx-x86_64" } else { "" }
+var archSuffix = if (Os.isFamily(Os.FAMILY_MAC)) {
+    ":osx-x86_64"
+} else {
+    ""
+}
 
 protobuf {
-  protoc {
-    // The artifact spec for the Protobuf Compiler
-    artifact = "com.google.protobuf:protoc:3.6.1$archSuffix"
-  }
-  plugins {
-    // Optional: an artifact spec for a protoc plugin, with "grpc" as
-    // the identifier, which can be referred to in the "plugins"
-    // container of the "generateProtoTasks" closure.
-    id("grpc") {
-      artifact = "io.grpc:protoc-gen-grpc-java:1.15.1$archSuffix"
+    protoc {
+        // The artifact spec for the Protobuf Compiler
+        artifact = "com.google.protobuf:protoc:3.6.1$archSuffix"
     }
-  }
-  generateProtoTasks {
-    ofSourceSet("main").forEach {
-      it.plugins {
-        // Apply the "grpc" plugin whose spec is defined above, without
-        // options. Note the braces cannot be omitted, otherwise the
-        // plugin will not be added. This is because of the implicit way
-        // NamedDomainObjectContainer binds the methods.
-        id("grpc") { }
-      }
+    plugins {
+        // Optional: an artifact spec for a protoc plugin, with "grpc" as
+        // the identifier, which can be referred to in the "plugins"
+        // container of the "generateProtoTasks" closure.
+        id("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.15.1$archSuffix"
+        }
     }
-  }
+    generateProtoTasks {
+        ofSourceSet("main").forEach {
+            it.plugins {
+                // Apply the "grpc" plugin whose spec is defined above, without
+                // options. Note the braces cannot be omitted, otherwise the
+                // plugin will not be added. This is because of the implicit way
+                // NamedDomainObjectContainer binds the methods.
+                id("grpc") { }
+            }
+        }
+    }
 }
 
 tasks.register("compileChoral") {
@@ -88,13 +107,15 @@ tasks.register("compileChoral") {
     doLast {
         choreographies.forEach { name: String ->
             val process = ProcessBuilder()
-                .command(listOf(
-                    "choral", "epp",
-                    "--sources=${layout.projectDirectory.dir("src/main/choral")}",
-                    "--headers=${layout.projectDirectory.dir("src/main/choral")}",
-                    "--target=${layout.buildDirectory.dir("generated/choral").get()}",
-                    name
-                ))
+                .command(
+                    listOf(
+                        "choral", "epp",
+                        "--sources=${layout.projectDirectory.dir("src/main/choral")}",
+                        "--headers=${layout.projectDirectory.dir("src/main/choral")}",
+                        "--target=${layout.buildDirectory.dir("generated/choral").get()}",
+                        name
+                    )
+                )
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
                 .directory(rootProject.projectDir)
@@ -115,11 +136,11 @@ tasks.compileJava {
 }
 
 sourceSets {
-   main {
-      java {
-         srcDir(layout.buildDirectory.dir("generated/choral").get())
-      }
-   }
+    main {
+        java {
+            srcDir(layout.buildDirectory.dir("generated/choral").get())
+        }
+    }
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

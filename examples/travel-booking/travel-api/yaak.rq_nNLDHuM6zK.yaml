@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_ZsPB2sUtAx
-createdAt: 2025-03-13T12:43:03.921308
-updatedAt: 2025-04-16T09:56:09.258883
+id: rq_nNLDHuM6zK
+createdAt: 2025-04-16T09:55:55.631195
+updatedAt: 2025-04-16T09:56:12.768748
 workspaceId: wk_VcrpentPCq
 folderId: fl_sCVhMTWWNF
 authentication: {}
@@ -12,9 +12,9 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Book Travel Orchestrated
-sortPriority: 0.0
-url: ${[ frontend ]}/bookTravel/orchestrator
+name: Book Travel Choreography
+sortPriority: 1000.0
+url: ${[ frontend ]}/bookTravel/choreography
 urlParameters:
 - enabled: true
   name: fromLat

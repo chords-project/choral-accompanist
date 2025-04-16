@@ -12,6 +12,12 @@ services:
       restart_policy:
         condition: any
 
+  loadgenerator:
+    build: ./loadgenerator
+    image: hotel-loadgenerator
+    ports:
+      - "8089:8089"
+
   frontend:
     configs:
       - source: server_config
