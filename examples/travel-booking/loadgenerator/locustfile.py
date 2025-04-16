@@ -55,9 +55,9 @@ def on_request_finished(request_type, name, response_time, response_length, resp
     if exception is not None:
         return
 
-    # filter out requests that are not to a checkout endpoint
-    if "checkout" not in name:
-        return
+    # # filter out requests that are not to a checkout endpoint
+    # if "checkout" not in name:
+    #     return
 
     latest_requests_buf.append(
         "{},{},{},{},{},{}\n".format(start_time, request_type, name, response_time, response_length, url)

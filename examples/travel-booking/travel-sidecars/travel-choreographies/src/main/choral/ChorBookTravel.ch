@@ -12,7 +12,7 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private ReservationService@Reservation reservationSvc;
 
     private SymChannel@(Client, Flight)<Serializable> ch_clientFlight;
-    private DiChannel@(Client, Geo)<Serializable> ch_clientGeo;
+    private SymChannel@(Client, Geo)<Serializable> ch_clientGeo;
     private DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation;
     private SymChannel@(Client, Reservation)<Serializable> ch_clientReservation;
 
@@ -22,7 +22,7 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
         ReservationService@Reservation reservationSvc,
 
         SymChannel@(Client, Flight)<Serializable> ch_clientFlight,
-        DiChannel@(Client, Geo)<Serializable> ch_clientGeo,
+        SymChannel@(Client, Geo)<Serializable> ch_clientGeo,
         DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation,
         SymChannel@(Client, Reservation)<Serializable> ch_clientReservation
     ) {
@@ -67,8 +67,8 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
             Flight@Flight outFlight = flightSvc.searchFlight(fromAirport.id, toAirport.id, req_flight.startDate).get(0@Flight);
             Flight@Flight homeFlight = flightSvc.searchFlight(toAirport.id, fromAirport.id, req_flight.endDate).get(0@Flight);
 
-            flightSvc.bookFlight(outFlight.id);
-            flightSvc.bookFlight(homeFlight.id);
+//            flightSvc.bookFlight(outFlight.id);
+//            flightSvc.bookFlight(homeFlight.id);
 
             outFlight_client = ch_clientFlight.<Flight>com(outFlight);
             homeFlight_client = ch_clientFlight.<Flight>com(homeFlight);
@@ -84,21 +84,23 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
         String@Geo hotelID = geoSvc.nearbyHotelIDs(hotelNearestLoc).get(0@Geo);
         System@Geo.out.println("Got nearby hotel ID: "@Geo + hotelID);
 
-        System@Geo.out.println("Sending hotel ID to Reservation"@Geo);
-        System@Reservation.out.println("Receiving hotel ID from Geo"@Reservation);
-        String@Reservation hotelID_reservation = ch_geoReservation.<String>com(hotelID);
+//        System@Geo.out.println("Sending hotel ID to Reservation"@Geo);
+//        System@Reservation.out.println("Receiving hotel ID from Geo"@Reservation);
+//        String@Reservation hotelID_reservation = ch_geoReservation.<String>com(hotelID);
+//        System@Reservation.out.println("Making reservation"@Reservation);
+//        reservationSvc.makeReservation(
+//            "Customer Name"@Reservation,
+//            hotelID_reservation,
+//            req_reservation.startDate,
+//            req_reservation.endDate
+//        );
+//        System@Reservation.out.println("Sending reservation to Client"@Reservation);
+//        System@Client.out.println("Receiving reservation from Reservation"@Client);
+//        String@Client hotelID_client = ch_clientReservation.<String>com(hotelID_reservation);
 
-        System@Reservation.out.println("Making reservation"@Reservation);
-        reservationSvc.makeReservation(
-            "Customer Name"@Reservation,
-            hotelID_reservation,
-            req_reservation.startDate,
-            req_reservation.endDate
-        );
-
-        System@Reservation.out.println("Sending reservation to Client"@Reservation);
-        System@Client.out.println("Receiving reservation from Reservation"@Client);
-        String@Client hotelID_client = ch_clientReservation.<String>com(hotelID_reservation);
+        System@Reservation.out.println("Sending hotelID to Client"@Reservation);
+        System@Client.out.println("Receiving hotelID from Geo"@Client);
+        String@Client hotelID_client = ch_clientGeo.<String>com(hotelID);
 
         return new BookTravelResult@Client(outFlight_client, homeFlight_client, hotelID_client);
     }

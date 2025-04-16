@@ -476,8 +476,8 @@ func (s *Server) bookTravelOrchestratorHandler(w http.ResponseWriter, r *http.Re
 
 		homeFlight = homeFlightSearch.GetFlights()[0]
 
-		s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: outFlight.Id})
-		s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: homeFlight.Id})
+		//s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: outFlight.Id})
+		//s.flightClient.BookFlight(ctx, &flights.BookingRequest{Id: homeFlight.Id})
 	}
 
 	nearbyHotels, err := s.geoClient.Nearby(ctx, &geo.Request{Lat: float32(toLat), Lon: float32(toLon)})
@@ -488,23 +488,23 @@ func (s *Server) bookTravelOrchestratorHandler(w http.ResponseWriter, r *http.Re
 	}
 	hotelId := nearbyHotels.HotelIds[0]
 
-	reservation, err := s.reservationClient.MakeReservation(ctx, &reservation.Request{
-		CustomerName: "Customer Name",
-		HotelId:      []string{hotelId},
-		InDate:       startDate,
-		OutDate:      endDate,
-		RoomNumber:   1,
-	})
-	if err != nil {
-		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	//reservation, err := s.reservationClient.MakeReservation(ctx, &reservation.Request{
+	//	CustomerName: "Customer Name",
+	//	HotelId:      []string{hotelId},
+	//	InDate:       startDate,
+	//	OutDate:      endDate,
+	//	RoomNumber:   1,
+	//})
+	//if err != nil {
+	//	slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
+	//	http.Error(w, err.Error(), http.StatusBadRequest)
+	//	return
+	//}
 
 	json.NewEncoder(w).Encode(map[string]any{
 		"outFlight":  outFlight,
 		"homeFlight": homeFlight,
-		"hotelID":    reservation.HotelId[0],
+		"hotelID":    hotelId,
 	})
 }
 

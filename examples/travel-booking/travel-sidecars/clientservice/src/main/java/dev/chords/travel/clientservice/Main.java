@@ -144,7 +144,9 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
             var flightChan = new ReactiveSymChannel<>(flightClient.chanA(session), server.chanB(session, Service.FLIGHT.name()));
             var reservationChan = new ReactiveSymChannel<>(reservationClient.chanA(session), server.chanB(session, Service.RESERVATION.name()));
 
-            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(flightChan, geoClient.chanA(session), reservationChan);
+            var geoChan = new ReactiveSymChannel<>(geoClient.chanA(session), server.chanB(session, Service.GEO.name()));
+
+            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(flightChan, geoChan, reservationChan);
 
             telemetrySession.log("Starting BOOK_TRAVEL choreography");
             var result = bookTravelChor.bookTravel(req);

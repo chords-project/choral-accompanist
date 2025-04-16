@@ -26,6 +26,7 @@
     "AttractionsMongoAddress": "mongodb-attractions-{{ include "hotel-reservation.service-url" . }}:27025",
     "FlightsPort": "8081",
     "FlightsMongoAddress": "mongodb-flights-{{ include "hotel-reservation.service-url" . }}:27026",
+    "ChoreographyGrpcAddress": "frontend-{{ include "hotel-reservation.service-url" . }}:8945",
     "FlightsGrpcAddress": "a05e4e3477931431f84a40e19a636a21-220131330.eu-west-3.elb.amazonaws.com:8081"
 }
 {{- end }}

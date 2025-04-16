@@ -18,6 +18,7 @@ public class Main {
     private static GeoService geoService;
     
     private static ClientConnectionManager reservationConn;
+    private static ClientConnectionManager clientConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -31,6 +32,7 @@ public class Main {
         geoService = new GeoService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
         reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+        clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry, Main::handleNewSession);
 
@@ -46,7 +48,7 @@ public class Main {
 
                 ChorBookTravel_Geo bookTravelChor = new ChorBookTravel_Geo(
                         geoService,
-                        ctx.chanB(Service.CLIENT.name()),
+                        ctx.symChan(Service.CLIENT.name(), clientConn),
                         ctx.chanA(reservationConn)
                 );
 

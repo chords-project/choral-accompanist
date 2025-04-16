@@ -1,0 +1,15 @@
+name: loadgenerator
+
+serviceType: "LoadBalancer"
+
+ports:
+  - port: 8089
+    targetPort: 8089
+
+container:
+  #command: loadgenerator
+  image: travel-loadgenerator
+  dockerRegistry: europe-west1-docker.pkg.dev/chords-microservice-444208/webshop-repo
+  name: hotel-reserv-loadgenerator
+  ports:
+    - containerPort: 8089
