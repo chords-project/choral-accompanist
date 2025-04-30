@@ -436,21 +436,29 @@ func (s *Server) bookTravelOrchestratorHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	t1 := time.Now().UnixNano()
 	fromAirport, err := s.flightClient.NearestAirport(ctx,
 		&flights.AirportSearchRequest{Lat: fromLat, Lon: fromLon})
+	t2 := time.Now().UnixNano()
 	if err != nil {
 		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	slog.Info(fmt.Sprintf("FLIGHT RTT: %v", t2-t1))
+
+	t3 := time.Now().UnixNano()
 	toAirport, err := s.flightClient.NearestAirport(ctx,
 		&flights.AirportSearchRequest{Lat: toLat, Lon: toLon})
+	t4 := time.Now().UnixNano()
 	if err != nil {
 		slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	slog.Info(fmt.Sprintf("FLIGHT RTT: %v", t4-t3))
 
 	slog.DebugContext(ctx, fmt.Sprintf("Found airports: %s and %s", fromAirport.Id, toAirport.Id))
 
@@ -458,21 +466,29 @@ func (s *Server) bookTravelOrchestratorHandler(w http.ResponseWriter, r *http.Re
 	var homeFlight *flights.Flight
 
 	if fromAirport.Id != toAirport.Id {
+		t5 := time.Now().UnixNano()
 		outFlightSearch, err := s.flightClient.SearchFlights(ctx, &flights.SearchRequest{FromAirport: fromAirport.Id, ToAirport: toAirport.Id})
+		t6 := time.Now().UnixNano()
 		if err != nil {
 			slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		slog.Info(fmt.Sprintf("FLIGHT RTT: %v", t6-t5))
 
 		outFlight = outFlightSearch.GetFlights()[0]
 
+		t7 := time.Now().UnixNano()
 		homeFlightSearch, err := s.flightClient.SearchFlights(ctx, &flights.SearchRequest{FromAirport: toAirport.Id, ToAirport: fromAirport.Id})
+		t8 := time.Now().UnixNano()
 		if err != nil {
 			slog.WarnContext(ctx, "Http request failed", slog.String("response_message", err.Error()))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		slog.Info(fmt.Sprintf("FLIGHT RTT: %v", t8-t7))
 
 		homeFlight = homeFlightSearch.GetFlights()[0]
 

@@ -38,7 +38,11 @@ public class FlightService implements dev.chords.travel.choreographies.FlightSer
         try {
             var request = AirportSearchRequest.newBuilder().setLat(location.latitude).setLon(location.longitude).build();
 
+            Long t1 = System.nanoTime();
             var result = this.connection.nearestAirport(request).get(10, TimeUnit.SECONDS);
+            Long t2 = System.nanoTime();
+
+            System.out.println("SIDECAR RTT: " + (t2-t1));
 
             return new Airport(result.getId(), result.getName(), new Coordinate(result.getLat(), result.getLon()));
         } catch (Exception e) {
@@ -51,7 +55,11 @@ public class FlightService implements dev.chords.travel.choreographies.FlightSer
         try {
             var request = FlightsOuterClass.SearchRequest.newBuilder().setFromAirport(fromAirportID).setToAirport(toAirportID).setDepartureDate(date).build();
 
+            Long t1 = System.nanoTime();
             var result = this.connection.searchFlights(request).get(10, TimeUnit.SECONDS);
+            Long t2 = System.nanoTime();
+
+            System.out.println("SIDECAR RTT: " + (t2-t1));
 
             return result
                 .getFlightsList()
