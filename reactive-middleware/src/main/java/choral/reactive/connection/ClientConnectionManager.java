@@ -16,18 +16,15 @@ public interface ClientConnectionManager extends AutoCloseable {
     @Override
     void close() throws IOException, InterruptedException;
 
-    public interface Connection extends AutoCloseable {
+    interface Connection extends AutoCloseable {
         void sendMessage(Message msg) throws Exception;
 
         @Override
         void close() throws IOException, InterruptedException;
     }
 
-    public static ClientConnectionManager makeConnectionManager(String address, OpenTelemetry telemetry)
+    static ClientConnectionManager makeConnectionManager(String address, OpenTelemetry telemetry)
             throws URISyntaxException, IOException {
-        // return new TCPClientManagerSimple(address, telemetry);
-        // return new TCPClientManagerPool(address, telemetry);
         return new GRPCClientManager(address, telemetry);
-        // return new GRPCStreamingClientManager(address, telemetry);
     }
 }

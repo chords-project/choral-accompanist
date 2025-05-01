@@ -67,6 +67,22 @@ public class Message implements Serializable {
         return "Message [ session=" + session + " message=" + message + "]";
     }
 
+    public byte[] serialize() {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(buf)) {
+            oos.writeObject(message);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return buf.toByteArray();
+    }
+
+    public static Message deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream buf = new ByteArrayInputStream(bytes);
+        ObjectInputStream ois = new ObjectInputStream(buf);
+        return (Message) ois.readObject();
+    }
+
     public Message(ChannelOuterClass.Message grpcMessage) throws Exception {
         this.session = new Session(grpcMessage.getChoreography(), grpcMessage.getSender(), grpcMessage.getSessionId());
         this.headers = new HashMap<>(grpcMessage.getHeadersMap());
@@ -98,7 +114,7 @@ public class Message implements Serializable {
                 .setSpanContext(ChannelOuterClass.SpanContext.newBuilder()
                         .setTraceIdHex(this.senderSpanContext.traceIdHex)
                         .setSpanIdHex(this.senderSpanContext.spanIdHex)
-                        .setTraceFlags(ByteString.copyFrom(new byte[] { this.senderSpanContext.traceFlags }))
+                        .setTraceFlags(ByteString.copyFrom(new byte[]{this.senderSpanContext.traceFlags}))
                         .putAllTraceState(this.senderSpanContext.traceState))
                 .build();
     }

@@ -43,8 +43,11 @@ public class ChannelSelectTest {
                 });
 
         assertDoesNotThrow(() -> {
-            try (ClientConnectionManager connManager = ClientConnectionManager.makeConnectionManager("0.0.0.0:4567",
-                    OpenTelemetry.noop());) {
+            try (ClientConnectionManager connManager =
+                         ClientConnectionManager.makeConnectionManager(
+                                 "0.0.0.0:4567",
+                                 OpenTelemetry.noop())
+            ) {
                 Session session = Session.makeSession("choreography", "client");
                 ReactiveClient client = new ReactiveClient(connManager, "client",
                         TelemetrySession.makeNoop(session));

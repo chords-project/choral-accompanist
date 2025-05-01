@@ -67,6 +67,8 @@ dependencies {
     implementation("io.grpc:grpc-opentelemetry:${grpcVersion}")
     implementation("io.grpc:grpc-services:${grpcVersion}")
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+
+    implementation("org.zeromq:jeromq:0.6.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

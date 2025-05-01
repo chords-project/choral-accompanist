@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.Test;
 
 public class ConnectionTest {
@@ -30,21 +32,27 @@ public class ConnectionTest {
             stats.receivedSession = ctx.session;
             stats.newSessionCount++;
 
-            stats.firstMsg = ctx.chanB("client").<String>fcom().get();
-            stats.secondMsg = ctx.chanB("client").<String>fcom().get();
+            assertDoesNotThrow(() -> {
+                stats.firstMsg = ctx.chanB("client").<String>fcom().get();
+                stats.secondMsg = ctx.chanB("client").<String>fcom().get();
+            });
+
             done.countDown();
         });
 
         Thread.ofVirtual()
                 .start(() -> {
                     assertDoesNotThrow(() -> {
-                        server.listen("0.0.0.0:4567");
+                        server.listen("127.0.0.1:4567");
                     });
                 });
 
         assertDoesNotThrow(() -> {
-            try (ClientConnectionManager connManager = ClientConnectionManager.makeConnectionManager("0.0.0.0:4567",
+            try (ClientConnectionManager connManager = ClientConnectionManager.makeConnectionManager("127.0.0.1:4567",
                     OpenTelemetry.noop());) {
+
+                Thread.sleep(1000);
+
                 Session session = Session.makeSession("choreography", "client");
                 ReactiveClient client = new ReactiveClient(connManager, "client",
                         TelemetrySession.makeNoop(session));
