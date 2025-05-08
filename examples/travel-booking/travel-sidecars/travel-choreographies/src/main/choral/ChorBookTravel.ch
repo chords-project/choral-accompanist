@@ -29,18 +29,10 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
         FlightService@Flight flightSvc,
         GeoService@Geo geoSvc,
         ReservationService@Reservation reservationSvc
-
-        //SymChannel@(Client, Flight)<Serializable> ch_clientFlight,
-        //SymChannel@(Client, Geo)<Serializable> ch_clientGeo,
-        //DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation,
-        //SymChannel@(Client, Reservation)<Serializable> ch_clientReservation
     ) {
         this.flightSvc = flightSvc;
         this.geoSvc = geoSvc;
         this.reservationSvc = reservationSvc;
-
-        //this.ch_clientGeo = ch_clientGeo;
-        //this.ch_geoReservation = ch_geoReservation;
 
         this.ch_clientFlight = new ReactiveSymChannel@(Client, Flight)<Serializable>(
             ReactiveChannel@(Client, Flight).connect(

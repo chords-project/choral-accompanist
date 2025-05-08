@@ -48,20 +48,17 @@ public class Main {
 
                 break;
             case SEARCH_HOTELS:
-                throw new RuntimeException("Search hotels needs refactoring");
-//                ctx.log("New BOOK_TRAVEL request");
-//
-//                ChorSearchHotels_Reservation searchChor = new ChorSearchHotels_Reservation(
-//                        reservationService,
-//                        ctx.chanB(Service.SEARCH.name()),
-//                        ctx.chanA(profileConn)
-//                );
-//
-//                searchChor.search();
-//
-//                ctx.log("BOOK_TRAVEL choreography completed");
-//
-//                break;
+                ctx.log("New BOOK_TRAVEL request");
+
+                ChorSearchHotels_Reservation searchChor = new ChorSearchHotels_Reservation(
+                        ctx, reservationService
+                );
+
+                searchChor.search();
+
+                ctx.log("BOOK_TRAVEL choreography completed");
+
+                break;
         }
     }
 }

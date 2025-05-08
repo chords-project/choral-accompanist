@@ -14,7 +14,6 @@ public class Main {
 
     private static ProfileService profileService;
 
-    private static ClientConnectionManager clientConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -27,14 +26,12 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8083"));
         profileService = new ProfileService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
-        clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
-
         ReactiveServer server = new ReactiveServer(Service.PROFILE.name(), telemetry, Main::handleNewSession);
 
         server.listen(ServiceResources.shared.profile);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static void handleNewSession(SessionContext ctx) {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -42,9 +39,7 @@ public class Main {
                 ctx.log("New SEARCH_HOTELS request");
 
                 ChorSearchHotels_Profile searchHotelsChor = new ChorSearchHotels_Profile(
-                        profileService,
-                        ctx.chanB(Service.RESERVATION.name()),
-                        ctx.chanA(clientConn)
+                        ctx, profileService
                 );
 
                 searchHotelsChor.search();

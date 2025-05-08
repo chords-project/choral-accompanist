@@ -85,41 +85,37 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
     }
 
     private static ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
-        throw new RuntimeException("SearchHotels needs refactoring");
-//        TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
-//
-//        Span span = telemetry
-//                .getTracer(JaegerConfiguration.TRACER_NAME)
-//                .spanBuilder("SearchHotels")
-//                .setSpanKind(SpanKind.CLIENT)
-//                .setAttribute("choreography.session", session.toString())
-//                .startSpan();
-//
-//        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
-//        server.registerSession(session, telemetrySession);
-//
-//        try (
-//                Scope scope = span.makeCurrent();
-//                //ReactiveClient searchClient = new ReactiveClient(searchConn, Service.CLIENT.name(), telemetrySession);
-//                SessionContext ctx = new SessionContext(server, session, telemetrySession);
-//        ) {
-//            telemetrySession.log("Initializing SEARCH_HOTELS choreography");
-//
-//            ChorSearchHotels_Client searchHotelsChor = new ChorSearchHotels_Client(
-//                    ctx
-//            );
-//
-//            telemetrySession.log("Starting SEARCH_HOTELS choreography");
-//            var result = searchHotelsChor.search(request);
-//            telemetrySession.log("Finished SEARCH_HOTELS choreography");
-//
-//            return result;
-//        } catch (Exception e) {
-//            telemetrySession.recordException("Client SEARCH_HOTELS choreography failed", e, true);
-//            throw e;
-//        } finally {
-//            span.end();
-//        }
+        TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
+
+        Span span = telemetry
+                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .spanBuilder("SearchHotels")
+                .setSpanKind(SpanKind.CLIENT)
+                .setAttribute("choreography.session", session.toString())
+                .startSpan();
+
+        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
+        server.registerSession(session, telemetrySession);
+
+        try (
+                Scope scope = span.makeCurrent();
+                SessionContext ctx = new SessionContext(server, session, telemetrySession);
+        ) {
+            telemetrySession.log("Initializing SEARCH_HOTELS choreography");
+
+            ChorSearchHotels_Client searchHotelsChor = new ChorSearchHotels_Client(ctx);
+
+            telemetrySession.log("Starting SEARCH_HOTELS choreography");
+            var result = searchHotelsChor.search(request);
+            telemetrySession.log("Finished SEARCH_HOTELS choreography");
+
+            return result;
+        } catch (Exception e) {
+            telemetrySession.recordException("Client SEARCH_HOTELS choreography failed", e, true);
+            throw e;
+        } finally {
+            span.end();
+        }
     }
 
     private static BookTravelResult bookTravel(BookTravelRequest req) throws Exception {

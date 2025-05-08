@@ -45,9 +45,7 @@ public class Main {
                 ctx.log("New SEARCH_HOTELS request");
 
                 ChorSearchHotels_Search searchHotelsChor = new ChorSearchHotels_Search(
-                        searchService,
-                        ctx.chanB(Service.CLIENT.name()),
-                        ctx.chanA(reservationConn)
+                        ctx, searchService
                 );
 
                 searchHotelsChor.search();

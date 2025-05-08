@@ -5,6 +5,9 @@ import java.io.Serializable;
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
+import choral.reactive.SessionContext;
+import choral.reactive.ReactiveChannel;
+
 public class ChorSearchHotels@(Client, Search, Reservation, Profile) {
     private SearchService@Search searchSvc;
     private ReservationService@Reservation reservationSvc;
@@ -16,22 +19,38 @@ public class ChorSearchHotels@(Client, Search, Reservation, Profile) {
     private DiChannel@(Profile, Client)<Serializable> ch_profileClient;
 
     public ChorSearchHotels(
+        SessionContext@Client clientCtx,
+        SessionContext@Search searchCtx,
+        SessionContext@Reservation reservationCtx,
+        SessionContext@Profile profileCtx,
+
         SearchService@Search searchSvc,
         ReservationService@Reservation reservationSvc,
-        ProfileService@Profile profileSvc,
-        DiChannel@(Client, Search)<Serializable> ch_clientSearch,
-        DiChannel@(Search, Reservation)<Serializable> ch_searchReservation,
-        DiChannel@(Reservation, Profile)<Serializable> ch_reservationProfile,
-        DiChannel@(Profile, Client)<Serializable> ch_profileClient
+        ProfileService@Profile profileSvc
     ) {
         this.searchSvc = searchSvc;
         this.reservationSvc = reservationSvc;
         this.profileSvc = profileSvc;
 
-        this.ch_clientSearch = ch_clientSearch;
-        this.ch_searchReservation = ch_searchReservation;
-        this.ch_reservationProfile = ch_reservationProfile;
-        this.ch_profileClient = ch_profileClient;
+        this.ch_clientSearch = ReactiveChannel@(Client, Search).connect(
+            clientCtx, searchCtx,
+            "CLIENT"@Search, "CHORAL_SEARCH"@Client
+        );
+
+        this.ch_searchReservation = ReactiveChannel@(Search, Reservation).connect(
+                searchCtx, reservationCtx,
+                "SEARCH"@Reservation, "CHORAL_RESERVATION"@Search
+        );
+
+        this.ch_reservationProfile = ReactiveChannel@(Reservation, Profile).connect(
+                reservationCtx, profileCtx,
+                "RESERVATION"@Profile, "CHORAL_PROFILE"@Reservation
+        );
+
+        this.ch_profileClient = ReactiveChannel@(Profile, Client).connect(
+                profileCtx, clientCtx,
+                "PROFILE"@Client, "CHORAL_CLIENT"@Profile
+        );
     }
 
     public ArrayList@Client<Hotel> search(SearchHotelsRequest@Client req) {
