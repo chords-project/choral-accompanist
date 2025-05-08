@@ -1,0 +1,17 @@
+package choral.reactive;
+
+import java.io.Serializable;
+
+import choral.channels.AsyncDiChannel;
+import choral.channels.Future;
+import choral.reactive.connection.ClientConnectionManager;
+
+public class ReactiveChannel@(A,B)<T@X> implements AsyncDiChannel@(A,B)<T> {
+    public static ReactiveChannel@(A,B)<Serializable> connect(SessionContext@A ctxA, SessionContext@B ctxB, String@B recvServiceName, String@A serverAddressEnv) {}
+
+    public < S@Y extends T@Y > Future@B<S> fcom( S@A m );
+    public < S@Y extends T@Y > S@B com( S@A m );
+
+    @SelectionMethod
+	public < T@X extends Enum@X< T > > T@B select( T@A m );
+}

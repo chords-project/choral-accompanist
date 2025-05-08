@@ -1,7 +1,7 @@
 package dev.chords.travel.profileservice;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
 import dev.chords.travel.choreographies.ChorSearchHotels_Search;
@@ -10,6 +10,7 @@ import dev.chords.travel.choreographies.Tracing;
 import dev.chords.travel.choreographies.TravelSession;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.OpenTelemetry;
+
 import java.net.InetSocketAddress;
 
 public class Main {

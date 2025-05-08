@@ -1,0 +1,25 @@
+package choral.reactive;
+
+import java.io.Serializable;
+
+import choral.channels.AsyncSymChannel;
+import choral.channels.Future;
+import choral.reactive.connection.ClientConnectionManager;
+
+public class ReactiveSymChannel@(A,B)<T@X> implements AsyncSymChannel@(A,B)<T> {
+    public ReactiveSymChannel(
+            ReactiveChannel@(A,B)<Serializable> chanAB,
+            ReactiveChannel@(B,A)<Serializable> chanBA
+    ) {}
+
+    public < S@Y extends T@Y > Future@B<S> fcom( S@A m );
+    public < S@Y extends T@Y > Future@A<S> fcom( S@B m );
+
+    public < S@Y extends T@Y > S@B com( S@A m );
+    public < S@Y extends T@Y > S@A com( S@B m );
+
+    @SelectionMethod
+    public < T@X extends Enum@X< T > > T@A select( T@B m );
+    @SelectionMethod
+    public < T@X extends Enum@X< T > > T@B select( T@A m );
+}

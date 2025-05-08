@@ -7,6 +7,9 @@ import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
 
+import java.io.IOException;
+import java.io.Serializable;
+
 public class ReactiveChannel_A<M> implements AsyncDiChannel_A<M> {
 
     public final Session session;
@@ -17,6 +20,18 @@ public class ReactiveChannel_A<M> implements AsyncDiChannel_A<M> {
         this.session = session;
         this.sender = sender;
         this.telemetrySession = telemetrySession;
+    }
+
+    public static ReactiveChannel_A<Serializable> connect(SessionContext ctx, Unit a, Unit b, String serverAddressEnv) {
+        return connect(ctx, serverAddressEnv);
+    }
+
+    public static ReactiveChannel_A<Serializable> connect(SessionContext ctx, String serverAddressEnv) {
+        try {
+            return ctx.chanA(serverAddressEnv);
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

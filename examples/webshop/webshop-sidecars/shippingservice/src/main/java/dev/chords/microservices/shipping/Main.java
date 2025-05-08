@@ -2,7 +2,7 @@ package dev.chords.microservices.shipping;
 
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.tracing.JaegerConfiguration;
 import dev.chords.choreographies.ChorPlaceOrder_Shipping;
 import dev.chords.choreographies.ServiceResources;
@@ -10,6 +10,7 @@ import dev.chords.choreographies.Tracing;
 import dev.chords.choreographies.WebshopSession;
 import dev.chords.choreographies.WebshopSession.Service;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+
 import java.net.InetSocketAddress;
 
 public class Main {

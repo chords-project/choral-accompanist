@@ -1,0 +1,9 @@
+package choral.channels;
+
+import choral.channels.DiChannel;
+
+public interface AsyncDiChannel@(A, B)<T@X> extends DiChannel@(A,B)<T> {
+    < S@Y extends T@Y > Future@B<S> fcom( S@A m );
+
+
+}

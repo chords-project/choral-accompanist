@@ -5,16 +5,27 @@ import choral.channels.Future;
 import choral.lang.Unit;
 import choral.reactive.tracing.TelemetrySession;
 
+import java.io.IOException;
+import java.io.Serializable;
+
 public class ReactiveChannel_B<M> implements AsyncDiChannel_B<M> {
     private final Session session;
     private final ReactiveReceiver<M> receiver;
     private final TelemetrySession telemetrySession;
 
     public ReactiveChannel_B(Session session, ReactiveReceiver<M> receiver,
-            TelemetrySession telemetrySession) {
+                             TelemetrySession telemetrySession) {
         this.session = session;
         this.receiver = receiver;
         this.telemetrySession = telemetrySession;
+    }
+
+    public static ReactiveChannel_B<Serializable> connect(SessionContext ctx, String clientServiceName) {
+        return ctx.chanB(clientServiceName);
+    }
+
+    public static ReactiveChannel_B<Serializable> connect(Unit a, SessionContext ctx, String clientServiceName, Unit b) {
+        return connect(ctx, clientServiceName);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package dev.chords.travel.clientservice;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
 import dev.chords.travel.choreographies.ChorBookTravel_Flight;
@@ -16,8 +16,6 @@ import java.net.InetSocketAddress;
 public class Main {
 
     private static FlightService flightService;
-
-    private static ClientConnectionManager clientConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -29,8 +27,6 @@ public class Main {
         String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "flights");
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8090"));
         flightService = new FlightService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
-
-        clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.FLIGHT.name(), telemetry, Main::handleNewSession);
 
@@ -45,8 +41,7 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Flight bookTravelChor = new ChorBookTravel_Flight(
-                        flightService,
-                        ctx.symChan(Service.CLIENT.name(), clientConn)
+                        ctx, flightService
                 );
 
                 bookTravelChor.bookTravel();

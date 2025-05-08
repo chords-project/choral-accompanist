@@ -2,6 +2,7 @@ package choral.reactive;
 
 import choral.channels.Future;
 import choral.reactive.connection.ClientConnectionManager;
+import choral.reactive.connection.ClientConnectionsStore;
 import choral.reactive.connection.Message;
 import choral.reactive.connection.ServerConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
@@ -33,14 +34,17 @@ public class ReactiveServer
 
     private final MessageQueue<Serializable> msgQueue;
 
-    /** Maps a sessionID to a TelemetrySession. */
+    /**
+     * Maps a sessionID to a TelemetrySession.
+     */
     private final HashMap<Integer, TelemetrySession> telemetrySessionMap = new HashMap<>();
 
-    private final String serviceName;
+    public final String serviceName;
     private final NewSessionEvent newSessionEvent;
     private final OpenTelemetry telemetry;
     private final Logger logger;
     private final ServerConnectionManager connectionManager;
+    private final ClientConnectionsStore clientConnectionsStore;
     private final DoubleHistogram receiveTimeHistogram;
     private final DoubleHistogram sessionDurationHistogram;
 
@@ -54,17 +58,18 @@ public class ReactiveServer
         this.logger = new Logger(telemetry, ReactiveServer.class.getName());
         this.newSessionEvent = newSessionEvent;
         this.connectionManager = ServerConnectionManager.makeConnectionManager(this, telemetry);
+        this.clientConnectionsStore = new ClientConnectionsStore(telemetry);
         this.msgQueue = new MessageQueue<>(telemetry);
         this.receiveTimeHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-            .histogramBuilder("choral.reactive.server.receive-time")
-            .setDescription("Channel receive time")
-            .setUnit("ms")
-            .build();
+                .histogramBuilder("choral.reactive.server.receive-time")
+                .setDescription("Channel receive time")
+                .setUnit("ms")
+                .build();
         this.sessionDurationHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-            .histogramBuilder("choral.reactive.server.session-duration")
-            .setDescription("Session duration")
-            .setUnit("ms")
-            .build();
+                .histogramBuilder("choral.reactive.server.session-duration")
+                .setDescription("Session duration")
+                .setUnit("ms")
+                .build();
     }
 
     /**
@@ -93,21 +98,25 @@ public class ReactiveServer
         connectionManager.listen(address);
     }
 
+    public ClientConnectionsStore getClientStore() {
+        return clientConnectionsStore;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Serializable> Future<T> recv(Session session) {
         Attributes attributes = Attributes.builder()
-            .put("channel.service", serviceName)
-            .put("channel.sender", session.senderName())
-            .put("channel.sessionID", session.sessionID)
-            .build();
+                .put("channel.service", serviceName)
+                .put("channel.sender", session.senderName())
+                .put("channel.sessionID", session.sessionID)
+                .build();
 
         Long startTime = System.nanoTime();
 
         Span span = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
-            .spanBuilder("Receive message ("+session.senderName().toLowerCase()+")")
-            .setAllAttributes(attributes)
-            .startSpan();
+                .spanBuilder("Receive message (" + session.senderName().toLowerCase() + ")")
+                .setAllAttributes(attributes)
+                .startSpan();
 
         TelemetrySession telemetrySession;
         synchronized (this) {
@@ -206,8 +215,8 @@ public class ReactiveServer
                                     Attributes.builder().put("service", serviceName).build());
 
                             try (Scope scope = span.makeCurrent();
-                                    SessionContext sessionCtx = new SessionContext(this, msg.session,
-                                            telemetrySession);) {
+                                 SessionContext sessionCtx = new SessionContext(this, msg.session,
+                                         telemetrySession);) {
                                 newSessionEvent.onNewSession(sessionCtx);
                             } catch (Exception e) {
                                 telemetrySession.recordException(
@@ -223,8 +232,8 @@ public class ReactiveServer
                             cleanupKey(msg.session);
                             Long endTime = System.nanoTime();
                             sessionDurationHistogram.record(
-                                (endTime - startTime) / 1_000_000.0,
-                                Attributes.builder().put("session", msg.session.toString()).build()
+                                    (endTime - startTime) / 1_000_000.0,
+                                    Attributes.builder().put("session", msg.session.toString()).build()
                             );
                         });
             }
@@ -249,74 +258,6 @@ public class ReactiveServer
 
     public interface NewSessionEvent {
         void onNewSession(SessionContext ctx) throws Exception;
-    }
-
-    /**
-     * A context object for creating channels and logging telemetry events in a particular session.
-     */
-    public static class SessionContext implements AutoCloseable {
-
-        private final ReactiveServer server;
-        public final Session session;
-        private final TelemetrySession telemetrySession;
-        private final HashSet<AutoCloseable> closeHandles = new HashSet<>();
-
-        private SessionContext(ReactiveServer server, Session session, TelemetrySession telemetrySession) {
-            this.server = server;
-            this.session = session;
-            this.telemetrySession = telemetrySession;
-        }
-
-        /**
-         * Creates a channel for receiving messages from the given client in this session.
-         *
-         * @param clientService the name of the client service
-         */
-        public ReactiveChannel_B<Serializable> chanB(String clientService) {
-            Session newSession = session.replacingSender(clientService);
-            return new ReactiveChannel_B<Serializable>(newSession, server, telemetrySession);
-        }
-
-        /**
-         * Creates a channel for sending messages to the given client in this session.
-         *
-         * @param connectionManager an implementation of the communication middleware
-         */
-        public ReactiveChannel_A<Serializable> chanA(ClientConnectionManager connectionManager)
-                throws IOException, InterruptedException {
-            ReactiveClient client = new ReactiveClient(connectionManager, server.serviceName, telemetrySession);
-            closeHandles.add(client);
-            return client.chanA(session);
-        }
-
-        /**
-         * Creates a bidirectional channel between this service and the given client.
-         *
-         * @param clientService the name of the service to which we are connecting
-         * @param connectionManager an implementation of the communication middleware
-         */
-        public ReactiveSymChannel<Serializable> symChan(String clientService,
-                ClientConnectionManager connectionManager)
-                throws IOException, InterruptedException {
-            var a = chanA(connectionManager);
-            var b = chanB(clientService);
-            return new ReactiveSymChannel<>(a, b);
-        }
-
-        public void log(String message) {
-            telemetrySession.log(message);
-        }
-
-        public void log(String message, Attributes attributes) {
-            telemetrySession.log(message, attributes);
-        }
-
-        @Override
-        public void close() throws Exception {
-            for (AutoCloseable handle : closeHandles) {
-                handle.close();
-            }
-        }
     }
 
     @Override

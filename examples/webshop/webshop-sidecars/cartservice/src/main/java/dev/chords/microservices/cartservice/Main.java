@@ -2,7 +2,7 @@ package dev.chords.microservices.cartservice;
 
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.Logger;
 import dev.chords.choreographies.ChorPlaceOrder_Cart;
@@ -11,6 +11,7 @@ import dev.chords.choreographies.Tracing;
 import dev.chords.choreographies.WebshopSession;
 import dev.chords.choreographies.WebshopSession.Service;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

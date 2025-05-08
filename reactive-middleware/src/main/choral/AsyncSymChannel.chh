@@ -1,0 +1,8 @@
+package choral.channels;
+
+import choral.channels.SymChannel;
+
+public interface AsyncSymChannel@(A, B)<T@X> extends
+    AsyncDiChannel@(A, B)<T>,
+    AsyncDiChannel@(B, A)<T>,
+    SymChannel@(A,B)<T> {}

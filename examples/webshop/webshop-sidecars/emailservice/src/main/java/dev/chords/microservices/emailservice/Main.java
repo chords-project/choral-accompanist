@@ -1,7 +1,7 @@
 package dev.chords.microservices.emailservice;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
 import dev.chords.choreographies.ChorPlaceOrder_Email;

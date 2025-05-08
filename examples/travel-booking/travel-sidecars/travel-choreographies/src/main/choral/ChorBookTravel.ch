@@ -1,10 +1,14 @@
 package dev.chords.travel.choreographies;
 
+import java.io.Serializable;
+import java.util.Optional;
+
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
-import java.io.Serializable;
-import java.util.Optional;
+import choral.reactive.SessionContext;
+import choral.reactive.ReactiveChannel;
+import choral.reactive.ReactiveSymChannel;
 
 public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private FlightService@Flight flightSvc;
@@ -17,23 +21,64 @@ public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private SymChannel@(Client, Reservation)<Serializable> ch_clientReservation;
 
     public ChorBookTravel(
+        SessionContext@Client clientCtx,
+        SessionContext@Flight flightCtx,
+        SessionContext@Geo geoCtx,
+        SessionContext@Reservation reservationCtx,
+
         FlightService@Flight flightSvc,
         GeoService@Geo geoSvc,
-        ReservationService@Reservation reservationSvc,
+        ReservationService@Reservation reservationSvc
 
-        SymChannel@(Client, Flight)<Serializable> ch_clientFlight,
-        SymChannel@(Client, Geo)<Serializable> ch_clientGeo,
-        DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation,
-        SymChannel@(Client, Reservation)<Serializable> ch_clientReservation
+        //SymChannel@(Client, Flight)<Serializable> ch_clientFlight,
+        //SymChannel@(Client, Geo)<Serializable> ch_clientGeo,
+        //DiChannel@(Geo, Reservation)<Serializable> ch_geoReservation,
+        //SymChannel@(Client, Reservation)<Serializable> ch_clientReservation
     ) {
         this.flightSvc = flightSvc;
         this.geoSvc = geoSvc;
         this.reservationSvc = reservationSvc;
 
-        this.ch_clientFlight = ch_clientFlight;
-        this.ch_clientGeo = ch_clientGeo;
-        this.ch_geoReservation = ch_geoReservation;
-        this.ch_clientReservation = ch_clientReservation;
+        //this.ch_clientGeo = ch_clientGeo;
+        //this.ch_geoReservation = ch_geoReservation;
+
+        this.ch_clientFlight = new ReactiveSymChannel@(Client, Flight)<Serializable>(
+            ReactiveChannel@(Client, Flight).connect(
+                clientCtx, flightCtx,
+                "CLIENT"@Flight, "CHORAL_FLIGHT"@Client
+            ),
+            ReactiveChannel@(Flight, Client).connect(
+                flightCtx, clientCtx,
+                "FLIGHT"@Client, "CHORAL_CLIENT"@Flight
+            )
+        );
+
+        this.ch_clientGeo = new ReactiveSymChannel@(Client, Geo)<Serializable>(
+            ReactiveChannel@(Client, Geo).connect(
+                clientCtx, geoCtx,
+                "CLIENT"@Geo, "CHORAL_GEO"@Client
+            ),
+            ReactiveChannel@(Geo, Client).connect(
+                geoCtx, clientCtx,
+                "GEO"@Client, "CHORAL_CLIENT"@Geo
+            )
+        );
+
+        this.ch_geoReservation = ReactiveChannel@(Geo, Reservation).connect(
+            geoCtx, reservationCtx,
+            "GEO"@Reservation, "CHORAL_RESERVATION"@Geo
+        );
+
+        this.ch_clientReservation = new ReactiveSymChannel@(Client, Reservation)<Serializable>(
+            ReactiveChannel@(Client, Reservation).connect(
+                clientCtx, reservationCtx,
+                "CLIENT"@Reservation, "CHORAL_RESERVATION"@Client
+            ),
+            ReactiveChannel@(Reservation, Client).connect(
+                reservationCtx, clientCtx,
+                "RESERVATION"@Client, "CHORAL_CLIENT"@Reservation
+            )
+        );
     }
 
     public BookTravelResult@Client bookTravel(BookTravelRequest@Client req) {

@@ -3,6 +3,7 @@ package dev.chords.travel.clientservice;
 import choral.reactive.ReactiveClient;
 import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveSymChannel;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.Logger;
@@ -22,10 +23,10 @@ import java.util.ArrayList;
 
 public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
-    private static ClientConnectionManager flightConn;
-    private static ClientConnectionManager geoConn;
-    private static ClientConnectionManager reservationConn;
-    private static ClientConnectionManager searchConn;
+    //    private static ClientConnectionManager flightConn;
+//    private static ClientConnectionManager geoConn;
+//    private static ClientConnectionManager reservationConn;
+//    private static ClientConnectionManager searchConn;
     private static ReactiveServer server;
     private static Logger logger;
 
@@ -38,15 +39,15 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
         logger.info("Starting choral client sidecar");
 
-        try {
-            flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
-            geoConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.geo, telemetry);
-            reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
-            searchConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.search, telemetry);
-        } catch (URISyntaxException | IOException e) {
-            logger.exception("failed to start sidecar connections", e);
-            throw new RuntimeException(e);
-        }
+//        try {
+//            flightConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.flight, telemetry);
+//            geoConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.geo, telemetry);
+//            reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+//            searchConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.search, telemetry);
+//        } catch (URISyntaxException | IOException e) {
+//            logger.exception("failed to start sidecar connections", e);
+//            throw new RuntimeException(e);
+//        }
 
         server = new ReactiveServer(Service.CLIENT.name(), telemetry, ctx -> {
             logger.warn("client server received new session from " + ctx.session.senderName() + ", this should never happen and is ignored.");
@@ -84,40 +85,41 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
     }
 
     private static ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception {
-        TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
-
-        Span span = telemetry
-                .getTracer(JaegerConfiguration.TRACER_NAME)
-                .spanBuilder("SearchHotels")
-                .setSpanKind(SpanKind.CLIENT)
-                .setAttribute("choreography.session", session.toString())
-                .startSpan();
-
-        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
-        server.registerSession(session, telemetrySession);
-
-        try (
-                Scope scope = span.makeCurrent();
-                ReactiveClient searchClient = new ReactiveClient(searchConn, Service.CLIENT.name(), telemetrySession);
-        ) {
-            telemetrySession.log("Initializing SEARCH_HOTELS choreography");
-
-            ChorSearchHotels_Client searchHotelsChor = new ChorSearchHotels_Client(
-                    searchClient.chanA(session),
-                    server.chanB(session, Service.PROFILE.name())
-            );
-
-            telemetrySession.log("Starting SEARCH_HOTELS choreography");
-            var result = searchHotelsChor.search(request);
-            telemetrySession.log("Finished SEARCH_HOTELS choreography");
-
-            return result;
-        } catch (Exception e) {
-            telemetrySession.recordException("Client SEARCH_HOTELS choreography failed", e, true);
-            throw e;
-        } finally {
-            span.end();
-        }
+        throw new RuntimeException("SearchHotels needs refactoring");
+//        TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
+//
+//        Span span = telemetry
+//                .getTracer(JaegerConfiguration.TRACER_NAME)
+//                .spanBuilder("SearchHotels")
+//                .setSpanKind(SpanKind.CLIENT)
+//                .setAttribute("choreography.session", session.toString())
+//                .startSpan();
+//
+//        TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
+//        server.registerSession(session, telemetrySession);
+//
+//        try (
+//                Scope scope = span.makeCurrent();
+//                //ReactiveClient searchClient = new ReactiveClient(searchConn, Service.CLIENT.name(), telemetrySession);
+//                SessionContext ctx = new SessionContext(server, session, telemetrySession);
+//        ) {
+//            telemetrySession.log("Initializing SEARCH_HOTELS choreography");
+//
+//            ChorSearchHotels_Client searchHotelsChor = new ChorSearchHotels_Client(
+//                    ctx
+//            );
+//
+//            telemetrySession.log("Starting SEARCH_HOTELS choreography");
+//            var result = searchHotelsChor.search(request);
+//            telemetrySession.log("Finished SEARCH_HOTELS choreography");
+//
+//            return result;
+//        } catch (Exception e) {
+//            telemetrySession.recordException("Client SEARCH_HOTELS choreography failed", e, true);
+//            throw e;
+//        } finally {
+//            span.end();
+//        }
     }
 
     private static BookTravelResult bookTravel(BookTravelRequest req) throws Exception {
@@ -135,18 +137,11 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
         try (
                 Scope scope = span.makeCurrent();
-                ReactiveClient flightClient = new ReactiveClient(flightConn, Service.CLIENT.name(), telemetrySession);
-                ReactiveClient geoClient = new ReactiveClient(geoConn, Service.CLIENT.name(), telemetrySession);
-                ReactiveClient reservationClient = new ReactiveClient(reservationConn, Service.CLIENT.name(), telemetrySession);
+                SessionContext ctx = new SessionContext(server, session, telemetrySession);
         ) {
             telemetrySession.log("Initializing BOOK_TRAVEL choreography");
 
-            var flightChan = new ReactiveSymChannel<>(flightClient.chanA(session), server.chanB(session, Service.FLIGHT.name()));
-            var reservationChan = new ReactiveSymChannel<>(reservationClient.chanA(session), server.chanB(session, Service.RESERVATION.name()));
-
-            var geoChan = new ReactiveSymChannel<>(geoClient.chanA(session), server.chanB(session, Service.GEO.name()));
-
-            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(flightChan, geoChan, reservationChan);
+            ChorBookTravel_Client bookTravelChor = new ChorBookTravel_Client(ctx);
 
             telemetrySession.log("Starting BOOK_TRAVEL choreography");
             var result = bookTravelChor.bookTravel(req);

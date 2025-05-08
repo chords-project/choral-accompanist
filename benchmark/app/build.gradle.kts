@@ -107,7 +107,7 @@ tasks.register("compileChoral") {
                     listOf(
                         "choral", "epp",
                         "--sources=${layout.projectDirectory.dir("src/main/choral")}",
-                        "--headers=${layout.projectDirectory.dir("src/main/choral")}",
+                        "--headers=${layout.projectDirectory.dir("src/main/choral")}:${layout.projectDirectory.dir("../../reactive-middleware/src/main/choral")}",
                         "--target=${layout.buildDirectory.dir("generated/choral").get()}",
                         name
                     )

@@ -1,20 +1,19 @@
 package dev.chords.travel.clientservice;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
 import dev.chords.travel.choreographies.*;
 import dev.chords.travel.choreographies.TravelSession.Service;
 import io.opentelemetry.api.OpenTelemetry;
+
 import java.net.InetSocketAddress;
 
 public class Main {
 
     private static ReservationService reservationService;
 
-    private static ClientConnectionManager clientConn;
-    private static ClientConnectionManager profileConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -26,9 +25,6 @@ public class Main {
         String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "reservation");
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8087"));
         reservationService = new ReservationService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
-
-        clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
-        profileConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.profile, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.RESERVATION.name(), telemetry, Main::handleNewSession);
 
@@ -43,9 +39,7 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Reservation bookTravelChor = new ChorBookTravel_Reservation(
-                    reservationService,
-                    ctx.chanB(Service.GEO.name()),
-                    ctx.symChan(Service.CLIENT.name(), clientConn)
+                        ctx, reservationService
                 );
 
                 bookTravelChor.bookTravel();
@@ -54,19 +48,20 @@ public class Main {
 
                 break;
             case SEARCH_HOTELS:
-                ctx.log("New BOOK_TRAVEL request");
-
-                ChorSearchHotels_Reservation searchChor = new ChorSearchHotels_Reservation(
-                        reservationService,
-                        ctx.chanB(Service.SEARCH.name()),
-                        ctx.chanA(profileConn)
-                );
-
-                searchChor.search();
-
-                ctx.log("BOOK_TRAVEL choreography completed");
-
-                break;
+                throw new RuntimeException("Search hotels needs refactoring");
+//                ctx.log("New BOOK_TRAVEL request");
+//
+//                ChorSearchHotels_Reservation searchChor = new ChorSearchHotels_Reservation(
+//                        reservationService,
+//                        ctx.chanB(Service.SEARCH.name()),
+//                        ctx.chanA(profileConn)
+//                );
+//
+//                searchChor.search();
+//
+//                ctx.log("BOOK_TRAVEL choreography completed");
+//
+//                break;
         }
     }
 }

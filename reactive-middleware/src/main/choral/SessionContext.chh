@@ -1,0 +1,3 @@
+package choral.reactive;
+
+public class SessionContext@(A) {}

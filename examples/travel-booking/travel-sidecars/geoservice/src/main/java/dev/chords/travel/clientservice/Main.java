@@ -1,7 +1,7 @@
 package dev.chords.travel.clientservice;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveServer.SessionContext;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.Logger;
 import dev.chords.travel.choreographies.ChorBookTravel_Geo;
@@ -16,9 +16,6 @@ import java.net.InetSocketAddress;
 public class Main {
 
     private static GeoService geoService;
-    
-    private static ClientConnectionManager reservationConn;
-    private static ClientConnectionManager clientConn;
     private static Logger logger;
 
     public static void main(String[] args) throws Exception {
@@ -30,9 +27,6 @@ public class Main {
         String rpcHost = System.getenv().getOrDefault("SERVICE_HOST", "geo");
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8083"));
         geoService = new GeoService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
-
-        reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
-        clientConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.client, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.GEO.name(), telemetry, Main::handleNewSession);
 
@@ -47,9 +41,7 @@ public class Main {
                 ctx.log("New BOOK_TRAVEL request");
 
                 ChorBookTravel_Geo bookTravelChor = new ChorBookTravel_Geo(
-                        geoService,
-                        ctx.symChan(Service.CLIENT.name(), clientConn),
-                        ctx.chanA(reservationConn)
+                        ctx, geoService
                 );
 
                 bookTravelChor.bookTravel();
