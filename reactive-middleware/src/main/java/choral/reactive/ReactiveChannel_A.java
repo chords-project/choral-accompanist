@@ -29,7 +29,7 @@ public class ReactiveChannel_A<M> implements AsyncDiChannel_A<M> {
     public static ReactiveChannel_A<Serializable> connect(SessionContext ctx, String serverAddressEnv) {
         try {
             return ctx.chanA(serverAddressEnv);
-        } catch (IOException | InterruptedException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -6,7 +6,7 @@ import java.io.Serializable;
 import choral.channels.AsyncDiChannel;
 import choral.channels.AsyncSymChannel;
 
-class GreeterChoreography@(A, B) {
+public class GreeterChoreography@(A, B) {
     private AsyncSymChannel@(A, B)<Serializable> ch;
     private GreeterService@B greeter;
 

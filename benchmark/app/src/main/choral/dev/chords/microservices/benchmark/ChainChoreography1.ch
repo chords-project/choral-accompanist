@@ -8,7 +8,7 @@ import choral.channels.SymChannel;
 
 import java.util.ArrayList;
 
-class ChainChoreography1@(Start, A) {
+public class ChainChoreography1@(Start, A) {
     private SymChannel@(Start, A)<Serializable> ch_StartA;
 
     private GreeterService@A greeter_A;

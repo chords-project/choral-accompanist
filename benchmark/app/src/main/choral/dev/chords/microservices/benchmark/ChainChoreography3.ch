@@ -8,7 +8,7 @@ import choral.channels.DiChannel;
 
 import java.util.ArrayList;
 
-class ChainChoreography3@(Start, A, B, C) {
+public class ChainChoreography3@(Start, A, B, C) {
     private DiChannel@(Start, A)<Serializable> ch_StartA;
     private DiChannel@(C, Start)<Serializable> ch_CStart;
 

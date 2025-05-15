@@ -1,4 +1,4 @@
-package dev.chords.microservices.benchmark;
+package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
 import accompanist.benchmark.chain.OrchestratorGrpc;

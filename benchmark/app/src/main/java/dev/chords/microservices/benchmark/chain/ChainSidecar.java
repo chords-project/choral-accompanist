@@ -1,4 +1,4 @@
-package dev.chords.microservices.benchmark;
+package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
 import choral.reactive.ReactiveClient;
@@ -7,6 +7,7 @@ import choral.reactive.ReactiveSymChannel;
 import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.TelemetrySession;
+import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 

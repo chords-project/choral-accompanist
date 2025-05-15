@@ -5,6 +5,7 @@ import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.metrics.LongUpDownCounter;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -14,20 +15,26 @@ public class MessageQueue<T> {
     /**
      * Maps a sessionID and a sender name to a queue of messages.
      */
-    private final HashMap<Session, SessionQueue<T>> queue = new HashMap<>();
+    private final HashMap<Session, SessionQueue> queue = new HashMap<>();
     private final LongUpDownCounter queueSizeGauge;
+    private final Duration timeout;
 
     public MessageQueue(OpenTelemetry openTelemetry) {
+        this(Duration.ofSeconds(10), openTelemetry);
+    }
+
+    public MessageQueue(Duration timeout, OpenTelemetry openTelemetry) {
+        this.timeout = timeout;
         queueSizeGauge = openTelemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-            .upDownCounterBuilder("choral.reactive.MessageQueue.size")
-            .setUnit("messages")
-            .setDescription("The size of the message queue")
-            .build();
+                .upDownCounterBuilder("choral.reactive.MessageQueue.size")
+                .setUnit("messages")
+                .setDescription("The size of the message queue")
+                .build();
     }
 
     public synchronized void addMessage(Session session, T message, int sequenceNumber, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
-            queue.put(session, new SessionQueue<>(telemetrySession));
+            queue.put(session, new SessionQueue(telemetrySession));
             queueSizeGauge.add(1);
         }
 
@@ -37,7 +44,7 @@ public class MessageQueue<T> {
     public synchronized Future<T> retrieveMessage(Session session, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
             queueSizeGauge.add(-1);
-            queue.put(session, new SessionQueue<>(telemetrySession));
+            queue.put(session, new SessionQueue(telemetrySession));
         }
 
         return queue.get(session).retrieveNextMessage();
@@ -47,7 +54,7 @@ public class MessageQueue<T> {
         this.queue.remove(session);
     }
 
-    private static class SessionQueue<T> {
+    private class SessionQueue {
         /**
          * The next receive operation will consume the first message in the queue.
          */
@@ -75,10 +82,8 @@ public class MessageQueue<T> {
         }
 
         public Future<T> retrieveNextMessage() {
-            // TODO Do we want this timeout? What happens if the sender takes >10s to compute the message?
-            //  Maybe the timeout is a parameter we pass *for each session*?
             CompletableFuture<T> future = new CompletableFuture<T>()
-                .orTimeout(10, TimeUnit.SECONDS);
+                    .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS);
 
             if (send.containsKey(nextReceiveSequenceNumber)) {
                 telemetrySession.log("ReactiveServer receive, message already arrived");

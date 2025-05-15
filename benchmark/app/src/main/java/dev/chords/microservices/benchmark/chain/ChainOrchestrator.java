@@ -1,8 +1,9 @@
-package dev.chords.microservices.benchmark;
+package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
 import accompanist.benchmark.chain.OrchestratorGrpc;
 import accompanist.benchmark.greeting.Greeting;
+import dev.chords.microservices.benchmark.GrpcClient;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
@@ -94,19 +95,19 @@ public class ChainOrchestrator implements Closeable {
 
             switch (request.getChainLength()) {
                 case ONE -> {
-                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
+                    firstClient.greet("Hello First");
                 }
                 case THREE -> {
-                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
-                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
-                    thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
+                    firstClient.greet("Hello First");
+                    secondClient.greet("Hello Second");
+                    thirdClient.greet("Hello Third");
                 }
                 case FIVE -> {
-                    firstClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello First").build());
-                    secondClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Second").build());
-                    thirdClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Third").build());
-                    fourthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fourth").build());
-                    fifthClient.blockingStub.sayHello(Greeting.HelloRequest.newBuilder().setName("Hello Fifth").build());
+                    firstClient.greet("Hello First");
+                    secondClient.greet("Hello Second");
+                    thirdClient.greet("Hello Third");
+                    fourthClient.greet("Hello Fourth");
+                    fifthClient.greet("Hello Fifth");
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + request.getChainLength());
             }

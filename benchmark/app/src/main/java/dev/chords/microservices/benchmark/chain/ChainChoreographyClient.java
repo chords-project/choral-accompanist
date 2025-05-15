@@ -1,8 +1,7 @@
-package dev.chords.microservices.benchmark;
+package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
 import accompanist.benchmark.chain.ChoreographyGrpc;
-import accompanist.benchmark.chain.OrchestratorGrpc;
 import choral.reactive.tracing.JaegerConfiguration;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;

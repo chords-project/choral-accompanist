@@ -43,7 +43,7 @@ public class SessionContext implements AutoCloseable {
      * @param connectionManager an implementation of the communication middleware
      */
     public ReactiveChannel_A<Serializable> chanA(ClientConnectionManager connectionManager)
-            throws IOException, InterruptedException {
+            throws Exception {
         ReactiveClient client = new ReactiveClient(connectionManager, server.serviceName, telemetrySession);
         closeHandles.add(client);
         return client.chanA(session);
@@ -55,7 +55,7 @@ public class SessionContext implements AutoCloseable {
      * @param clientAddressEnv the name of the environment variable containing the address of the client
      */
     public ReactiveChannel_A<Serializable> chanA(String clientAddressEnv)
-            throws IOException, InterruptedException {
+            throws Exception {
         var connectionManager = this.clientStore.fromEnv(clientAddressEnv);
         return chanA(connectionManager);
     }
@@ -68,7 +68,7 @@ public class SessionContext implements AutoCloseable {
      */
     public ReactiveSymChannel<Serializable> symChan(String clientService,
                                                     ClientConnectionManager connectionManager)
-            throws IOException, InterruptedException {
+            throws Exception {
         var a = chanA(connectionManager);
         var b = chanB(clientService);
         return new ReactiveSymChannel<>(a, b);
@@ -82,7 +82,7 @@ public class SessionContext implements AutoCloseable {
      */
     public ReactiveSymChannel<Serializable> symChan(String clientService,
                                                     String clientAddressEnv)
-            throws IOException, InterruptedException {
+            throws Exception {
         var a = chanA(clientAddressEnv);
         var b = chanB(clientService);
         return new ReactiveSymChannel<>(a, b);

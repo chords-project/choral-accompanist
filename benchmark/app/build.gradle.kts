@@ -61,6 +61,9 @@ dependencies {
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
     implementation("io.grpc:grpc-stub:${grpcVersion}")
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+
+    implementation("com.rabbitmq:amqp-client:5.25.0")
+    implementation("ch.qos.logback:logback-classic:1.2.3")
 }
 
 application {

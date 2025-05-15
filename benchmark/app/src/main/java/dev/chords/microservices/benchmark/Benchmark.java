@@ -10,6 +10,10 @@ import java.util.function.Function;
 
 import accompanist.benchmark.chain.Chain;
 import choral.reactive.tracing.JaegerConfiguration;
+import dev.chords.microservices.benchmark.chain.ChainBenchmark;
+import dev.chords.microservices.benchmark.chain.ChainChoreographyStart;
+import dev.chords.microservices.benchmark.chain.ChainOrchestrator;
+import dev.chords.microservices.benchmark.chain.ChainSidecar;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 

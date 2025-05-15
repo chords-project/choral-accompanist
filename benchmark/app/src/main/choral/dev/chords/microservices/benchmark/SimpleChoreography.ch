@@ -6,7 +6,7 @@ import java.io.Serializable;
 import choral.channels.AsyncDiChannel;
 import choral.channels.AsyncSymChannel;
 
-class SimpleChoreography@(A, B) {
+public class SimpleChoreography@(A, B) {
     private AsyncSymChannel@(A, B)<Serializable> ch;
 
     public SimpleChoreography(AsyncSymChannel@(A, B)<Serializable> ch) {

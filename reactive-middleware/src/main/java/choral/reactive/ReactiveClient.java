@@ -23,16 +23,16 @@ public class ReactiveClient implements ReactiveSender<Serializable>, AutoCloseab
     private final LongCounter sendCounter;
 
     public ReactiveClient(ClientConnectionManager connectionManager, String serviceName,
-            TelemetrySession telemetrySession)
-            throws IOException, InterruptedException {
+                          TelemetrySession telemetrySession)
+            throws Exception {
         this.connection = connectionManager.makeConnection();
         this.serviceName = serviceName;
         this.telemetrySession = telemetrySession;
         this.sendCounter = telemetrySession.meter
-            .counterBuilder("choral.reactive.client.message-count")
-            .setDescription("The total number of messages sent")
-            .setUnit("messages")
-            .build();
+                .counterBuilder("choral.reactive.client.message-count")
+                .setDescription("The total number of messages sent")
+                .setUnit("messages")
+                .build();
     }
 
     @Override
@@ -40,14 +40,14 @@ public class ReactiveClient implements ReactiveSender<Serializable>, AutoCloseab
         Session newSession = session.replacingSender(serviceName);
 
         Attributes attributes = Attributes.builder()
-            .put("channel.session", newSession.toString())
-            .put("channel.message", msg.toString())
-            .put("channel.connection", connection.toString())
-            .build();
+                .put("channel.session", newSession.toString())
+                .put("channel.message", msg.toString())
+                .put("channel.connection", connection.toString())
+                .build();
 
-        Span span = telemetrySession.tracer.spanBuilder("Send message ("+connection+")")
-            .setAllAttributes(attributes)
-            .startSpan();
+        Span span = telemetrySession.tracer.spanBuilder("Send message (" + connection + ")")
+                .setAllAttributes(attributes)
+                .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
             Message message = new Message(newSession, msg, nextSequence);

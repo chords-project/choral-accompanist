@@ -7,10 +7,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 public interface ServerConnectionManager extends AutoCloseable {
-    void listen(String address) throws URISyntaxException, IOException;
+    void listen(String address) throws Exception;
 
     @Override
-    void close() throws IOException;
+    void close() throws Exception;
 
     static ServerConnectionManager makeConnectionManager(ServerEvents events, OpenTelemetry telemetry) {
         return new GRPCServerManager(events, telemetry);

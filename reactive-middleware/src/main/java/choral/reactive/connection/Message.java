@@ -70,7 +70,7 @@ public class Message implements Serializable {
     public byte[] serialize() {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ObjectOutputStream oos = new ObjectOutputStream(buf)) {
-            oos.writeObject(message);
+            oos.writeObject(this);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

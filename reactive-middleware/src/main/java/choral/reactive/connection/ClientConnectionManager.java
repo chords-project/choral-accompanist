@@ -11,16 +11,16 @@ import java.util.concurrent.TimeoutException;
  * details of the connection protocol, such as TCP or gRPC, and whether the connection is pooled.
  */
 public interface ClientConnectionManager extends AutoCloseable {
-    Connection makeConnection() throws IOException, InterruptedException;
+    Connection makeConnection() throws Exception;
 
     @Override
-    void close() throws IOException, InterruptedException;
+    void close() throws Exception;
 
     interface Connection extends AutoCloseable {
         void sendMessage(Message msg) throws Exception;
 
         @Override
-        void close() throws IOException, InterruptedException;
+        void close() throws Exception;
     }
 
     static ClientConnectionManager makeConnectionManager(String address, OpenTelemetry telemetry)

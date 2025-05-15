@@ -1,39 +1,44 @@
-package dev.chords.microservices.benchmark;
+package dev.chords.microservices.benchmark.faults;
 
-import choral.reactive.connection.ClientConnectionManager;
+import choral.faultolerance.FaultTolerantServer;
+import choral.faultolerance.RMQChannelSender;
+import choral.reactive.ReactiveClient;
 import choral.reactive.ReactiveServer;
+import choral.reactive.ReactiveSymChannel;
+import choral.reactive.Session;
+import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
+import choral.reactive.tracing.TelemetrySession;
+import com.rabbitmq.client.ConnectionFactory;
+import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Scope;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
+import java.io.Serializable;
 
-public class ServiceB {
-
+public class FaultServiceB {
     private OpenTelemetry telemetry;
     private ReactiveServer serverB;
     private ClientConnectionManager connectionServiceA;
-    private GrpcClient grpcClient;
 
-    public ServiceB(OpenTelemetry telemetry, String addressServiceA) throws Exception {
+    public FaultServiceB(OpenTelemetry telemetry, String rmqAddress) throws Exception {
         this.telemetry = telemetry;
-        this.grpcClient = new GrpcClient(5430, telemetry);
-        this.connectionServiceA = ClientConnectionManager.makeConnectionManager(addressServiceA, telemetry);
 
-        this.serverB = new ReactiveServer("serviceB", telemetry, ctx -> {
+        var connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost(rmqAddress);
+        var connection = connectionFactory.newConnection();
+
+        this.connectionServiceA = new RMQChannelSender(connection, "serviceA");
+
+        this.serverB = new FaultTolerantServer(connection, "serviceB", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
                             ctx.symChan("serviceA", connectionServiceA));
 
                     pingPongChor.pingPong();
-
-                    break;
-                case "greeting":
-                    GreeterChoreography_B greeterChor = new GreeterChoreography_B(
-                            ctx.symChan("serviceA", connectionServiceA), grpcClient);
-
-                    greeterChor.greet();
 
                     break;
                 default:
@@ -62,10 +67,10 @@ public class ServiceB {
     public static void main(String[] args) throws Exception {
         System.out.println("Service B");
 
-        final String JAEGER_ENDPOINT = "http://localhost:4317";
-        OpenTelemetry telemetry = JaegerConfiguration.initTelemetry(JAEGER_ENDPOINT, "ServiceB");
+        //final String JAEGER_ENDPOINT = "http://localhost:4317";
+        //OpenTelemetry telemetry = JaegerConfiguration.initTelemetry(JAEGER_ENDPOINT, "ServiceB");
 
-        ServiceB service = new ServiceB(telemetry, "localhost:8201");
-        service.serverB.listen("localhost:8202");
+        FaultServiceB service = new FaultServiceB(OpenTelemetry.noop(), "localhost");
+        service.serverB.listen("localhost");
     }
 }
