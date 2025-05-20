@@ -203,10 +203,8 @@ public class ReactiveServer
             boolean isNewSession = knownSessionIDs.add(msg.session.sessionID);
 
             TelemetrySession telemetrySession;
-            Span sessionSpan = null;
             if (isNewSession) {
                 telemetrySession = new TelemetrySession(telemetry, msg);
-                sessionSpan = telemetrySession.makeChoreographySpan();
                 this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
             } else {
                 if (!telemetrySessionMap.containsKey(msg.session.sessionID()))
@@ -221,22 +219,12 @@ public class ReactiveServer
             msgQueue.addMessage(msg.session, msg.message, msg.sequenceNumber, telemetrySession);
 
             if (isNewSession) {
-                final Span span = sessionSpan;
                 // Handle new session in another thread
                 Thread.ofVirtual()
                         .name("NEW_SESSION_HANDLER_" + msg.session)
                         .start(() -> {
-                            Long startTime = System.nanoTime();
-                            this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
-
-                            telemetrySession.log(
-                                    "ReactiveServer handle new session",
-                                    Attributes.builder().put("service", serviceName).build());
-
-                            try (Scope scope = span.makeCurrent();
-                                 SessionContext sessionCtx = new SessionContext(this, msg.session,
-                                         telemetrySession);) {
-                                newSessionEvent.onNewSession(sessionCtx);
+                            try {
+                                startNewSession(msg, telemetrySession);
                             } catch (Exception e) {
                                 telemetrySession.recordException(
                                         "ReactiveServer session exception",
@@ -244,19 +232,36 @@ public class ReactiveServer
                                         true,
                                         Attributes.builder().put("service", serviceName)
                                                 .put("session", msg.session.toString()).build());
-                            } finally {
-                                span.end();
                             }
-
-                            cleanupKey(msg.session);
-                            Long endTime = System.nanoTime();
-                            sessionDurationHistogram.record(
-                                    (endTime - startTime) / 1_000_000.0,
-                                    Attributes.builder().put("session", msg.session.toString()).build()
-                            );
                         });
             }
         }
+    }
+
+    protected void startNewSession(Message msg, TelemetrySession telemetrySession) throws Exception {
+        final Span span = telemetrySession.makeChoreographySpan();
+
+        Long startTime = System.nanoTime();
+        this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
+
+        telemetrySession.log(
+                "ReactiveServer handle new session",
+                Attributes.builder().put("service", serviceName).build());
+
+        try (Scope scope = span.makeCurrent();
+             SessionContext sessionCtx = new SessionContext(this, msg.session,
+                     telemetrySession);) {
+            newSessionEvent.onNewSession(sessionCtx);
+        } finally {
+            span.end();
+        }
+
+        cleanupKey(msg.session);
+        Long endTime = System.nanoTime();
+        sessionDurationHistogram.record(
+                (endTime - startTime) / 1_000_000.0,
+                Attributes.builder().put("session", msg.session.toString()).build()
+        );
     }
 
     private void cleanupKey(Session session) {

@@ -12,11 +12,11 @@ import java.util.concurrent.TimeoutException;
 public class RMQChannelReceiver implements ServerConnectionManager, DeliverCallback {
 
     final String queueName;
-    final ServerEvents events;
+    final RMQReceiverEvents events;
     final Connection connection;
     Channel channel;
 
-    public RMQChannelReceiver(Connection connection, String queueName, ServerEvents events) throws IOException, TimeoutException {
+    public RMQChannelReceiver(Connection connection, String queueName, RMQReceiverEvents events) throws IOException, TimeoutException {
         this.connection = connection;
         this.queueName = queueName;
         this.events = events;
@@ -26,7 +26,7 @@ public class RMQChannelReceiver implements ServerConnectionManager, DeliverCallb
     public void listen(String address) throws IOException, TimeoutException {
         this.channel = connection.createChannel();
         channel.queueDeclare(queueName, true, false, false, null);
-        channel.basicConsume(queueName, true, this, consumerTag -> {
+        channel.basicConsume(queueName, false, this, consumerTag -> {
         });
     }
 
@@ -40,8 +40,31 @@ public class RMQChannelReceiver implements ServerConnectionManager, DeliverCallb
         try {
             Message msg = Message.deserialize(message.getBody());
             events.messageReceived(msg);
+            events.messageToAck(new MessageAck(message.getEnvelope().getDeliveryTag(), msg.session.sessionID()));
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    public class MessageAck {
+        public final long deliveryTag;
+        public final int sessionID;
+
+        public MessageAck(long deliveryTag, int sessionID) {
+            this.deliveryTag = deliveryTag;
+            this.sessionID = sessionID;
+        }
+
+        public void ack() throws IOException {
+            channel.basicAck(deliveryTag, false);
+        }
+
+        public void nack() throws IOException {
+            channel.basicNack(deliveryTag, false, true);
+        }
+    }
+
+    public interface RMQReceiverEvents extends ServerEvents {
+        void messageToAck(MessageAck messageAck);
     }
 }

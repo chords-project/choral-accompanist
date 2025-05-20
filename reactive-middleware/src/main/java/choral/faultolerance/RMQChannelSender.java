@@ -13,9 +13,10 @@ public class RMQChannelSender implements ClientConnectionManager {
     final Channel channel;
     final String queueName;
 
-    public RMQChannelSender(com.rabbitmq.client.Connection connection, String queueName) throws IOException, TimeoutException {
+    public RMQChannelSender(com.rabbitmq.client.Connection connection, String queueName) throws IOException {
         this.queueName = queueName;
         channel = connection.createChannel();
+        channel.confirmSelect();
         channel.queueDeclare(queueName, true, false, false, null);
     }
 
@@ -34,6 +35,7 @@ public class RMQChannelSender implements ClientConnectionManager {
         public void sendMessage(Message msg) throws Exception {
             byte[] body = msg.serialize();
             channel.basicPublish("", queueName, null, body);
+            channel.waitForConfirmsOrDie(5_000);
         }
 
         @Override
