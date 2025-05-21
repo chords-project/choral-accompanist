@@ -20,7 +20,7 @@ public class TelemetrySession {
     public final Meter meter;
     public final Logger logger;
 
-    private Session session;
+    public final Session session;
 
     private Span choreographySpan = null;
 
@@ -108,11 +108,11 @@ public class TelemetrySession {
         choreographySpan.recordException(e, extraAttributes);
 
         log(
-            Severity.ERROR,
-            message,
-            extraAttributes.toBuilder()
-                    .putAll(choral.reactive.tracing.Logger.exceptionAttributes(e))
-                    .build()
+                Severity.ERROR,
+                message,
+                extraAttributes.toBuilder()
+                        .putAll(choral.reactive.tracing.Logger.exceptionAttributes(e))
+                        .build()
         );
     }
 

@@ -1,12 +1,10 @@
-package choral.faultolerance;
+package choral.faulttolerance;
 
-import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.connection.Message;
 import choral.reactive.connection.ServerConnectionManager;
 import com.rabbitmq.client.*;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.concurrent.TimeoutException;
 
 public class RMQChannelReceiver implements ServerConnectionManager, DeliverCallback {

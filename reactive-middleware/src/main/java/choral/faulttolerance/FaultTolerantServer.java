@@ -1,7 +1,6 @@
-package choral.faultolerance;
+package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.Session;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.Connection;
@@ -17,13 +16,15 @@ import java.util.concurrent.TimeoutException;
 public class FaultTolerantServer extends ReactiveServer implements RMQChannelReceiver.RMQReceiverEvents {
 
     private final HashMap<Integer, ArrayList<RMQChannelReceiver.MessageAck>> pendingMessages = new HashMap<>();
+    protected final FaultSessionEvent newFaultSessionEvent;
 
-    public FaultTolerantServer(Connection connection, String serviceName, OpenTelemetry telemetry, NewSessionEvent newSessionEvent) throws IOException, TimeoutException {
-        super(serviceName, null, telemetry, Duration.ofMinutes(10), newSessionEvent);
+    public FaultTolerantServer(Connection connection, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
+        super(serviceName, null, telemetry, Duration.ofMinutes(10), null);
         this.connectionManager = new RMQChannelReceiver(connection, serviceName, this);
+        this.newFaultSessionEvent = newSessionEvent;
     }
 
-    public FaultTolerantServer(Connection connection, String serviceName, NewSessionEvent newSessionEvent) throws IOException, TimeoutException {
+    public FaultTolerantServer(Connection connection, String serviceName, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
         this(connection, serviceName, OpenTelemetry.noop(), newSessionEvent);
     }
 
@@ -54,6 +55,13 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
     }
 
     @Override
+    protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+        try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
+            newSessionEvent.onNewSession(sessionCtx);
+        }
+    }
+
+    @Override
     public void messageToAck(RMQChannelReceiver.MessageAck messageAck) {
         synchronized (pendingMessages) {
             pendingMessages.merge(messageAck.sessionID, new ArrayList<>(List.of(messageAck)), (a, b) -> {
@@ -61,5 +69,9 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
                 return a;
             });
         }
+    }
+
+    public interface FaultSessionEvent {
+        void onNewSession(FaultSessionContext ctx) throws Exception;
     }
 }

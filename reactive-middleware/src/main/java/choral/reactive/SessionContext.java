@@ -20,10 +20,10 @@ public class SessionContext implements AutoCloseable {
     private final TelemetrySession telemetrySession;
     private final HashSet<AutoCloseable> closeHandles = new HashSet<>();
 
-    public SessionContext(ReactiveServer server, Session session, TelemetrySession telemetrySession) {
+    public SessionContext(ReactiveServer server, TelemetrySession telemetrySession) {
         this.server = server;
         this.clientStore = server.getClientStore();
-        this.session = session;
+        this.session = telemetrySession.session;
         this.telemetrySession = telemetrySession;
     }
 

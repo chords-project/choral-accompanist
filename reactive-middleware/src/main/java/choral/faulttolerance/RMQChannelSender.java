@@ -1,4 +1,4 @@
-package choral.faultolerance;
+package choral.faulttolerance;
 
 import choral.reactive.connection.ClientConnectionManager;
 

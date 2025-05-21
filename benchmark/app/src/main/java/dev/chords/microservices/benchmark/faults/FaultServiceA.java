@@ -1,7 +1,7 @@
 package dev.chords.microservices.benchmark.faults;
 
-import choral.faultolerance.FaultTolerantServer;
-import choral.faultolerance.RMQChannelSender;
+import choral.faulttolerance.FaultTolerantServer;
+import choral.faulttolerance.RMQChannelSender;
 import choral.reactive.ReactiveClient;
 import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveSymChannel;

@@ -1,22 +1,12 @@
 package dev.chords.microservices.benchmark.faults;
 
-import choral.faultolerance.FaultTolerantServer;
-import choral.faultolerance.RMQChannelSender;
-import choral.reactive.ReactiveClient;
+import choral.faulttolerance.FaultTolerantServer;
+import choral.faulttolerance.RMQChannelSender;
 import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Scope;
-
-import java.io.Serializable;
 
 public class FaultServiceB {
     private OpenTelemetry telemetry;

@@ -248,10 +248,8 @@ public class ReactiveServer
                 "ReactiveServer handle new session",
                 Attributes.builder().put("service", serviceName).build());
 
-        try (Scope scope = span.makeCurrent();
-             SessionContext sessionCtx = new SessionContext(this, msg.session,
-                     telemetrySession);) {
-            newSessionEvent.onNewSession(sessionCtx);
+        try (Scope scope = span.makeCurrent()) {
+            runNewSessionEvent(telemetrySession);
         } finally {
             span.end();
         }
@@ -264,7 +262,13 @@ public class ReactiveServer
         );
     }
 
-    private void cleanupKey(Session session) {
+    protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+        try (SessionContext sessionCtx = new SessionContext(this, telemetrySession)) {
+            newSessionEvent.onNewSession(sessionCtx);
+        }
+    }
+
+    protected void cleanupKey(Session session) {
         logger.debug("Cleaning up session " + session.sessionID);
 
         synchronized (this) {
