@@ -54,13 +54,13 @@ public class ReactiveServer
      * Creates a ReactiveServer, using {@link ServerConnectionManager} for the connection.
      * Invoke {@link #listen(String)} to start listening.
      */
-    public ReactiveServer(String serviceName, ServerConnectionManager connectionManager, OpenTelemetry telemetry, Duration timeout, NewSessionEvent newSessionEvent) {
+    public ReactiveServer(String serviceName, ServerConnectionManager connectionManager, ClientConnectionManager.Factory clientConnectionFactory, OpenTelemetry telemetry, Duration timeout, NewSessionEvent newSessionEvent) {
         this.serviceName = serviceName;
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, ReactiveServer.class.getName());
         this.newSessionEvent = newSessionEvent;
         this.connectionManager = connectionManager;
-        this.clientConnectionsStore = new ClientConnectionsStore(telemetry);
+        this.clientConnectionsStore = new ClientConnectionsStore(clientConnectionFactory, telemetry);
         if (timeout != null) {
             this.msgQueue = new MessageQueue<>(timeout, telemetry);
         } else {
@@ -79,7 +79,7 @@ public class ReactiveServer
     }
 
     public ReactiveServer(String serviceName, ServerConnectionManager connectionManager, OpenTelemetry telemetry, NewSessionEvent newSessionEvent) {
-        this(serviceName, connectionManager, telemetry, null, newSessionEvent);
+        this(serviceName, connectionManager, ClientConnectionManager.defaultFactory(), telemetry, null, newSessionEvent);
     }
 
     /**
@@ -173,13 +173,15 @@ public class ReactiveServer
         return recv(session);
     }
 
-    public void registerSession(Session session, TelemetrySession telemetrySession) {
+    public SessionContext registerSession(Session session, TelemetrySession telemetrySession) {
         logger.debug("Registering session " + session.sessionID);
 
         synchronized (this) {
             knownSessionIDs.add(session.sessionID());
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
+
+        return new SessionContext(this, telemetrySession);
     }
 
     public ReactiveChannel_B<Serializable> chanB(Session session, String clientName) {

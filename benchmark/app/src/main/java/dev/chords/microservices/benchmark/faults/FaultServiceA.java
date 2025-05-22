@@ -20,7 +20,7 @@ import java.io.Serializable;
 
 public class FaultServiceA {
     private OpenTelemetry telemetry;
-    private ReactiveServer serverA;
+    private FaultTolerantServer serverA;
     private ClientConnectionManager connectionServiceB;
 
     public FaultServiceA(OpenTelemetry telemetry, String rmqAddress) throws Exception {
@@ -61,16 +61,11 @@ public class FaultServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-        serverA.registerSession(session, telemetrySession);
 
-        try (Scope scope = span.makeCurrent();
-             ReactiveClient client = new ReactiveClient(
-                     connectionServiceB,
-                     "serviceA",
-                     telemetrySession);) {
+        try (var ctx = serverA.registerSession(session, telemetrySession);
+             Scope scope = span.makeCurrent();) {
 
-            ReactiveSymChannel<Serializable> ch = new ReactiveSymChannel<>(client.chanA(session),
-                    serverA.chanB(session, "serviceB"));
+            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB");
 
             SimpleChoreography_A chor = new SimpleChoreography_A(ch);
             chor.pingPong();

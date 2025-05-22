@@ -16,4 +16,7 @@ include("reactive-middleware")
 project(":reactive-middleware").projectDir = file("../../reactive-middleware")
 
 include("choreography")
+
 include("warehouse")
+include("payment")
+include("loyalty")

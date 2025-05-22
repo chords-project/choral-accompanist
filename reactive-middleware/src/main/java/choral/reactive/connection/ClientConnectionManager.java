@@ -23,8 +23,11 @@ public interface ClientConnectionManager extends AutoCloseable {
         void close() throws Exception;
     }
 
-    static ClientConnectionManager makeConnectionManager(String address, OpenTelemetry telemetry)
-            throws URISyntaxException, IOException {
-        return new GRPCClientManager(address, telemetry);
+    static Factory defaultFactory() {
+        return GRPCClientManager::new;
+    }
+
+    interface Factory {
+        ClientConnectionManager makeConnectionManager(String address, OpenTelemetry telemetry) throws Exception;
     }
 }

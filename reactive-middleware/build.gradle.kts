@@ -69,7 +69,7 @@ dependencies {
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 
     implementation("org.zeromq:jeromq:0.6.0")
-    implementation("com.rabbitmq:amqp-client:5.25.0")
+    api("com.rabbitmq:amqp-client:5.25.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

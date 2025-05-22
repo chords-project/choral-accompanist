@@ -1,27 +1,26 @@
 package dev.chords.microservices.benchmark;
 
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.ReactiveClient;
+import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveSymChannel;
 import choral.reactive.Session;
-import choral.reactive.ReactiveServer;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Scope;
+
 import java.io.Serializable;
 
 public class ServiceA {
 
-    private OpenTelemetry telemetry;
-    private ReactiveServer serverA;
-    private ClientConnectionManager connectionServiceB;
+    private final OpenTelemetry telemetry;
+    private final ReactiveServer serverA;
+    private final String addressServiceB;
 
     public ServiceA(OpenTelemetry telemetry, String addressServiceB) throws Exception {
         this.telemetry = telemetry;
-        this.connectionServiceB = ClientConnectionManager.makeConnectionManager(addressServiceB, telemetry);
+        this.addressServiceB = addressServiceB;
         this.serverA = new ReactiveServer("serviceA", telemetry, ctx -> {
             System.out.println("ServiceA received new session");
         });
@@ -51,16 +50,12 @@ public class ServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-        serverA.registerSession(session, telemetrySession);
 
         try (Scope scope = span.makeCurrent();
-                ReactiveClient client = new ReactiveClient(
-                        connectionServiceB,
-                        "serviceA",
-                        telemetrySession);) {
+             var ctx = serverA.registerSession(session, telemetrySession);
+        ) {
 
-            ReactiveSymChannel<Serializable> ch = new ReactiveSymChannel<>(client.chanA(session),
-                    serverA.chanB(session, "serviceB"));
+            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
 
             SimpleChoreography_A chor = new SimpleChoreography_A(ch);
             chor.pingPong();
@@ -81,15 +76,10 @@ public class ServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-        serverA.registerSession(session, telemetrySession);
+        try (var ctx = serverA.registerSession(session, telemetrySession);
+             Scope scope = span.makeCurrent();) {
 
-        try (Scope scope = span.makeCurrent();
-                ReactiveClient client = new ReactiveClient(connectionServiceB,
-                        "serviceA",
-                        telemetrySession);) {
-
-            ReactiveSymChannel<Serializable> ch = new ReactiveSymChannel<>(client.chanA(session),
-                    serverA.chanB(session, "serviceB"));
+            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
 
             GreeterChoreography_A chor = new GreeterChoreography_A(ch);
             chor.greet();
@@ -99,7 +89,6 @@ public class ServiceA {
     }
 
     public void close() throws Exception {
-        connectionServiceB.close();
         serverA.close();
     }
 

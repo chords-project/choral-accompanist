@@ -7,6 +7,7 @@ import java.util.concurrent.TimeoutException;
 
 import choral.reactive.connection.Message;
 import com.rabbitmq.client.Channel;
+import io.opentelemetry.api.OpenTelemetry;
 
 public class RMQChannelSender implements ClientConnectionManager {
 
@@ -18,6 +19,10 @@ public class RMQChannelSender implements ClientConnectionManager {
         channel = connection.createChannel();
         channel.confirmSelect();
         channel.queueDeclare(queueName, true, false, false, null);
+    }
+
+    public static ClientConnectionManager.Factory factory(com.rabbitmq.client.Connection connection) {
+        return (address, telemetry) -> new RMQChannelSender(connection, address);
     }
 
     @Override

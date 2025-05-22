@@ -11,12 +11,14 @@ import java.util.HashMap;
  */
 public class ClientConnectionsStore {
 
-    private HashMap<String, ClientConnectionManager> connections;
-    private OpenTelemetry telemetry;
+    protected HashMap<String, ClientConnectionManager> connections;
+    protected OpenTelemetry telemetry;
+    protected ClientConnectionManager.Factory connectionFactory;
 
-    public ClientConnectionsStore(OpenTelemetry telemetry) {
+    public ClientConnectionsStore(ClientConnectionManager.Factory connectionFactory, OpenTelemetry telemetry) {
         this.connections = new HashMap<>();
         this.telemetry = telemetry;
+        this.connectionFactory = connectionFactory;
     }
 
     public ClientConnectionManager fromEnv(String envVar) {
@@ -41,10 +43,10 @@ public class ClientConnectionsStore {
         }
 
         try {
-            var conn = ClientConnectionManager.makeConnectionManager(address, telemetry);
+            var conn = connectionFactory.makeConnectionManager(address, telemetry);
             connections.put(address, conn);
             return conn;
-        } catch (URISyntaxException | IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -2,6 +2,7 @@ package choral.reactive;
 
 import choral.channels.AsyncDiChannel_A;
 import choral.channels.DiChannel_A;
+import choral.faulttolerance.FaultSessionContext;
 import choral.lang.Unit;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.trace.Span;
@@ -26,12 +27,22 @@ public class ReactiveChannel_A<M> implements AsyncDiChannel_A<M> {
         return connect(ctx, serverAddressEnv);
     }
 
-    public static ReactiveChannel_A<Serializable> connect(SessionContext ctx, String serverAddressEnv) {
+    public static ReactiveChannel_A<Serializable> connect(SessionContext ctx, String serverAddress) {
         try {
-            return ctx.chanA(serverAddressEnv);
+            return ctx.chanA(serverAddress);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static ReactiveChannel_A<Serializable> connect(
+            FaultSessionContext senderCtx, Unit senderName,
+            Unit receiverCtx, String receiverName) {
+        return connect(senderCtx, receiverName);
+    }
+
+    public static ReactiveChannel_A<Serializable> connect(FaultSessionContext senderCtx, String receiverName) {
+        throw new RuntimeException("Not implemented yet");
     }
 
     @Override

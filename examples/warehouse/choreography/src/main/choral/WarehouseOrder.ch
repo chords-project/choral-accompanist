@@ -1,4 +1,4 @@
-package dev.chords.warehouse.choreography;
+package dev.chords.warehouse.choreograhpy;
 
 import java.io.Serializable;
 

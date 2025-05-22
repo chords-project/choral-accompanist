@@ -51,7 +51,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "dev.chords.warehouse.warehouse.Warehouse"
+    mainClass = "dev.chords.warehouse.loyalty.Loyalty"
 }
 
 tasks.named<Test>("test") {

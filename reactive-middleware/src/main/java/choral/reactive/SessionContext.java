@@ -14,11 +14,11 @@ import java.util.HashSet;
  */
 public class SessionContext implements AutoCloseable {
 
-    private final ReactiveServer server;
-    private final ClientConnectionsStore clientStore;
+    protected final ReactiveServer server;
+    protected final ClientConnectionsStore clientStore;
     public final Session session;
-    private final TelemetrySession telemetrySession;
-    private final HashSet<AutoCloseable> closeHandles = new HashSet<>();
+    protected final TelemetrySession telemetrySession;
+    protected final HashSet<AutoCloseable> closeHandles = new HashSet<>();
 
     public SessionContext(ReactiveServer server, TelemetrySession telemetrySession) {
         this.server = server;
@@ -52,9 +52,20 @@ public class SessionContext implements AutoCloseable {
     /**
      * Creates a channel for sending messages to the given client in this session.
      *
+     * @param clientAddress the address of the client
+     */
+    public ReactiveChannel_A<Serializable> chanA(String clientAddress)
+            throws Exception {
+        var connectionManager = this.clientStore.fromAddress(clientAddress);
+        return chanA(connectionManager);
+    }
+
+    /**
+     * Creates a channel for sending messages to the given client in this session.
+     *
      * @param clientAddressEnv the name of the environment variable containing the address of the client
      */
-    public ReactiveChannel_A<Serializable> chanA(String clientAddressEnv)
+    public ReactiveChannel_A<Serializable> chanA_env(String clientAddressEnv)
             throws Exception {
         var connectionManager = this.clientStore.fromEnv(clientAddressEnv);
         return chanA(connectionManager);
@@ -77,13 +88,13 @@ public class SessionContext implements AutoCloseable {
     /**
      * Creates a bidirectional channel between this service and the given client.
      *
-     * @param clientService    the name of the service to which we are connecting
-     * @param clientAddressEnv the name of the environment variable containing the address of the client
+     * @param clientService the name of the service to which we are connecting
+     * @param clientAddress the address of the client
      */
     public ReactiveSymChannel<Serializable> symChan(String clientService,
-                                                    String clientAddressEnv)
+                                                    String clientAddress)
             throws Exception {
-        var a = chanA(clientAddressEnv);
+        var a = chanA(clientAddress);
         var b = chanB(clientService);
         return new ReactiveSymChannel<>(a, b);
     }
