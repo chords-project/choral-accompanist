@@ -55,22 +55,30 @@ public class WarehouseOrder@(Warehouse, Payment, Loyalty) {
     }
 
     public void orderFulfillment() {
+        ctx_warehouse.log("Starting order fulfillment"@Warehouse);
         ctx_warehouse.transaction(
             svc_warehouse.checkItemInStockAndReserveForOrder()
         );
+        ctx_warehouse.log("Successfully checked stock and reserved item for order"@Warehouse);
 
         ch_warehousePayment.<Boolean>com(true@Warehouse);
 
+        ctx_payment.log("Starting order fulfillment"@Payment);
         ctx_payment.transaction(
             svc_payment.takeMoneyFromCustomer()
         );
+        ctx_payment.log("Successfully made payment for customer"@Payment);
 
         ch_paymentLoyalty.<Boolean>com(true@Payment);
 
+        ctx_loyalty.log("Starting order fulfillment"@Loyalty);
         ctx_loyalty.transaction(
             svc_loyalty.awardPointsToCustomer()
         );
+        ctx_loyalty.log("Successfully awarded points to customer"@Loyalty);
 
         ch_loyaltyWarehouse.<Boolean>com(true@Loyalty);
+
+        ctx_warehouse.log("Order fulfillment completed successfully"@Warehouse);
     }
 }

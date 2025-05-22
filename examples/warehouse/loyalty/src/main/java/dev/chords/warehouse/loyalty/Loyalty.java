@@ -3,6 +3,7 @@ package dev.chords.warehouse.loyalty;
 import choral.faulttolerance.FaultSessionContext;
 import choral.faulttolerance.FaultTolerantServer;
 import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
 public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
@@ -12,17 +13,23 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
         payment.start();
     }
 
-    private FaultTolerantServer server;
-    private LoyaltyService loyaltyService;
+    protected final FaultTolerantServer server;
+    protected final LoyaltyService loyaltyService;
+
+    public final String SERVICE_NAME = "LOYALTY";
+    public final String RMQ_ADDRESS = "localhost";
 
     public Loyalty() throws Exception {
-        Connection connection = null;
-        server = new FaultTolerantServer(connection, "LOYALTY", this);
+        var connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost(RMQ_ADDRESS);
+        var connection = connectionFactory.newConnection();
+
+        server = new FaultTolerantServer(connection, SERVICE_NAME, this);
         loyaltyService = new LoyaltyService();
     }
 
     public void start() throws Exception {
-        server.listen("localhost");
+        server.listen(RMQ_ADDRESS);
     }
 
     @Override

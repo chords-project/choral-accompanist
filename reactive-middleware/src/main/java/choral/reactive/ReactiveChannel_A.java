@@ -40,11 +40,7 @@ public class ReactiveChannel_A<M> implements AsyncDiChannel_A<M> {
             Unit receiverCtx, String receiverName) {
         return connect(senderCtx, receiverName);
     }
-
-    public static ReactiveChannel_A<Serializable> connect(FaultSessionContext senderCtx, String receiverName) {
-        throw new RuntimeException("Not implemented yet");
-    }
-
+    
     @Override
     public <T extends M> Unit fcom(T msg) {
 

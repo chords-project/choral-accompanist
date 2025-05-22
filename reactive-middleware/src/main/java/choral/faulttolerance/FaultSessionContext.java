@@ -7,6 +7,7 @@ import choral.reactive.SessionContext;
 import choral.reactive.tracing.TelemetrySession;
 
 import java.io.Serializable;
+import java.sql.SQLException;
 
 public class FaultSessionContext extends SessionContext {
 
@@ -19,6 +20,13 @@ public class FaultSessionContext extends SessionContext {
     }
 
     public void transaction(Transaction trans) {
+        telemetrySession.log("TODO: FaultSessionContext properly handle transaction");
+
+        try {
+            trans.commit(null);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

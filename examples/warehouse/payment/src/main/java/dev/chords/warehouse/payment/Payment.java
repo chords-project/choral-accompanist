@@ -2,7 +2,7 @@ package dev.chords.warehouse.payment;
 
 import choral.faulttolerance.FaultSessionContext;
 import choral.faulttolerance.FaultTolerantServer;
-import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
 
 public class Payment implements FaultTolerantServer.FaultSessionEvent {
@@ -15,14 +15,20 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
     private FaultTolerantServer server;
     private PaymentService paymentService;
 
+    public static final String SERVICE_NAME = "PAYMENT";
+    public static final String RMQ_ADDRESS = "localhost";
+
     public Payment() throws Exception {
-        Connection connection = null;
-        server = new FaultTolerantServer(connection, "PAYMENT", this);
+        var connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost(RMQ_ADDRESS);
+        var connection = connectionFactory.newConnection();
+        
+        server = new FaultTolerantServer(connection, SERVICE_NAME, this);
         paymentService = new PaymentService();
     }
 
     public void start() throws Exception {
-        server.listen("localhost");
+        server.listen(RMQ_ADDRESS);
     }
 
     @Override

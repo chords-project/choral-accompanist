@@ -89,6 +89,11 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
         }
     }
 
+    @Override
+    public String toString() {
+        return "FaultTolerantServer [serviceName=" + serviceName + "]";
+    }
+
     public interface FaultSessionEvent {
         void onNewSession(FaultSessionContext ctx) throws Exception;
     }

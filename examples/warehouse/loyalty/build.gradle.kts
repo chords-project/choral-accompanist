@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":reactive-middleware"))
 
     implementation(project(":choreography"))
+    implementation("ch.qos.logback:logback-classic:1.5.13")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
