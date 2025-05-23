@@ -1,9 +1,13 @@
 package dev.chords.warehouse.payment;
 
+import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultSessionContext;
 import choral.faulttolerance.FaultTolerantServer;
+import choral.faulttolerance.SqlDataStore;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
+
+import java.sql.DriverManager;
 
 public class Payment implements FaultTolerantServer.FaultSessionEvent {
 
@@ -12,8 +16,8 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
         payment.start();
     }
 
-    private FaultTolerantServer server;
-    private PaymentService paymentService;
+    private final FaultTolerantServer server;
+    private final PaymentService paymentService;
 
     public static final String SERVICE_NAME = "PAYMENT";
     public static final String RMQ_ADDRESS = "localhost";
@@ -22,8 +26,14 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
         var connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(RMQ_ADDRESS);
         var connection = connectionFactory.newConnection();
-        
-        server = new FaultTolerantServer(connection, SERVICE_NAME, this);
+
+        var dbCon = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/warehouse_payment",
+                "postgres",
+                "postgres");
+        FaultDataStore dataStore = new SqlDataStore(dbCon);
+
+        server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
         paymentService = new PaymentService();
     }
 

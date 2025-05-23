@@ -41,6 +41,8 @@ dependencies {
 
     implementation(project(":choreography"))
     implementation("ch.qos.logback:logback-classic:1.5.13")
+
+    implementation("org.postgresql:postgresql:42.7.5")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

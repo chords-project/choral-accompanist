@@ -39,7 +39,6 @@ public class FaultServiceA {
                 "jdbc:postgresql://localhost:5432/benchmark_service_a",
                 "postgres",
                 "postgres");
-
         FaultDataStore dataStore = new SqlDataStore(dbCon);
 
         this.serverA = new FaultTolerantServer(dataStore, connection, "serviceA", telemetry, ctx -> {
@@ -81,17 +80,7 @@ public class FaultServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-
-        try (var ctx = serverA.registerSession(session, telemetrySession);
-             Scope scope = span.makeCurrent();) {
-
-            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB");
-
-            SimpleChoreography_A chor = new SimpleChoreography_A(ch);
-            chor.pingPong();
-        } finally {
-            span.end();
-        }
+        serverA.invokeManualSession(telemetrySession);
     }
 
     public void close() throws Exception {

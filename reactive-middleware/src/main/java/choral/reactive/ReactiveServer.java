@@ -173,7 +173,14 @@ public class ReactiveServer
         return recv(session);
     }
 
-    public SessionContext registerSession(Session session, TelemetrySession telemetrySession) {
+    /**
+     * Manually invokes a new session as though it was started by receiving a message with a new session.
+     *
+     * @param telemetrySession the new session. The session ID must be new and unique.
+     * @throws Exception an exception thrown by the invoked choreography.
+     */
+    public void invokeManualSession(TelemetrySession telemetrySession) throws Exception {
+        var session = telemetrySession.session;
         logger.debug("Registering session " + session.sessionID);
 
         synchronized (this) {
@@ -181,7 +188,7 @@ public class ReactiveServer
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
 
-        return new SessionContext(this, telemetrySession);
+        startNewSession(telemetrySession);
     }
 
     public ReactiveChannel_B<Serializable> chanB(Session session, String clientName) {
@@ -226,7 +233,7 @@ public class ReactiveServer
                         .name("NEW_SESSION_HANDLER_" + msg.session)
                         .start(() -> {
                             try {
-                                startNewSession(msg, telemetrySession);
+                                startNewSession(telemetrySession);
                             } catch (Exception e) {
                                 telemetrySession.recordException(
                                         "ReactiveServer session exception",
@@ -240,11 +247,12 @@ public class ReactiveServer
         }
     }
 
-    protected void startNewSession(Message msg, TelemetrySession telemetrySession) throws Exception {
+    protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
         final Span span = telemetrySession.makeChoreographySpan();
 
         Long startTime = System.nanoTime();
-        this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
+        var session = telemetrySession.session;
+        this.telemetrySessionMap.put(session.sessionID(), telemetrySession);
 
         telemetrySession.log(
                 "ReactiveServer handle new session",
@@ -256,11 +264,11 @@ public class ReactiveServer
             span.end();
         }
 
-        cleanupKey(msg.session);
+        cleanupKey(session);
         Long endTime = System.nanoTime();
         sessionDurationHistogram.record(
                 (endTime - startTime) / 1_000_000.0,
-                Attributes.builder().put("session", msg.session.toString()).build()
+                Attributes.builder().put("session", session.toString()).build()
         );
     }
 

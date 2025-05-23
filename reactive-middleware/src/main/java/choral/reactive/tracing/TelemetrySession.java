@@ -66,7 +66,7 @@ public class TelemetrySession {
 
     public Span makeChoreographySpan() {
         if (this.choreographySpan != null)
-            throw new RuntimeException("TelemetrySession::makeChoreographySpan may only be called once");
+            return this.choreographySpan;
 
         this.choreographySpan = tracer.spanBuilder("choreography session")
                 .setParent(choreographyContext)

@@ -42,27 +42,29 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
     }
 
     @Override
-    protected void startNewSession(Message msg, TelemetrySession telemetrySession) throws Exception {
+    protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
+        var sessionID = telemetrySession.session.sessionID();
+
         try {
-            super.startNewSession(msg, telemetrySession);
+            super.startNewSession(telemetrySession);
         } catch (Exception e) {
             synchronized (pendingMessages) {
-                var messages = pendingMessages.getOrDefault(msg.session.sessionID(), new ArrayList<>());
+                var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
                 for (var message : messages) {
                     message.nack();
                 }
-                pendingMessages.remove(msg.session.sessionID());
+                pendingMessages.remove(sessionID);
                 telemetrySession.log("Error occurred, rolled back " + messages.size() + " messages");
             }
             throw e;
         }
 
         synchronized (pendingMessages) {
-            var messages = pendingMessages.getOrDefault(msg.session.sessionID(), new ArrayList<>());
+            var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
             for (var message : messages) {
                 message.ack();
             }
-            pendingMessages.remove(msg.session.sessionID());
+            pendingMessages.remove(sessionID);
             telemetrySession.log("Choreography completed, ACKed " + messages.size() + " messages");
         }
     }
@@ -73,18 +75,6 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
             newFaultSessionEvent.onNewSession(sessionCtx);
         }
         dataStore.completeSession(telemetrySession.session);
-    }
-
-    @Override
-    public FaultSessionContext registerSession(Session session, TelemetrySession telemetrySession) {
-        logger.debug("Registering session " + session.sessionID());
-
-        synchronized (this) {
-            knownSessionIDs.add(session.sessionID());
-            telemetrySessionMap.put(session.sessionID(), telemetrySession);
-        }
-
-        return new FaultSessionContext(this, telemetrySession);
     }
 
     @Override
