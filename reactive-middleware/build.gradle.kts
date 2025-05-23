@@ -70,6 +70,8 @@ dependencies {
 
     implementation("org.zeromq:jeromq:0.6.0")
     api("com.rabbitmq:amqp-client:5.25.0")
+
+    implementation("com.zaxxer:HikariCP:6.3.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

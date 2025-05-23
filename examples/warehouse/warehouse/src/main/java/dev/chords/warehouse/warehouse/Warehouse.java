@@ -3,13 +3,12 @@ package dev.chords.warehouse.warehouse;
 import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultSessionContext;
 import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.SqlDataStore;
+import choral.faulttolerance.SQLDataStore;
 import choral.reactive.Session;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
+import com.zaxxer.hikari.HikariDataSource;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
-
-import java.sql.DriverManager;
 
 public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
@@ -29,11 +28,11 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
         connectionFactory.setHost(RMQ_ADDRESS);
         var connection = connectionFactory.newConnection();
 
-        var dbCon = DriverManager.getConnection(
-                "jdbc:postgresql://localhost:5432/warehouse_warehouse",
-                "postgres",
-                "postgres");
-        FaultDataStore dataStore = new SqlDataStore(dbCon);
+        HikariDataSource db = new HikariDataSource();
+        db.setJdbcUrl("jdbc:postgresql://localhost:5432/warehouse_warehouse");
+        db.setUsername("postgres");
+        db.setPassword("postgres");
+        FaultDataStore dataStore = new SQLDataStore(db);
 
         server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
         warehouseService = new WarehouseService();

@@ -43,6 +43,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.13")
 
     implementation("org.postgresql:postgresql:42.7.5")
+    implementation("com.zaxxer:HikariCP:6.3.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

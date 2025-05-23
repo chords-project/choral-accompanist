@@ -10,8 +10,9 @@ public class LoyaltyService implements dev.chords.warehouse.choreograhpy.Loyalty
 
         return new Transaction() {
             @Override
-            public void commit(SQLTransaction trans) {
+            public boolean commit(SQLTransaction trans) {
                 System.out.println("- Loyalty commit transaction: awardPointsToCustomer");
+                return true;
             }
 
             @Override

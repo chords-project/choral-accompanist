@@ -12,8 +12,9 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
 
         return new Transaction() {
             @Override
-            public void commit(SQLTransaction trans) {
+            public boolean commit(SQLTransaction trans) {
                 System.out.println("- Warehouse commit transaction: checkItemInStockAndReserveForOrder");
+                return true;
             }
 
             @Override
@@ -29,8 +30,9 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
 
         return new Transaction() {
             @Override
-            public void commit(SQLTransaction trans) throws SQLException {
+            public boolean commit(SQLTransaction trans) throws SQLException {
                 System.out.println("- Warehouse commit transaction: packageAndSendOrder");
+                return true;
             }
 
             @Override

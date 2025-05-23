@@ -12,8 +12,9 @@ public class PaymentService implements dev.chords.warehouse.choreograhpy.Payment
 
         return new Transaction() {
             @Override
-            public void commit(SQLTransaction trans) {
+            public boolean commit(SQLTransaction trans) {
                 System.out.println("- Payment commit transaction: takeMoneyFromCustomer");
+                return true;
             }
 
             @Override

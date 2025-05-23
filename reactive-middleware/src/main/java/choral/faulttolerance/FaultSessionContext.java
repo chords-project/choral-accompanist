@@ -20,12 +20,25 @@ public class FaultSessionContext extends SessionContext {
     }
 
     public void transaction(Transaction trans) {
-        telemetrySession.log("TODO: FaultSessionContext properly handle transaction");
+        var dataStore = server().dataStore;
+
+        boolean transactionSucccess = false;
 
         try {
-            trans.commit(null);
+            transactionSucccess = dataStore.commitTransaction(session, trans);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            telemetrySession.recordException("transaction failed", e, false);
+        }
+
+        try {
+            if (!transactionSucccess) {
+                dataStore.compensateTransaction(session, trans);
+            }
+
+            // TODO: Compensate all other transactions
+
+        } catch (SQLException e) {
+            telemetrySession.recordException("transaction compensation failed", e, true);
         }
     }
 
