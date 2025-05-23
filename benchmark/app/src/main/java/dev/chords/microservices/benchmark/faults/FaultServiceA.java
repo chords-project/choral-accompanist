@@ -1,9 +1,9 @@
 package dev.chords.microservices.benchmark.faults;
 
+import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultTolerantServer;
 import choral.faulttolerance.RMQChannelSender;
-import choral.reactive.ReactiveClient;
-import choral.reactive.ReactiveServer;
+import choral.faulttolerance.SqlDataStore;
 import choral.reactive.ReactiveSymChannel;
 import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionManager;
@@ -11,12 +11,14 @@ import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.SimpleChoreography_A;
+import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Scope;
 
 import java.io.Serializable;
+import java.sql.DriverManager;
 
 public class FaultServiceA {
     private OpenTelemetry telemetry;
@@ -32,8 +34,26 @@ public class FaultServiceA {
 
         this.connectionServiceB = new RMQChannelSender(connection, "serviceB");
 
-        this.serverA = new FaultTolerantServer(connection, "serviceA", telemetry, ctx -> {
-            System.out.println("ServiceA received new session");
+
+        var dbCon = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/benchmark_service_a",
+                "postgres",
+                "postgres");
+
+        FaultDataStore dataStore = new SqlDataStore(dbCon);
+
+        this.serverA = new FaultTolerantServer(dataStore, connection, "serviceA", telemetry, ctx -> {
+            switch (ctx.session.choreographyName()) {
+                case "ping-pong":
+                    SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
+                            ctx.symChan("serviceB"));
+
+                    pingPongChor.pingPong();
+
+                    break;
+                default:
+                    throw new RuntimeException("unknown choreography: " + ctx.session.choreographyName());
+            }
         });
     }
 

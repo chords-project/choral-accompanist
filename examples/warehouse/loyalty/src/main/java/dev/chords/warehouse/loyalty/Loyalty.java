@@ -22,7 +22,6 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     public Loyalty() throws Exception {
         var connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(RMQ_ADDRESS);
-        var connection = connectionFactory.newConnection();
 
         server = new FaultTolerantServer(connection, SERVICE_NAME, this);
         loyaltyService = new LoyaltyService();

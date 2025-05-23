@@ -64,6 +64,8 @@ dependencies {
 
     implementation("com.rabbitmq:amqp-client:5.25.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
+    
+    implementation("org.postgresql:postgresql:42.7.5")
 }
 
 application {

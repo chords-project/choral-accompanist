@@ -3,7 +3,6 @@ package choral.faulttolerance;
 import choral.reactive.ReactiveServer;
 import choral.reactive.Session;
 import choral.reactive.connection.Message;
-import choral.reactive.connection.ZMQClientManager;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.Connection;
 import io.opentelemetry.api.OpenTelemetry;
@@ -19,19 +18,27 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     private final HashMap<Integer, ArrayList<RMQChannelReceiver.MessageAck>> pendingMessages = new HashMap<>();
     protected final FaultSessionEvent newFaultSessionEvent;
+    protected final FaultDataStore dataStore;
 
-    public FaultTolerantServer(Connection connection, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
-        super(serviceName, null, RMQChannelSender.factory(connection), telemetry, Duration.ofMinutes(10), null);
-        this.connectionManager = new RMQChannelReceiver(connection, serviceName, this);
+    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
+        super(serviceName, null, RMQChannelSender.factory(rmqCon), telemetry, Duration.ofMinutes(10), null);
+        this.connectionManager = new RMQChannelReceiver(rmqCon, serviceName, this);
         this.newFaultSessionEvent = newSessionEvent;
+        this.dataStore = dataStore;
     }
 
-    public FaultTolerantServer(Connection connection, String serviceName, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
-        this(connection, serviceName, OpenTelemetry.noop(), newSessionEvent);
+    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
+        this(dataStore, rmqCon, serviceName, OpenTelemetry.noop(), newSessionEvent);
     }
 
     public RMQChannelReceiver connectionManager() {
         return (RMQChannelReceiver) this.connectionManager;
+    }
+
+    @Override
+    public void close() throws Exception {
+        super.close();
+        dataStore.close();
     }
 
     @Override
@@ -65,6 +72,7 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             newFaultSessionEvent.onNewSession(sessionCtx);
         }
+        dataStore.completeSession(telemetrySession.session);
     }
 
     @Override
@@ -87,6 +95,16 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
                 return a;
             });
         }
+    }
+
+    @Override
+    public void messageReceived(Message msg) {
+        if (dataStore.hasSessionCompleted(msg.session)) {
+            logger.info("Received message with completed session: " + msg);
+            return;
+        }
+
+        super.messageReceived(msg);
     }
 
     @Override

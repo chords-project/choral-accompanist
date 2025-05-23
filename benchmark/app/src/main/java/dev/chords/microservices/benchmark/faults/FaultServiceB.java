@@ -1,17 +1,20 @@
 package dev.chords.microservices.benchmark.faults;
 
+import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultTolerantServer;
 import choral.faulttolerance.RMQChannelSender;
+import choral.faulttolerance.SqlDataStore;
 import choral.reactive.ReactiveServer;
 import choral.reactive.connection.ClientConnectionManager;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
 
+import java.sql.DriverManager;
+
 public class FaultServiceB {
     private OpenTelemetry telemetry;
     private ReactiveServer serverB;
-    private ClientConnectionManager connectionServiceA;
 
     public FaultServiceB(OpenTelemetry telemetry, String rmqAddress) throws Exception {
         this.telemetry = telemetry;
@@ -20,13 +23,18 @@ public class FaultServiceB {
         connectionFactory.setHost(rmqAddress);
         var connection = connectionFactory.newConnection();
 
-        this.connectionServiceA = new RMQChannelSender(connection, "serviceA");
+        var dbCon = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/benchmark_service_b",
+                "postgres",
+                "postgres");
 
-        this.serverB = new FaultTolerantServer(connection, "serviceB", telemetry, ctx -> {
+        FaultDataStore dataStore = new SqlDataStore(dbCon);
+
+        this.serverB = new FaultTolerantServer(dataStore, connection, "serviceB", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
-                            ctx.symChan("serviceA", connectionServiceA));
+                            ctx.symChan("serviceA"));
 
                     pingPongChor.pingPong();
 
@@ -50,7 +58,6 @@ public class FaultServiceB {
     }
 
     public void close() throws Exception {
-        connectionServiceA.close();
         serverB.close();
     }
 
