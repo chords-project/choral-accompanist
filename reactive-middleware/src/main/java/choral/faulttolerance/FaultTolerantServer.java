@@ -8,6 +8,7 @@ import com.rabbitmq.client.Connection;
 import io.opentelemetry.api.OpenTelemetry;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,6 +72,7 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     @Override
     protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+        dataStore.startSession(telemetrySession.session);
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             newFaultSessionEvent.onNewSession(sessionCtx);
         }
@@ -89,9 +91,13 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     @Override
     public void messageReceived(Message msg) {
-        if (dataStore.hasSessionCompleted(msg.session)) {
-            logger.info("Received message with completed session: " + msg);
-            return;
+        try {
+            if (dataStore.hasSessionCompleted(msg.session)) {
+                logger.info("Received message with completed session: " + msg);
+                return;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
         super.messageReceived(msg);

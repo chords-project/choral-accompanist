@@ -1,11 +1,9 @@
 package dev.chords.warehouse.loyalty;
 
-import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultSessionContext;
 import choral.faulttolerance.FaultTolerantServer;
 import choral.faulttolerance.SQLDataStore;
 import com.rabbitmq.client.ConnectionFactory;
-import com.zaxxer.hikari.HikariDataSource;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
 public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
@@ -26,14 +24,17 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
         connectionFactory.setHost(RMQ_ADDRESS);
         var connection = connectionFactory.newConnection();
 
-        HikariDataSource db = new HikariDataSource();
-        db.setJdbcUrl("jdbc:postgresql://localhost:5432/warehouse_loyalty");
-        db.setUsername("postgres");
-        db.setPassword("postgres");
-        FaultDataStore dataStore = new SQLDataStore(db);
+        SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
+                "jdbc:postgresql://localhost:5432/warehouse_loyalty",
+                "postgres",
+                "postgres");
 
         server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
         loyaltyService = new LoyaltyService();
+
+        try (var con = dataStore.db.getConnection()) {
+            loyaltyService.createTables(con);
+        }
     }
 
     public void start() throws Exception {

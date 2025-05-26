@@ -27,18 +27,18 @@ public class FaultSessionContext extends SessionContext {
         try {
             transactionSucccess = dataStore.commitTransaction(session, trans);
         } catch (SQLException e) {
-            telemetrySession.recordException("transaction failed", e, false);
+            telemetrySession.recordException("transaction commit failed", e, false);
         }
 
         try {
             if (!transactionSucccess) {
-                dataStore.compensateTransaction(session, trans);
+                dataStore.failSession(session);
             }
 
             // TODO: Compensate all other transactions
 
         } catch (SQLException e) {
-            telemetrySession.recordException("transaction compensation failed", e, true);
+            telemetrySession.recordException("could not mark session as 'failed'", e, true);
         }
     }
 

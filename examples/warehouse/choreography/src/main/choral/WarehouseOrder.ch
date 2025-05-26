@@ -79,6 +79,9 @@ public class WarehouseOrder@(Warehouse, Payment, Loyalty) {
 
         ch_loyaltyWarehouse.<Boolean>com(true@Loyalty);
 
+        ctx_warehouse.transaction(
+            svc_warehouse.packageAndSendOrder()
+        );
         ctx_warehouse.log("Order fulfillment completed successfully"@Warehouse);
     }
 }

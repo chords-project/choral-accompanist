@@ -2,8 +2,7 @@ package dev.chords.warehouse.payment;
 
 import choral.faulttolerance.SQLTransaction;
 import choral.faulttolerance.Transaction;
-
-import java.sql.SQLException;
+import choral.reactive.Session;
 
 public class PaymentService implements dev.chords.warehouse.choreograhpy.PaymentService {
     @Override
@@ -12,13 +11,18 @@ public class PaymentService implements dev.chords.warehouse.choreograhpy.Payment
 
         return new Transaction() {
             @Override
-            public boolean commit(SQLTransaction trans) {
+            public String transactionName() {
+                return "takeMoneyFromCustomer";
+            }
+
+            @Override
+            public boolean commit(Session session, SQLTransaction trans) {
                 System.out.println("- Payment commit transaction: takeMoneyFromCustomer");
                 return true;
             }
 
             @Override
-            public void compensate(SQLTransaction trans) {
+            public void compensate(Session session, SQLTransaction trans) {
                 System.out.println("- Payment compensate transaction: takeMoneyFromCustomer");
             }
         };
