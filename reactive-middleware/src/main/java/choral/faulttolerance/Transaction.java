@@ -1,7 +1,5 @@
 package choral.faulttolerance;
 
-import choral.reactive.Session;
-
 import java.sql.SQLException;
 
 public interface Transaction {
@@ -19,7 +17,7 @@ public interface Transaction {
      * @return true or false whether the transaction was successful or not.
      * @throws SQLException If an SQLException is thrown the transaction is marked as unsuccessful.
      */
-    boolean commit(Session session, SQLTransaction trans) throws SQLException;
+    boolean commit(int sessionID, SQLTransaction trans) throws SQLException;
 
     /**
      * Compensated the previously commited transaction.
@@ -28,5 +26,5 @@ public interface Transaction {
      * @param trans the transaction instance on which to execute the database modification.
      * @throws SQLException If an SQLException is thrown, the compensation failed and will be retried later.
      */
-    void compensate(Session session, SQLTransaction trans) throws SQLException;
+    void compensate(int sessionID, SQLTransaction trans) throws SQLException;
 }

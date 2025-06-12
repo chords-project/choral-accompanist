@@ -6,10 +6,15 @@ import choral.reactive.Session;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Set;
 
 public class LoyaltyService implements dev.chords.warehouse.choreograhpy.LoyaltyService {
 
     public static final int userID = 100;
+
+    public Set<Transaction> allTransactions() {
+        return Set.of(awardPointsToCustomer());
+    }
 
     public void createTables(Connection con) throws SQLException {
         System.out.println("Creating loyalty service tables...");
@@ -36,7 +41,7 @@ public class LoyaltyService implements dev.chords.warehouse.choreograhpy.Loyalty
             }
 
             @Override
-            public boolean commit(Session session, SQLTransaction trans) throws SQLException {
+            public boolean commit(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Loyalty commit transaction: awardPointsToCustomer");
 
                 // Create user points row if not exists
@@ -59,7 +64,7 @@ public class LoyaltyService implements dev.chords.warehouse.choreograhpy.Loyalty
             }
 
             @Override
-            public void compensate(Session session, SQLTransaction trans) throws SQLException {
+            public void compensate(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Loyalty compensate transaction: awardPointsToCustomer");
 
                 try (var stmt = trans.prepareStatement("""

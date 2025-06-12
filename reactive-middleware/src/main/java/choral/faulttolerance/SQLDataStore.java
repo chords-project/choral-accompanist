@@ -1,34 +1,37 @@
 package choral.faulttolerance;
 
-import choral.reactive.Session;
-
 import com.zaxxer.hikari.HikariDataSource;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 
 public class SQLDataStore implements FaultDataStore {
     public final DataSource db;
+    public final Map<String, Transaction> transactions;
 
-    public SQLDataStore(DataSource db) throws SQLException {
+    public SQLDataStore(DataSource db, Set<Transaction> transactions) throws SQLException {
+        this.transactions = new HashMap<>();
+        for (Transaction tx : transactions) {
+            this.transactions.put(tx.transactionName(), tx);
+        }
         this.db = db;
         createTables();
     }
 
-    public static SQLDataStore createHikariDataStore(String url, String username, String password) throws SQLException {
+    public static SQLDataStore createHikariDataStore(String url, String username, String password, Set<Transaction> transactions) throws SQLException {
         HikariDataSource db = new HikariDataSource();
         db.setJdbcUrl(url);
         db.setUsername(username);
         db.setPassword(password);
 
-        return new SQLDataStore(db);
+        return new SQLDataStore(db, transactions);
     }
 
     protected void createTables() throws SQLException {
@@ -71,59 +74,59 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public void startSession(Session session) throws SQLException {
-        System.out.println("Marking session as started in database: " + session);
+    public void startSession(int sessionID) throws SQLException {
+        System.out.println("Marking session as started in database: " + sessionID);
 
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("INSERT INTO session_states (session_id, session_state) VALUES (?, 'started');")
         ) {
-            stmt.setInt(1, session.sessionID());
+            stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
-                System.out.println("- Failed to mark session as started in database: " + session);
+                System.out.println("- Failed to mark session as started in database: " + sessionID);
             }
         }
     }
 
     @Override
-    public void completeSession(Session session) throws SQLException {
-        System.out.println("Marking session as completed in database: " + session);
+    public void completeSession(int sessionID) throws SQLException {
+        System.out.println("Marking session as completed in database: " + sessionID);
 
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed' WHERE session_id = ? AND session_state = 'started';")
         ) {
-            stmt.setInt(1, session.sessionID());
+            stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
-                System.out.println("- Failed to complete session in database: " + session);
+                System.out.println("- Failed to complete session in database: " + sessionID);
             }
         }
     }
 
     @Override
-    public void failSession(Session session) throws SQLException {
-        System.out.println("Marking session as failed in database: " + session);
+    public void failSession(int sessionID) throws SQLException {
+        System.out.println("Marking session as failed in database: " + sessionID);
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed' WHERE session_id = ?;")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'failed' WHERE session_id = ?;")
         ) {
-            stmt.setInt(1, session.sessionID());
+            stmt.setInt(1, sessionID);
             stmt.executeUpdate();
         }
     }
 
     @Override
-    public boolean hasSessionCompleted(Session session) throws SQLException {
-        System.out.println("Lookup session in database: " + session);
+    public boolean hasSessionCompleted(int sessionID) throws SQLException {
+        System.out.println("Lookup session in database: " + sessionID);
 
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ? AND session_state IN ('completed', 'failed');")
         ) {
-            stmt.setInt(1, session.sessionID());
+            stmt.setInt(1, sessionID);
             var result = stmt.executeQuery();
 
             // true if row was found
@@ -132,7 +135,7 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public boolean commitTransaction(Session session, Transaction tx) throws SQLException {
+    public boolean commitTransaction(int sessionID, Transaction tx) throws SQLException {
         try (
                 var con = db.getConnection();
         ) {
@@ -142,7 +145,7 @@ public class SQLDataStore implements FaultDataStore {
             try (var stmt = con.prepareStatement(
                     "SELECT * FROM transaction_states WHERE session_id = ? AND transaction_name = ?;"
             )) {
-                stmt.setInt(1, session.sessionID());
+                stmt.setInt(1, sessionID);
                 stmt.setString(2, tx.transactionName());
 
                 try (var resultSet = stmt.executeQuery()) {
@@ -156,40 +159,67 @@ public class SQLDataStore implements FaultDataStore {
                 }
             }
 
-            boolean success = tx.commit(session, new SQLTransaction(con));
+            boolean success = tx.commit(sessionID, new SQLTransaction(con));
             if (!success) {
                 System.out.println("COMMIT FAILED, transaction returned false");
                 con.rollback();
                 return false;
-            }
+            } else {
+                // mark transaction as completed
+                try (var stmt = con.prepareStatement("""
+                        
+                            INSERT INTO transaction_states (session_id, transaction_name, transaction_state)
+                        VALUES (?, ?, 'completed')
+                        ON CONFLICT DO NOTHING;
+                        
+                        """
+                )) {
+                    stmt.setInt(1, sessionID);
+                    stmt.setString(
+                            2, tx.
 
-            // mark transaction as completed
-            try (var stmt = con.prepareStatement("""
-                    INSERT INTO transaction_states (session_id, transaction_name, transaction_state)
-                    VALUES (?, ?, 'completed')
-                    ON CONFLICT DO NOTHING;
-                    """
-            )) {
-                stmt.setInt(1, session.sessionID());
-                stmt.setString(2, tx.transactionName());
-                stmt.execute();
-            }
+                                    transactionName());
+                    stmt.execute();
+                }
 
-            con.commit();
+                con.commit();
+
+                // if we are here everything went well
+                return true;
+            }
         }
-
-        // if we are here everything went well
-        return true;
     }
 
     @Override
-    public void compensateTransaction(Session session, Transaction tx) throws SQLException {
+    public void compensateTransactions(int sessionID) throws SQLException {
+        System.out.println("Compensating transactions for session: " + sessionID);
+
         try (
                 var con = db.getConnection();
+                var stmt = con.prepareStatement("SELECT * FROM transaction_states WHERE transaction_state = 'completed' AND session_id = ?;");
         ) {
-            con.setAutoCommit(false);
-            tx.compensate(session, new SQLTransaction(con));
-            con.commit();
+            stmt.setInt(1, sessionID);
+            try (
+                    var transResult = stmt.executeQuery();
+                    var compensateCon = db.getConnection();
+            ) {
+                compensateCon.setAutoCommit(false);
+
+                while (transResult.next()) {
+                    var txName = transResult.getString("transaction_name");
+                    var tx = transactions.get(txName);
+                    System.out.println("- Compensating transaction: " + txName);
+
+                    tx.compensate(sessionID, new SQLTransaction(compensateCon));
+
+                    try (var updateTransStmt = compensateCon.prepareStatement("UPDATE transaction_states SET transaction_state = 'compensated' WHERE session_id = ?;")) {
+                        updateTransStmt.setInt(1, sessionID);
+                        updateTransStmt.executeUpdate();
+                    }
+
+                    compensateCon.commit();
+                }
+            }
         }
     }
 

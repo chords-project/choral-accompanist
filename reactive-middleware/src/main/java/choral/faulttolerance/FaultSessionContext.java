@@ -6,8 +6,10 @@ import choral.reactive.ReactiveSymChannel;
 import choral.reactive.SessionContext;
 import choral.reactive.tracing.TelemetrySession;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.sql.SQLException;
+import java.util.concurrent.TimeoutException;
 
 public class FaultSessionContext extends SessionContext {
 
@@ -25,20 +27,19 @@ public class FaultSessionContext extends SessionContext {
         boolean transactionSucccess = false;
 
         try {
-            transactionSucccess = dataStore.commitTransaction(session, trans);
+            transactionSucccess = dataStore.commitTransaction(session.sessionID(), trans);
         } catch (SQLException e) {
             telemetrySession.recordException("transaction commit failed", e, false);
         }
 
-        try {
-            if (!transactionSucccess) {
-                dataStore.failSession(session);
+        if (!transactionSucccess) {
+            try {
+                server().connectionManager().broadcastSessionFailure(session.sessionID());
+            } catch (IOException | InterruptedException | TimeoutException e) {
+                telemetrySession.recordException("could not broadcast session failure", e, true);
             }
 
-            // TODO: Compensate all other transactions
-
-        } catch (SQLException e) {
-            telemetrySession.recordException("could not mark session as 'failed'", e, true);
+            throw new ChoreographyInterruptedException("Transaction aborted: " + trans.transactionName());
         }
     }
 

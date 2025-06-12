@@ -2,14 +2,18 @@ package dev.chords.warehouse.warehouse;
 
 import choral.faulttolerance.SQLTransaction;
 import choral.faulttolerance.Transaction;
-import choral.reactive.Session;
 
 import java.sql.SQLException;
+import java.util.Set;
 
 public class WarehouseService implements dev.chords.warehouse.choreograhpy.WarehouseService {
 
     public static final int userID = 100;
     public static final int productID = 123;
+
+    public Set<Transaction> allTransactions() {
+        return Set.of(checkItemInStockAndReserveForOrder(), packageAndSendOrder());
+    }
 
     @Override
     public Transaction checkItemInStockAndReserveForOrder() {
@@ -22,7 +26,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
             }
 
             @Override
-            public boolean commit(Session session, SQLTransaction trans) throws SQLException {
+            public boolean commit(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Warehouse commit transaction: checkItemInStockAndReserveForOrder");
 
                 // Create table if not exists
@@ -44,9 +48,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
                 }
 
                 // Check item in stock
-                try (var stmt = trans.prepareStatement("""
-                        SELECT * FROM products WHERE product_id = ?;
-                        """)) {
+                try (var stmt = trans.prepareStatement("SELECT * FROM products WHERE product_id = ?;")) {
                     stmt.setInt(1, productID);
 
                     try (var resultSet = stmt.executeQuery()) {
@@ -65,9 +67,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
                 }
 
                 // Reduce item stock quantity
-                try (var stmt = trans.prepareStatement("""
-                        UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ?;
-                        """)) {
+                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ?;")) {
                     stmt.setInt(1, productID);
                     stmt.execute();
                 }
@@ -76,8 +76,14 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
             }
 
             @Override
-            public void compensate(Session session, SQLTransaction trans) {
+            public void compensate(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Warehouse compensate transaction: checkItemInStockAndReserveForOrder");
+
+                // Increase item stock quantity
+                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity + 1 WHERE product_id = ?;")) {
+                    stmt.setInt(1, productID);
+                    stmt.execute();
+                }
             }
         };
     }
@@ -93,7 +99,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
             }
 
             @Override
-            public boolean commit(Session session, SQLTransaction trans) throws SQLException {
+            public boolean commit(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Warehouse commit transaction: packageAndSendOrder");
 
                 // Create table if not exists
@@ -112,7 +118,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
                         INSERT INTO orders (user_id, session_id) VALUES (?, ?);
                         """)) {
                     stmt.setInt(1, userID);
-                    stmt.setInt(2, session.sessionID());
+                    stmt.setInt(2, sessionID);
                     stmt.execute();
                 }
 
@@ -120,14 +126,12 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
             }
 
             @Override
-            public void compensate(Session session, SQLTransaction trans) throws SQLException {
+            public void compensate(int sessionID, SQLTransaction trans) throws SQLException {
                 System.out.println("- Warehouse compensate transaction: packageAndSendOrder");
 
-                try (var stmt = trans.prepareStatement("""
-                        DELETE FROM orders WHERE user_id = ? AND session_id = ?;
-                        """)) {
+                try (var stmt = trans.prepareStatement("DELETE FROM orders WHERE user_id = ? AND session_id = ?;")) {
                     stmt.setInt(1, userID);
-                    stmt.setInt(2, session.sessionID());
+                    stmt.setInt(2, sessionID);
                     stmt.execute();
                 }
             }

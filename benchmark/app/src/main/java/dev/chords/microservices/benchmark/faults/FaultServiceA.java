@@ -1,24 +1,17 @@
 package dev.chords.microservices.benchmark.faults;
 
-import choral.faulttolerance.FaultDataStore;
 import choral.faulttolerance.FaultTolerantServer;
 import choral.faulttolerance.RMQChannelSender;
-import choral.faulttolerance.SqlDataStore;
-import choral.reactive.ReactiveSymChannel;
+import choral.faulttolerance.SQLDataStore;
 import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
-import dev.chords.microservices.benchmark.SimpleChoreography_A;
 import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Scope;
-
-import java.io.Serializable;
-import java.sql.DriverManager;
 
 public class FaultServiceA {
     private OpenTelemetry telemetry;
@@ -34,12 +27,11 @@ public class FaultServiceA {
 
         this.connectionServiceB = new RMQChannelSender(connection, "serviceB");
 
-
-        var dbCon = DriverManager.getConnection(
+        SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/benchmark_service_a",
                 "postgres",
-                "postgres");
-        FaultDataStore dataStore = new SqlDataStore(dbCon);
+                "postgres"
+        );
 
         this.serverA = new FaultTolerantServer(dataStore, connection, "serviceA", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {

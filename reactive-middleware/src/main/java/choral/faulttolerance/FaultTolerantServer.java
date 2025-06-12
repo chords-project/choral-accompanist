@@ -1,7 +1,6 @@
 package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.Session;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.Connection;
@@ -72,11 +71,16 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     @Override
     protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
-        dataStore.startSession(telemetrySession.session);
+        var sessionID = telemetrySession.session.sessionID();
+        dataStore.startSession(sessionID);
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             newFaultSessionEvent.onNewSession(sessionCtx);
+            dataStore.completeSession(sessionID);
+        } catch (ChoreographyInterruptedException e) {
+            telemetrySession.log("Choreography interrupted: " + e.getMessage());
+            dataStore.failSession(sessionID);
+            dataStore.compensateTransactions(sessionID);
         }
-        dataStore.completeSession(telemetrySession.session);
     }
 
     @Override
@@ -90,9 +94,22 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
     }
 
     @Override
+    public void sessionFailed(int sessionID, RMQChannelReceiver.MessageAck messageAck) throws IOException {
+        logger.info("Received session failed event for sessionID: " + sessionID);
+        try {
+            dataStore.failSession(sessionID);
+            dataStore.compensateTransactions(sessionID);
+        } catch (SQLException e) {
+            logger.error("Session failed event caused SQL exception: " + e);
+            messageAck.nack();
+        }
+        messageAck.ack();
+    }
+
+    @Override
     public void messageReceived(Message msg) {
         try {
-            if (dataStore.hasSessionCompleted(msg.session)) {
+            if (dataStore.hasSessionCompleted(msg.session.sessionID())) {
                 logger.info("Received message with completed session: " + msg);
                 return;
             }

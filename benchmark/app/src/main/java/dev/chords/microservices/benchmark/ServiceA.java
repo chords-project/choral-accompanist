@@ -23,6 +23,23 @@ public class ServiceA {
         this.addressServiceB = addressServiceB;
         this.serverA = new ReactiveServer("serviceA", telemetry, ctx -> {
             System.out.println("ServiceA received new session");
+
+            switch (ctx.session.choreographyName()) {
+                case "ping-pong": {
+                    ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
+                    SimpleChoreography_A chor = new SimpleChoreography_A(ch);
+                    chor.pingPong();
+                    break;
+                }
+                case "greeting": {
+                    ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
+                    GreeterChoreography_A chor = new GreeterChoreography_A(ch);
+                    chor.greet();
+                    break;
+                }
+                default:
+                    System.out.println("Unknown session choreography: " + ctx.session.choreographyName());
+            }
         });
     }
 
@@ -50,18 +67,7 @@ public class ServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-
-        try (Scope scope = span.makeCurrent();
-             var ctx = serverA.registerSession(session, telemetrySession);
-        ) {
-
-            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
-
-            SimpleChoreography_A chor = new SimpleChoreography_A(ch);
-            chor.pingPong();
-        } finally {
-            span.end();
-        }
+        serverA.invokeManualSession(telemetrySession);
     }
 
     public void startGreeting() throws Exception {
@@ -76,16 +82,7 @@ public class ServiceA {
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
 
-        try (var ctx = serverA.registerSession(session, telemetrySession);
-             Scope scope = span.makeCurrent();) {
-
-            ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
-
-            GreeterChoreography_A chor = new GreeterChoreography_A(ch);
-            chor.greet();
-        }
-
-        span.end();
+        serverA.invokeManualSession(telemetrySession);
     }
 
     public void close() throws Exception {

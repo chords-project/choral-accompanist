@@ -24,14 +24,16 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
         connectionFactory.setHost(RMQ_ADDRESS);
         var connection = connectionFactory.newConnection();
 
+        paymentService = new PaymentService();
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/warehouse_payment",
                 "postgres",
-                "postgres"
+                "postgres",
+                paymentService.allTransactions()
         );
 
         server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
-        paymentService = new PaymentService();
     }
 
     public void start() throws Exception {

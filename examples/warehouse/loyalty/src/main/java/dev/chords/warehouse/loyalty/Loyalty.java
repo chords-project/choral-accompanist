@@ -14,7 +14,7 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     }
 
     protected final FaultTolerantServer server;
-    protected final LoyaltyService loyaltyService;
+    protected final LoyaltyService loyaltyService = new LoyaltyService();
 
     public final String SERVICE_NAME = "LOYALTY";
     public final String RMQ_ADDRESS = "localhost";
@@ -27,10 +27,10 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/warehouse_loyalty",
                 "postgres",
-                "postgres");
+                "postgres",
+                loyaltyService.allTransactions());
 
         server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
-        loyaltyService = new LoyaltyService();
 
         try (var con = dataStore.db.getConnection()) {
             loyaltyService.createTables(con);

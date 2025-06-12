@@ -8,6 +8,9 @@ import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
 
+import java.util.Map;
+import java.util.Set;
+
 public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
     public static void main(String[] args) throws Exception {
@@ -26,14 +29,16 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
         connectionFactory.setHost(RMQ_ADDRESS);
         var connection = connectionFactory.newConnection();
 
+        warehouseService = new WarehouseService();
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/warehouse_warehouse",
                 "postgres",
-                "postgres"
+                "postgres",
+                warehouseService.allTransactions()
         );
 
         server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
-        warehouseService = new WarehouseService();
     }
 
     public void start() throws Exception {

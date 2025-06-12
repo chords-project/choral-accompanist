@@ -1,11 +1,9 @@
 package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
-import choral.reactive.ReactiveClient;
 import choral.reactive.ReactiveServer;
 import choral.reactive.ReactiveSymChannel;
 import choral.reactive.Session;
-import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.TelemetrySession;
 import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
@@ -211,40 +209,40 @@ public class ChainSidecar {
         Session session = Session.makeSession(choreographyName, serviceName);
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, Span.getInvalid());
 
-        try (var ctx = server.registerSession(session, telemetrySession);) {
-
-            //ReactiveClient client = new ReactiveClient(nextSidecarConnection, serviceName, telemetrySession);
-
-            ArrayList<Long> result = switch (chainLength) {
-                case ONE -> {
-                    var chanA = ctx.chanA(nextSidecarAddress);
-                    var chanB = ctx.chanB("CHAIN_A");
-                    ChainChoreography1_Start chainChor = new ChainChoreography1_Start(
-                            new ReactiveSymChannel<>(chanA, chanB)
-                    );
-                    yield chainChor.chain();
-                }
-                case THREE -> {
-                    ChainChoreography3_Start chainChor = new ChainChoreography3_Start(
-                            ctx.chanA(nextSidecarAddress),
-                            ctx.chanB("CHAIN_C")
-                    );
-                    yield chainChor.chain();
-                }
-                case FIVE -> {
-                    ChainChoreography5_Start chainChor = new ChainChoreography5_Start(
-                            ctx.chanA(nextSidecarAddress),
-                            ctx.chanB("CHAIN_E")
-                    );
-                    yield chainChor.chain();
-                }
-                default -> throw new RuntimeException("Invalid chain length: " + chainLength);
-            };
-
-            System.out.println("GOT RESULT: " + result);
-
-            return result;
-        }
-
+        throw new RuntimeException("Fix this");
+//        try (var ctx = server.registerSession(session, telemetrySession);) {
+//
+//            //ReactiveClient client = new ReactiveClient(nextSidecarConnection, serviceName, telemetrySession);
+//
+//            ArrayList<Long> result = switch (chainLength) {
+//                case ONE -> {
+//                    var chanA = ctx.chanA(nextSidecarAddress);
+//                    var chanB = ctx.chanB("CHAIN_A");
+//                    ChainChoreography1_Start chainChor = new ChainChoreography1_Start(
+//                            new ReactiveSymChannel<>(chanA, chanB)
+//                    );
+//                    yield chainChor.chain();
+//                }
+//                case THREE -> {
+//                    ChainChoreography3_Start chainChor = new ChainChoreography3_Start(
+//                            ctx.chanA(nextSidecarAddress),
+//                            ctx.chanB("CHAIN_C")
+//                    );
+//                    yield chainChor.chain();
+//                }
+//                case FIVE -> {
+//                    ChainChoreography5_Start chainChor = new ChainChoreography5_Start(
+//                            ctx.chanA(nextSidecarAddress),
+//                            ctx.chanB("CHAIN_E")
+//                    );
+//                    yield chainChor.chain();
+//                }
+//                default -> throw new RuntimeException("Invalid chain length: " + chainLength);
+//            };
+//
+//            System.out.println("GOT RESULT: " + result);
+//
+//            return result;
+//        }
     }
 }
