@@ -2,9 +2,12 @@ package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
 import choral.reactive.connection.Message;
+import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.Connection;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -33,6 +36,32 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     public RMQChannelReceiver connectionManager() {
         return (RMQChannelReceiver) this.connectionManager;
+    }
+
+    @Override
+    public void listen(String address) throws Exception {
+        var pendingSessions = this.dataStore.recoverStartedSessions();
+        for (var session : pendingSessions) {
+            Thread.ofVirtual().start(() -> {
+                Span span = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+                        .spanBuilder("choreography session (recover)")
+                        .setSpanKind(SpanKind.SERVER)
+                        .setAttribute("choreography.session", session.toString())
+                        .startSpan();
+
+                var telemetrySession = new TelemetrySession(telemetry, session, span);
+
+                try {
+                    startNewSession(telemetrySession);
+                } catch (Exception e) {
+                    telemetrySession.recordException("failed to run recovered session", e, true);
+                } finally {
+                    span.end();
+                }
+            });
+        }
+
+        super.listen(address);
     }
 
     @Override
@@ -72,7 +101,7 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
     @Override
     protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
         var sessionID = telemetrySession.session.sessionID();
-        dataStore.startSession(sessionID);
+        dataStore.startSession(telemetrySession.session);
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             newFaultSessionEvent.onNewSession(sessionCtx);
             dataStore.completeSession(sessionID);

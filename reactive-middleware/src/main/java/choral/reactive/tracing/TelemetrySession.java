@@ -135,9 +135,4 @@ public class TelemetrySession {
                         .map(entry -> entry.getKey().toString() + "=" + entry.getValue().toString())
                         .toList());
     }
-
-    // @Override
-    // public void close() throws IOException {
-    // choreographySpan.end();
-    // }
 }

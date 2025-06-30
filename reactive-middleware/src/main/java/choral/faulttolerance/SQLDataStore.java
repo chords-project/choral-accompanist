@@ -1,5 +1,6 @@
 package choral.faulttolerance;
 
+import choral.reactive.Session;
 import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
@@ -7,9 +8,7 @@ import java.io.Closeable;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 
 public class SQLDataStore implements FaultDataStore {
@@ -51,6 +50,7 @@ public class SQLDataStore implements FaultDataStore {
                     
                     CREATE TABLE IF NOT EXISTS session_states (
                       session_id INT PRIMARY KEY,
+                      choreography VARCHAR(255) NOT NULL,
                       session_state session_state_enum NOT NULL
                     );
                     """);
@@ -74,17 +74,20 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public void startSession(int sessionID) throws SQLException {
-        System.out.println("Marking session as started in database: " + sessionID);
+    public void startSession(Session session) throws SQLException {
+        System.out.println("Marking session as started in database: " + session);
+
+        // TODO: Check that the session has not already been completed or failed.
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("INSERT INTO session_states (session_id, session_state) VALUES (?, 'started');")
+                PreparedStatement stmt = con.prepareStatement("INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'started');")
         ) {
-            stmt.setInt(1, sessionID);
+            stmt.setInt(1, session.sessionID());
+            stmt.setString(2, session.choreographyName());
             int count = stmt.executeUpdate();
             if (count == 0) {
-                System.out.println("- Failed to mark session as started in database: " + sessionID);
+                System.out.println("- Failed to mark session as started in database: " + session.sessionID());
             }
         }
     }
@@ -221,6 +224,26 @@ public class SQLDataStore implements FaultDataStore {
                 }
             }
         }
+    }
+
+    @Override
+    public List<Session> recoverStartedSessions() throws SQLException {
+        var result = new ArrayList<Session>();
+        try (
+                var con = db.getConnection();
+                var stmt = con.createStatement();
+        ) {
+            var rs = stmt.executeQuery("SELECT * FROM session_states WHERE session_state = 'started';");
+            while (rs.next()) {
+                var sessionID = rs.getInt("session_id");
+                var choreography = rs.getString("choreography");
+                result.add(new Session(choreography, "", sessionID));
+            }
+        }
+
+        System.out.println("Found " + result.size() + " pending sessions to restart");
+
+        return result;
     }
 
     @Override
