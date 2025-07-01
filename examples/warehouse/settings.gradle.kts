@@ -20,3 +20,5 @@ include("choreography")
 include("warehouse")
 include("payment")
 include("loyalty")
+
+include("temporal")
