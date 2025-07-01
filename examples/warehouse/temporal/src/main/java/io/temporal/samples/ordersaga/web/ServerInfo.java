@@ -19,6 +19,8 @@
 
 package io.temporal.samples.ordersaga.web;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,5 +77,14 @@ public class ServerInfo {
         info.put("address", getAddress());
         info.put("taskQueue", getTaskqueue());
         return info;
+    }
+
+    public static HikariDataSource getDatabase(String dbName) {
+        HikariDataSource db = new HikariDataSource();
+        db.setJdbcUrl("jdbc:postgresql://localhost:5432/" + dbName);
+        db.setUsername("postgres");
+        db.setPassword("postgres");
+
+        return db;
     }
 }

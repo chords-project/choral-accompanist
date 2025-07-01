@@ -9,5 +9,5 @@ public interface LoyaltyActivities {
     void awardPointsToCustomer();
 
     @ActivityMethod
-    void compensatePointsToCustomer();
+    void compensatePointsFromCustomer();
 }

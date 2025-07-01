@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Random;
 
 public class WarehouseSagaImpl implements WarehouseSaga {
     private static final Logger logger = LoggerFactory.getLogger(WarehouseSagaImpl.class);
@@ -45,6 +46,10 @@ public class WarehouseSagaImpl implements WarehouseSaga {
     @Override
     public void orderFulfillment() {
         Saga saga = new Saga(new Saga.Options.Builder().build());
+
+        Random rand = new Random();
+        int sessionID = rand.nextInt();
+
         try {
             saga.addCompensation(warehouseActivities::cancelOrderReservation);
             warehouseActivities.checkItemInStockAndReserveForOrder();
@@ -52,11 +57,11 @@ public class WarehouseSagaImpl implements WarehouseSaga {
             saga.addCompensation(paymentActivities::refundCustomer);
             paymentActivities.takeMoneyFromCustomer();
 
-            saga.addCompensation(loyaltyActivities::compensatePointsToCustomer);
+            saga.addCompensation(loyaltyActivities::compensatePointsFromCustomer);
             loyaltyActivities.awardPointsToCustomer();
 
-            saga.addCompensation(warehouseActivities::cancelDelivery);
-            warehouseActivities.packageAndSendOrder();
+            saga.addCompensation(() -> warehouseActivities.cancelDelivery(sessionID));
+            warehouseActivities.packageAndSendOrder(sessionID);
         } catch (Exception e) {
             logger.error("Order processing failed, compensating.", e);
             saga.compensate();

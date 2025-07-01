@@ -45,7 +45,7 @@ public class WarehouseWorker {
         // register warehouse worker
         io.temporal.worker.Worker warehouseWorker = factory.newWorker(TASK_QUEUE, options);
         warehouseWorker.registerWorkflowImplementationTypes(WarehouseSagaImpl.class);
-        warehouseWorker.registerActivitiesImplementations(new WarehouseActivitiesImpl());
+        warehouseWorker.registerActivitiesImplementations(new WarehouseActivitiesImpl(ServerInfo.getDatabase("warehouse_warehouse")));
 
         // Start all workers created by this factory.
         factory.start();

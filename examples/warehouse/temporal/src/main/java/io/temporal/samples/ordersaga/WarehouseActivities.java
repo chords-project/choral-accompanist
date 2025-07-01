@@ -12,8 +12,8 @@ public interface WarehouseActivities {
     void cancelOrderReservation();
 
     @ActivityMethod
-    void packageAndSendOrder();
+    void packageAndSendOrder(int sessionID);
 
     @ActivityMethod
-    void cancelDelivery();
+    void cancelDelivery(int sessionID);
 }

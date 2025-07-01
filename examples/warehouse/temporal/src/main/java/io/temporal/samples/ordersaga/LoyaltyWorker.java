@@ -44,7 +44,7 @@ public class LoyaltyWorker {
 
         // register loyalty worker
         io.temporal.worker.Worker loyaltyWorker = factory.newWorker(TASK_QUEUE, options);
-        loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl());
+        loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl(ServerInfo.getDatabase("warehouse_loyalty")));
 
         // Start all workers created by this factory.
         factory.start();
