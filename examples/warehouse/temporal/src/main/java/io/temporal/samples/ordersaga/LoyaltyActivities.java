@@ -1,0 +1,13 @@
+package io.temporal.samples.ordersaga;
+
+import io.temporal.activity.ActivityInterface;
+import io.temporal.activity.ActivityMethod;
+
+@ActivityInterface
+public interface LoyaltyActivities {
+    @ActivityMethod
+    void awardPointsToCustomer();
+
+    @ActivityMethod
+    void compensatePointsToCustomer();
+}

@@ -23,11 +23,11 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 
+import javax.net.ssl.SSLException;
 import java.io.FileNotFoundException;
 import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLException;
 
-public class Caller {
+public class WarehouseCaller {
 
     public static void runWorkflow() throws FileNotFoundException, SSLException {
         // generate a random reference number
@@ -35,7 +35,7 @@ public class Caller {
         // Workflow execution code
 
         WorkflowClient client = TemporalClient.get();
-        final String TASK_QUEUE = ServerInfo.getTaskqueue();
+        final String WAREHOUSE_TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
 
         // get java timestamp
         long javaTime = System.currentTimeMillis();
@@ -43,13 +43,13 @@ public class Caller {
 
         WorkflowOptions options =
                 WorkflowOptions.newBuilder()
-                        .setWorkflowId("OrderProcessingSaga-" + timeSeconds)
-                        .setTaskQueue(TASK_QUEUE)
+                        .setWorkflowId("WarehouseSaga-" + timeSeconds)
+                        .setTaskQueue(WAREHOUSE_TASK_QUEUE)
                         .build();
-        OrderWorkflowSaga workflow = client.newWorkflowStub(OrderWorkflowSaga.class, options);
+        WarehouseSaga workflow = client.newWorkflowStub(WarehouseSaga.class, options);
 
         // start the workflow
-        WorkflowClient.start(workflow::processOrder, "order-" + timeSeconds);
+        WorkflowClient.start(workflow::orderFulfillment);
     }
 
     @SuppressWarnings("CatchAndPrintStackTrace")

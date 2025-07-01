@@ -40,6 +40,8 @@ dependencies {
     implementation("io.temporal:temporal-testing:$temporalVersion")
     testImplementation("io.temporal:temporal-testing:$temporalVersion")
 
+    implementation("org.slf4j:slf4j-simple:2.0.17")
+
     // Needed for SDK related functionality
 //    implementation(platform("com.fasterxml.jackson:jackson-bom:2.15.2"))
 //    implementation("com.fasterxml.jackson.core:jackson-databind")

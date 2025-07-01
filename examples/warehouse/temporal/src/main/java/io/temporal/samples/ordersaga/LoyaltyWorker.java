@@ -22,13 +22,17 @@ package io.temporal.samples.ordersaga;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.worker.WorkerFactory;
 import io.temporal.worker.WorkerOptions;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
-public class Worker {
+public class LoyaltyWorker {
+
+    private static final Logger logger = LoggerFactory.getLogger(LoyaltyWorker.class);
 
     @SuppressWarnings("CatchAndPrintStackTrace")
     public static void main(String[] args) throws Exception {
 
-        final String TASK_QUEUE = ServerInfo.getTaskqueue();
+        final String TASK_QUEUE = ServerInfo.getLoyaltyTaskQueue();
 
         // set activities per second across *all* workers
         // prevents resource exhausted errors
@@ -37,12 +41,13 @@ public class Worker {
 
         // worker factory that can be used to create workers for specific task queues
         WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
-        io.temporal.worker.Worker worker = factory.newWorker(TASK_QUEUE, options);
-        worker.registerWorkflowImplementationTypes(OrderWorkflowSagaImpl.class);
-        worker.registerActivitiesImplementations(new OrderActivitiesImpl());
+
+        // register loyalty worker
+        io.temporal.worker.Worker loyaltyWorker = factory.newWorker(TASK_QUEUE, options);
+        loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl());
 
         // Start all workers created by this factory.
         factory.start();
-        System.out.println("Worker started for task queue: " + TASK_QUEUE);
+        logger.info("Worker loyalty started for task queues: {}", TASK_QUEUE);
     }
 }

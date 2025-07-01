@@ -22,13 +22,17 @@ package io.temporal.samples.ordersaga;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.worker.WorkerFactory;
 import io.temporal.worker.WorkerOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class Worker {
+public class WarehouseWorker {
+
+    private static final Logger logger = LoggerFactory.getLogger(WarehouseWorker.class);
 
     @SuppressWarnings("CatchAndPrintStackTrace")
     public static void main(String[] args) throws Exception {
 
-        final String TASK_QUEUE = ServerInfo.getTaskqueue();
+        final String TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
 
         // set activities per second across *all* workers
         // prevents resource exhausted errors
@@ -37,12 +41,14 @@ public class Worker {
 
         // worker factory that can be used to create workers for specific task queues
         WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
-        io.temporal.worker.Worker worker = factory.newWorker(TASK_QUEUE, options);
-        worker.registerWorkflowImplementationTypes(OrderWorkflowSagaImpl.class);
-        worker.registerActivitiesImplementations(new OrderActivitiesImpl());
+
+        // register warehouse worker
+        io.temporal.worker.Worker warehouseWorker = factory.newWorker(TASK_QUEUE, options);
+        warehouseWorker.registerWorkflowImplementationTypes(WarehouseSagaImpl.class);
+        warehouseWorker.registerActivitiesImplementations(new WarehouseActivitiesImpl());
 
         // Start all workers created by this factory.
         factory.start();
-        System.out.println("Worker started for task queue: " + TASK_QUEUE);
+        logger.info("Worker warehouse started for task queues: {}", TASK_QUEUE);
     }
 }
