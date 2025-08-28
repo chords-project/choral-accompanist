@@ -25,6 +25,7 @@ import io.temporal.samples.ordersaga.web.ServerInfo;
 
 import javax.net.ssl.SSLException;
 import java.io.FileNotFoundException;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class WarehouseCaller {
@@ -48,8 +49,11 @@ public class WarehouseCaller {
                         .build();
         WarehouseSaga workflow = client.newWorkflowStub(WarehouseSaga.class, options);
 
+        Random rand = new Random();
+        int sessionID = rand.nextInt();
+
         // start the workflow
-        WorkflowClient.start(workflow::orderFulfillment);
+        WorkflowClient.start(workflow::orderFulfillment, sessionID);
     }
 
     @SuppressWarnings("CatchAndPrintStackTrace")

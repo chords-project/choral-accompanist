@@ -44,11 +44,8 @@ public class WarehouseSagaImpl implements WarehouseSaga {
     }
 
     @Override
-    public void orderFulfillment() {
+    public void orderFulfillment(int sessionID) {
         Saga saga = new Saga(new Saga.Options.Builder().build());
-
-        Random rand = new Random();
-        int sessionID = rand.nextInt();
 
         try {
             saga.addCompensation(warehouseActivities::cancelOrderReservation);

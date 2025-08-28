@@ -6,5 +6,5 @@ import io.temporal.workflow.WorkflowMethod;
 @WorkflowInterface
 public interface WarehouseSaga {
     @WorkflowMethod
-    void orderFulfillment();
+    void orderFulfillment(int sessionID);
 }
