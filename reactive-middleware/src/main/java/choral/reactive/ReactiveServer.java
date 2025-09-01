@@ -15,13 +15,10 @@ import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 public class ReactiveServer
@@ -83,12 +80,12 @@ public class ReactiveServer
     }
 
     /**
-     * Creates a ReactiveServer, using {@link ServerConnectionManager#makeConnectionManager} for the connection.
+     * Creates a ReactiveServer, using {@link ServerConnectionManager#defaultFactory()} for the connection.
      * Invoke {@link #listen(String)} to start listening.
      */
     public ReactiveServer(String serviceName, OpenTelemetry telemetry, NewSessionEvent newSessionEvent) {
         this(serviceName, null, telemetry, newSessionEvent);
-        this.connectionManager = ServerConnectionManager.makeConnectionManager(this, telemetry);
+        this.connectionManager = ServerConnectionManager.defaultFactory().makeConnectionManager(serviceName, this, telemetry);
     }
 
     /**

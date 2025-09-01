@@ -9,33 +9,27 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
 
-public class FaultTolerantServer extends ReactiveServer implements RMQChannelReceiver.RMQReceiverEvents {
+public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents {
 
-    private final HashMap<Integer, ArrayList<RMQChannelReceiver.MessageAck>> pendingMessages = new HashMap<>();
     protected final FaultSessionEvent newFaultSessionEvent;
     protected final FaultDataStore dataStore;
 
-    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
+    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
         super(serviceName, null, RMQChannelSender.factory(rmqCon), telemetry, Duration.ofMinutes(10), null);
-        this.connectionManager = new RMQChannelReceiver(rmqCon, serviceName, this);
+        this.connectionManager = FaultServerConnectionManager.makeConnectionManager(serviceName, this, telemetry);
         this.newFaultSessionEvent = newSessionEvent;
         this.dataStore = dataStore;
     }
 
-    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, FaultSessionEvent newSessionEvent) throws IOException, TimeoutException {
+    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, FaultSessionEvent newSessionEvent) {
         this(dataStore, rmqCon, serviceName, OpenTelemetry.noop(), newSessionEvent);
     }
 
-    public RMQChannelReceiver connectionManager() {
-        return (RMQChannelReceiver) this.connectionManager;
+    public FaultServerConnectionManager connectionManager() {
+        return (FaultServerConnectionManager) this.connectionManager;
     }
 
     @Override
@@ -72,30 +66,14 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
 
     @Override
     protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
-        var sessionID = telemetrySession.session.sessionID();
-
         try {
             super.startNewSession(telemetrySession);
         } catch (Exception e) {
-            synchronized (pendingMessages) {
-                var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
-                for (var message : messages) {
-                    message.nack();
-                }
-                pendingMessages.remove(sessionID);
-                telemetrySession.log("Error occurred, rolled back " + messages.size() + " messages");
-            }
+            this.connectionManager().recoverableSessionFailure(telemetrySession);
             throw e;
         }
 
-        synchronized (pendingMessages) {
-            var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
-            for (var message : messages) {
-                message.ack();
-            }
-            pendingMessages.remove(sessionID);
-            telemetrySession.log("Choreography completed, ACKed " + messages.size() + " messages");
-        }
+        this.connectionManager().sessionCompleted(telemetrySession);
     }
 
     @Override
@@ -113,26 +91,15 @@ public class FaultTolerantServer extends ReactiveServer implements RMQChannelRec
     }
 
     @Override
-    public void messageToAck(RMQChannelReceiver.MessageAck messageAck) {
-        synchronized (pendingMessages) {
-            pendingMessages.merge(messageAck.sessionID, new ArrayList<>(List.of(messageAck)), (a, b) -> {
-                a.addAll(b);
-                return a;
-            });
-        }
-    }
-
-    @Override
-    public void sessionFailed(int sessionID, RMQChannelReceiver.MessageAck messageAck) throws IOException {
+    public void sessionFailed(int sessionID) throws Exception {
         logger.info("Received session failed event for sessionID: " + sessionID);
         try {
             dataStore.failSession(sessionID);
             dataStore.compensateTransactions(sessionID);
         } catch (SQLException e) {
             logger.error("Session failed event caused SQL exception: " + e);
-            messageAck.nack();
+            throw e;
         }
-        messageAck.ack();
     }
 
     @Override

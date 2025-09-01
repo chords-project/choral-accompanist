@@ -1,29 +1,34 @@
 package choral.faulttolerance;
 
-import choral.reactive.Session;
 import choral.reactive.connection.Message;
-import choral.reactive.connection.ServerConnectionManager;
+import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-public class RMQChannelReceiver implements ServerConnectionManager {
+public class RMQChannelReceiver implements FaultServerConnectionManager {
 
     final String queueName;
-    final RMQReceiverEvents events;
-    final Connection connection;
+    final ServerEvents events;
+    Connection connection;
     Channel channel;
+    private final HashMap<Integer, ArrayList<MessageAck>> pendingMessages = new HashMap<>();
 
-    public RMQChannelReceiver(Connection connection, String serviceName, RMQReceiverEvents events) throws IOException, TimeoutException {
-        this.connection = connection;
+    public RMQChannelReceiver(String serviceName, ServerEvents events) {
         this.queueName = serviceName;
         this.events = events;
     }
 
     @Override
     public void listen(String address) throws IOException, TimeoutException {
+        var connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost(address);
+
+        this.connection = connectionFactory.newConnection();
         this.channel = connection.createChannel();
 
         // Message receive queue
@@ -40,14 +45,54 @@ public class RMQChannelReceiver implements ServerConnectionManager {
         channel.queueBind(faultQueueName, "faults", "");
     }
 
-    public void broadcastSessionFailure(Integer sessionID) throws IOException, InterruptedException, TimeoutException {
+    @Override
+    public void close() throws IOException, TimeoutException {
+        channel.close();
+        connection.close();
+    }
+
+    @Override
+    public void recoverableSessionFailure(TelemetrySession telemetrySession) throws IOException {
+        var sessionID = telemetrySession.session.sessionID();
+
+        synchronized (pendingMessages) {
+            var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
+            for (var message : messages) {
+                message.nack();
+            }
+            pendingMessages.remove(sessionID);
+            telemetrySession.log("Error occurred, rolled back " + messages.size() + " messages");
+        }
+    }
+
+    @Override
+    public void broadcastSessionFailure(TelemetrySession telemetrySession) throws IOException {
+        var sessionID = telemetrySession.session.sessionID();
         byte[] body = sessionID.toString().getBytes();
         channel.basicPublish("faults", "", null, body);
     }
 
     @Override
-    public void close() throws IOException, TimeoutException {
-        channel.close();
+    public void sessionCompleted(TelemetrySession telemetrySession) throws IOException {
+        var sessionID = telemetrySession.session.sessionID();
+
+        synchronized (pendingMessages) {
+            var messages = pendingMessages.getOrDefault(sessionID, new ArrayList<>());
+            for (var message : messages) {
+                message.ack();
+            }
+            pendingMessages.remove(sessionID);
+            telemetrySession.log("Choreography completed, ACKed " + messages.size() + " messages");
+        }
+    }
+
+    protected void messageToAck(RMQChannelReceiver.MessageAck messageAck) {
+        synchronized (pendingMessages) {
+            pendingMessages.merge(messageAck.sessionID, new ArrayList<>(List.of(messageAck)), (a, b) -> {
+                a.addAll(b);
+                return a;
+            });
+        }
     }
 
     protected class MessageDeliverCallback implements DeliverCallback {
@@ -56,7 +101,7 @@ public class RMQChannelReceiver implements ServerConnectionManager {
             try {
                 Message msg = Message.deserialize(message.getBody());
                 events.messageReceived(msg);
-                events.messageToAck(new MessageAck(message.getEnvelope().getDeliveryTag(), msg.session.sessionID()));
+                messageToAck(new MessageAck(message.getEnvelope().getDeliveryTag(), msg.session.sessionID()));
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             }
@@ -68,7 +113,13 @@ public class RMQChannelReceiver implements ServerConnectionManager {
         public void handle(String consumerTag, Delivery message) throws IOException {
             int sessionID = Integer.parseInt(new String(message.getBody()));
             var ack = new MessageAck(message.getEnvelope().getDeliveryTag(), sessionID);
-            events.sessionFailed(sessionID, ack);
+            try {
+                events.sessionFailed(sessionID);
+            } catch (Exception e) {
+                ack.nack();
+                throw new RuntimeException(e);
+            }
+            ack.ack();
         }
     }
 
@@ -88,11 +139,5 @@ public class RMQChannelReceiver implements ServerConnectionManager {
         public void nack() throws IOException {
             channel.basicNack(deliveryTag, false, true);
         }
-    }
-
-    public interface RMQReceiverEvents extends ServerEvents {
-        void messageToAck(MessageAck messageAck);
-
-        void sessionFailed(int sessionID, MessageAck messageAck) throws IOException;
     }
 }

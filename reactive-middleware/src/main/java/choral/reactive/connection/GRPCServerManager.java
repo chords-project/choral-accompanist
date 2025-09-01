@@ -28,7 +28,7 @@ public class GRPCServerManager implements ServerConnectionManager {
     private final Logger logger;
     private final OpenTelemetry telemetry;
 
-    public GRPCServerManager(ServerEvents serverEvents, OpenTelemetry telemetry) {
+    public GRPCServerManager(String serviceName, ServerEvents serverEvents, OpenTelemetry telemetry) {
         this.serverEvents = serverEvents;
         this.logger = new Logger(telemetry, GRPCServerManager.class.getName());
         this.telemetry = telemetry;
@@ -46,9 +46,6 @@ public class GRPCServerManager implements ServerConnectionManager {
         var serverBuilder = Grpc.newServerBuilderForPort(addr.getPort(), InsecureServerCredentials.create())
                 .addService(new ChannelGrpcImpl())
                 .addService(health.getHealthService());
-
-//        var grpcTelemetry = GrpcOpenTelemetry.newBuilder().sdk(telemetry).build();
-//        grpcTelemetry.configureServerBuilder(serverBuilder);
 
         server = serverBuilder.build().start();
 
