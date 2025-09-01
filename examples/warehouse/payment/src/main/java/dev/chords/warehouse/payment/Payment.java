@@ -1,8 +1,6 @@
 package dev.chords.warehouse.payment;
 
-import choral.faulttolerance.FaultSessionContext;
-import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.SQLDataStore;
+import choral.faulttolerance.*;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
 
@@ -33,7 +31,10 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
                 paymentService.allTransactions()
         );
 
-        server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
+        var clientCon = RMQChannelSender.factory(connection);
+        var serverCon = RMQChannelReceiver.factory();
+
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
     }
 
     public void start() throws Exception {

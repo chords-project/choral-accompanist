@@ -1,8 +1,6 @@
 package dev.chords.warehouse.loyalty;
 
-import choral.faulttolerance.FaultSessionContext;
-import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.SQLDataStore;
+import choral.faulttolerance.*;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
@@ -30,7 +28,10 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
                 "postgres",
                 loyaltyService.allTransactions());
 
-        server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
+        var clientCon = RMQChannelSender.factory(connection);
+        var serverCon = RMQChannelReceiver.factory();
+
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
 
         try (var con = dataStore.db.getConnection()) {
             loyaltyService.createTables(con);

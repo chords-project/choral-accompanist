@@ -1,8 +1,6 @@
 package dev.chords.warehouse.warehouse;
 
-import choral.faulttolerance.FaultSessionContext;
-import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.SQLDataStore;
+import choral.faulttolerance.*;
 import choral.reactive.Session;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
@@ -38,7 +36,10 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
                 warehouseService.allTransactions()
         );
 
-        server = new FaultTolerantServer(dataStore, connection, SERVICE_NAME, this);
+        var clientCon = RMQChannelSender.factory(connection);
+        var serverCon = RMQChannelReceiver.factory();
+
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
     }
 
     public void start() throws Exception {

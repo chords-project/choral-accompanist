@@ -10,7 +10,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
-
+/**
+ * A Postgres implementation of the {@link FaultDataStore} interface
+ */
 public class SQLDataStore implements FaultDataStore {
     public final DataSource db;
     public final Map<String, Transaction> transactions;

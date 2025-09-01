@@ -1,36 +1,39 @@
-package choral.reactive.connection;
+package choral.faulttolerance;
 
+import choral.reactive.connection.ClientConnectionManager;
+import choral.reactive.connection.Message;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.Logger;
 import choral_reactive.ChannelGrpc;
-import choral_reactive.ChannelGrpc.ChannelFutureStub;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.trace.Span;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.SQLException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class GRPCClientManager implements ClientConnectionManager {
-
+public class MailboxFaultClientManager implements ClientConnectionManager {
     private final ManagedChannel channel;
-    private final ChannelFutureStub futureStub;
+    private final ChannelGrpc.ChannelFutureStub futureStub;
     private final OpenTelemetry telemetry;
     private final Logger logger;
     private final String address;
-    private final DoubleHistogram sendHistogram;
+    private final SQLMailbox mailbox;
 
-    public GRPCClientManager(String address, OpenTelemetry telemetry) throws URISyntaxException {
+    public MailboxFaultClientManager(SQLMailbox mailbox, String address, OpenTelemetry telemetry) throws URISyntaxException, SQLException {
+        this.mailbox = mailbox;
         this.address = address;
         this.telemetry = telemetry;
-        this.logger = new Logger(telemetry, GRPCClientManager.class.getName());
+        this.logger = new Logger(telemetry, MailboxFaultClientManager.class.getName());
+
+        this.mailbox.createTables();
 
         URI uri = new URI(null, address, null, null, null).parseServerAuthority();
         InetSocketAddress socketAddr = new InetSocketAddress(uri.getHost(), uri.getPort());
@@ -42,19 +45,12 @@ public class GRPCClientManager implements ClientConnectionManager {
 
         this.futureStub = ChannelGrpc
                 .newFutureStub(channel);
-        //.withDeadlineAfter(10, TimeUnit.SECONDS);
-
-        this.sendHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-                .histogramBuilder("choral.reactive.grpc-client.send-duration")
-                .setDescription("Duration for sending a message")
-                .setUnit("ms")
-                .build();
     }
 
     @Override
     public Connection makeConnection() {
         logger.debug("Connect to gRPC server " + address);
-        return new ClientConnection();
+        return new MailboxFaultClientManager.ClientConnection();
     }
 
     @Override
@@ -75,6 +71,13 @@ public class GRPCClientManager implements ClientConnectionManager {
 
         @Override
         public void sendMessage(Message msg) throws Exception {
+
+            boolean alreadySent = mailbox.aboutToSendMessage(msg);
+            if (alreadySent) {
+                logger.info("Message already sent");
+                return;
+            }
+
             var result = futureStub.sendMessage(msg.toGrpcMessage());
 
             Attributes attributes = Attributes.builder()
@@ -91,13 +94,6 @@ public class GRPCClientManager implements ClientConnectionManager {
                     double duration = (System.nanoTime() - startTime) / 1_000_000.0;
 
                     connectionSpan.addEvent("Message sent to " + address + " (" + (long) duration + " ms)", attributes);
-
-                    sendHistogram.record(
-                            duration,
-                            Attributes.builder()
-                                    .put("address", address)
-                                    .build()
-                    );
                 } catch (Exception e) {
                     connectionSpan.setAttribute("error", true);
                     connectionSpan.recordException(e);

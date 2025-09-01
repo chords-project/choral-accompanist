@@ -1,6 +1,7 @@
 package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
+import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
@@ -17,15 +18,15 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     protected final FaultSessionEvent newFaultSessionEvent;
     protected final FaultDataStore dataStore;
 
-    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
-        super(serviceName, null, RMQChannelSender.factory(rmqCon), telemetry, Duration.ofMinutes(10), null);
-        this.connectionManager = FaultServerConnectionManager.makeConnectionManager(serviceName, this, telemetry);
+    public FaultTolerantServer(FaultDataStore dataStore, ClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
+        super(serviceName, null, clientCon, telemetry, Duration.ofMinutes(10), null);
+        this.connectionManager = serverCon.makeConnectionManager(serviceName, this, telemetry);
         this.newFaultSessionEvent = newSessionEvent;
         this.dataStore = dataStore;
     }
 
-    public FaultTolerantServer(FaultDataStore dataStore, Connection rmqCon, String serviceName, FaultSessionEvent newSessionEvent) {
-        this(dataStore, rmqCon, serviceName, OpenTelemetry.noop(), newSessionEvent);
+    public FaultTolerantServer(FaultDataStore dataStore, ClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {
+        this(dataStore, clientCon, serverCon, serviceName, OpenTelemetry.noop(), newSessionEvent);
     }
 
     public FaultServerConnectionManager connectionManager() {
@@ -34,6 +35,11 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
 
     @Override
     public void listen(String address) throws Exception {
+        this.recoverStartedSessions();
+        super.listen(address);
+    }
+
+    protected void recoverStartedSessions() throws SQLException {
         var pendingSessions = this.dataStore.recoverStartedSessions();
         for (var session : pendingSessions) {
             Thread.ofVirtual().start(() -> {
@@ -54,8 +60,6 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
                 }
             });
         }
-
-        super.listen(address);
     }
 
     @Override

@@ -23,6 +23,10 @@ public class RMQChannelReceiver implements FaultServerConnectionManager {
         this.events = events;
     }
 
+    public static FaultServerConnectionManager.Factory factory() {
+        return (serviceName, events, telemetry) -> new RMQChannelReceiver(serviceName, events);
+    }
+
     @Override
     public void listen(String address) throws IOException, TimeoutException {
         var connectionFactory = new ConnectionFactory();

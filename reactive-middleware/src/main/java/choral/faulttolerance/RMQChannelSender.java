@@ -1,13 +1,11 @@
 package choral.faulttolerance;
 
 import choral.reactive.connection.ClientConnectionManager;
+import choral.reactive.connection.Message;
+import com.rabbitmq.client.Channel;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
-
-import choral.reactive.connection.Message;
-import com.rabbitmq.client.Channel;
-import io.opentelemetry.api.OpenTelemetry;
 
 public class RMQChannelSender implements ClientConnectionManager {
 

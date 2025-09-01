@@ -12,8 +12,12 @@ public interface FaultServerConnectionManager extends ServerConnectionManager {
 
     void sessionCompleted(TelemetrySession telemetrySession) throws Exception;
 
-    static FaultServerConnectionManager makeConnectionManager(String serviceName, ServerEvents events, OpenTelemetry telemetry) {
-        return new RMQChannelReceiver(serviceName, events);
+    static FaultServerConnectionManager.Factory defaultFactory() {
+        return (serviceName, events, telemetry) -> new RMQChannelReceiver(serviceName, events);
+    }
+
+    interface Factory {
+        FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry);
     }
 
     interface ServerEvents extends ServerConnectionManager.ServerEvents {

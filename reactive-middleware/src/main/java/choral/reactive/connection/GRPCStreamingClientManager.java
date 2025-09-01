@@ -15,9 +15,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class GRPCStreamingClientManager implements ClientConnectionManager {
 
@@ -34,9 +32,9 @@ public class GRPCStreamingClientManager implements ClientConnectionManager {
         InetSocketAddress socketAddr = new InetSocketAddress(uri.getHost(), uri.getPort());
 
         this.channel = ManagedChannelBuilder
-            .forAddress(socketAddr.getHostString(), socketAddr.getPort())
-            .usePlaintext()
-            .build();
+                .forAddress(socketAddr.getHostString(), socketAddr.getPort())
+                .usePlaintext()
+                .build();
 
         this.channelStub = StreamingChannelGrpc.newStub(channel);
     }
@@ -58,13 +56,14 @@ public class GRPCStreamingClientManager implements ClientConnectionManager {
 
         private ClientConnection() {
             this.connectionSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
-                .spanBuilder("GRPCConnection: " + address)
-                .setAttribute("address", address)
-                .startSpan();
+                    .spanBuilder("GRPCConnection: " + address)
+                    .setAttribute("address", address)
+                    .startSpan();
 
             this.streamObserver = channelStub.streamMessages(new StreamObserver<>() {
                 @Override
-                public void onNext(Empty value) {}
+                public void onNext(Empty value) {
+                }
 
                 @Override
                 public void onError(Throwable t) {
@@ -81,11 +80,11 @@ public class GRPCStreamingClientManager implements ClientConnectionManager {
         @Override
         public void sendMessage(Message msg) throws Exception {
             streamObserver.onNext(msg.toGrpcMessage());
-            connectionSpan.addEvent("Message streamed to "+address,
-                Attributes.builder()
-                    .put("message", msg.toString())
-                    .put("address", address)
-                    .build());
+            connectionSpan.addEvent("Message streamed to " + address,
+                    Attributes.builder()
+                            .put("message", msg.toString())
+                            .put("address", address)
+                            .build());
         }
 
         @Override
