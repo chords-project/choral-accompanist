@@ -1,7 +1,6 @@
 package dev.chords.warehouse.payment;
 
 import choral.faulttolerance.*;
-import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
 
 public class Payment implements FaultTolerantServer.FaultSessionEvent {
@@ -15,13 +14,9 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
     private final PaymentService paymentService;
 
     public static final String SERVICE_NAME = "PAYMENT";
-    public static final String RMQ_ADDRESS = "localhost";
+    public static final String SERVER_ADDRESS = System.getenv("PAYMENT");
 
     public Payment() throws Exception {
-        var connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost(RMQ_ADDRESS);
-        var connection = connectionFactory.newConnection();
-
         paymentService = new PaymentService();
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
@@ -31,14 +26,23 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
                 paymentService.allTransactions()
         );
 
-        var clientCon = RMQChannelSender.factory(connection);
-        var serverCon = RMQChannelReceiver.factory();
+        // RabbitMQ connection
+//        var connectionFactory = new ConnectionFactory();
+//        connectionFactory.setHost(RMQ_ADDRESS);
+//        var connection = connectionFactory.newConnection();
+//        var clientCon = RMQChannelSender.factory(connection);
+//        var serverCon = RMQChannelReceiver.factory();
+
+        // Mailbox connection
+        var clientCon = MailboxFaultClientManager.factory(dataStore.db);
+        var serverCon = MailboxFaultServerManager.factory(dataStore.db);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
     }
 
     public void start() throws Exception {
-        server.listen(RMQ_ADDRESS);
+        System.out.println("Starting payment on address: " + SERVER_ADDRESS);
+        server.listen(SERVER_ADDRESS);
     }
 
     @Override

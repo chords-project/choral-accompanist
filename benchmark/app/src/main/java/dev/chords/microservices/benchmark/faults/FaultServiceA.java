@@ -3,6 +3,7 @@ package dev.chords.microservices.benchmark.faults;
 import choral.faulttolerance.FaultTolerantServer;
 import choral.faulttolerance.RMQChannelSender;
 import choral.faulttolerance.SQLDataStore;
+import choral.reactive.ReactiveSymChannel;
 import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.tracing.JaegerConfiguration;
@@ -12,6 +13,8 @@ import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
+
+import java.util.Set;
 
 public class FaultServiceA {
     private OpenTelemetry telemetry;
@@ -30,14 +33,15 @@ public class FaultServiceA {
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/benchmark_service_a",
                 "postgres",
-                "postgres"
+                "postgres",
+                Set.of()
         );
 
         this.serverA = new FaultTolerantServer(dataStore, connection, "serviceA", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
-                            ctx.symChan("serviceB"));
+                            ctx.symChan("serviceB", "serviceB"));
 
                     pingPongChor.pingPong();
 

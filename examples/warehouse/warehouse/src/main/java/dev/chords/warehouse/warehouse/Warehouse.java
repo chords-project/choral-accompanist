@@ -3,11 +3,7 @@ package dev.chords.warehouse.warehouse;
 import choral.faulttolerance.*;
 import choral.reactive.Session;
 import choral.reactive.tracing.TelemetrySession;
-import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
-
-import java.util.Map;
-import java.util.Set;
 
 public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
@@ -17,16 +13,12 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
     }
 
     public static final String SERVICE_NAME = "WAREHOUSE";
-    public static final String RMQ_ADDRESS = "localhost";
+    public static final String SERVER_ADDRESS = System.getenv("WAREHOUSE");
 
     protected final FaultTolerantServer server;
     protected final WarehouseService warehouseService;
 
     public Warehouse() throws Exception {
-        var connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost(RMQ_ADDRESS);
-        var connection = connectionFactory.newConnection();
-
         warehouseService = new WarehouseService();
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
@@ -36,16 +28,25 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
                 warehouseService.allTransactions()
         );
 
-        var clientCon = RMQChannelSender.factory(connection);
-        var serverCon = RMQChannelReceiver.factory();
+        // RabbitMQ connection
+//        var connectionFactory = new ConnectionFactory();
+//        connectionFactory.setHost(RMQ_ADDRESS);
+//        var connection = connectionFactory.newConnection();
+//        var clientCon = RMQChannelSender.factory(connection);
+//        var serverCon = RMQChannelReceiver.factory();
+
+        // Mailbox connection
+        var clientCon = MailboxFaultClientManager.factory(dataStore.db);
+        var serverCon = MailboxFaultServerManager.factory(dataStore.db);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
     }
 
     public void start() throws Exception {
-        Thread.ofVirtual().start(() -> {
+        var serverThread = Thread.ofVirtual().start(() -> {
             try {
-                server.listen(RMQ_ADDRESS);
+                System.out.println("Starting warehouse on address " + SERVER_ADDRESS);
+                server.listen(SERVER_ADDRESS);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -54,6 +55,8 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
         Thread.sleep(1000);
 
         orderFulfillment();
+
+        serverThread.join();
     }
 
     @Override

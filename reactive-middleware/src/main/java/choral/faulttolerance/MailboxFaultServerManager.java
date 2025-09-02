@@ -13,6 +13,7 @@ import io.grpc.protobuf.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.OpenTelemetry;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -34,9 +35,14 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
         this.telemetry = telemetry;
     }
 
+    public static FaultServerConnectionManager.Factory factory(DataSource db) throws SQLException {
+        SQLMailbox mailbox = new SQLMailbox(db);
+        return (String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) ->
+                new MailboxFaultServerManager(mailbox, serviceName, events, telemetry);
+    }
+
     @Override
     public void listen(String address) throws Exception {
-        this.mailbox.createTables();
         this.recoverReceivedMessages();
 
         logger.info("Starting gRPC server on " + address);

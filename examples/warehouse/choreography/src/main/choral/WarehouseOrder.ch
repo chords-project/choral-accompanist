@@ -40,17 +40,17 @@ public class WarehouseOrder@(Warehouse, Payment, Loyalty) {
 
         this.ch_warehousePayment = ReactiveChannel@(Warehouse, Payment).connect(
             ctx_warehouse, ctx_payment,
-            "WAREHOUSE"@Payment, "PAYMENT"@Warehouse
+            "WAREHOUSE"@Payment, System@Warehouse.getenv("PAYMENT"@Warehouse)
         );
 
         this.ch_paymentLoyalty = ReactiveChannel@(Payment, Loyalty).connect(
             ctx_payment, ctx_loyalty,
-            "PAYMENT"@Loyalty, "LOYALTY"@Payment
+            "PAYMENT"@Loyalty, System@Payment.getenv("LOYALTY"@Payment)
         );
 
         this.ch_loyaltyWarehouse = ReactiveChannel@(Loyalty, Warehouse).connect(
             ctx_loyalty, ctx_warehouse,
-            "LOYALTY"@Warehouse, "WAREHOUSE"@Loyalty
+            "LOYALTY"@Warehouse, System@Loyalty.getenv("WAREHOUSE"@Loyalty)
         );
     }
 

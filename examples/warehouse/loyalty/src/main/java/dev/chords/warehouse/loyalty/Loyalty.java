@@ -1,7 +1,6 @@
 package dev.chords.warehouse.loyalty;
 
 import choral.faulttolerance.*;
-import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
 public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
@@ -15,21 +14,25 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     protected final LoyaltyService loyaltyService = new LoyaltyService();
 
     public final String SERVICE_NAME = "LOYALTY";
-    public final String RMQ_ADDRESS = "localhost";
+    public final String SERVER_ADDRESS = System.getenv("LOYALTY");
 
     public Loyalty() throws Exception {
-        var connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost(RMQ_ADDRESS);
-        var connection = connectionFactory.newConnection();
-
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/warehouse_loyalty",
                 "postgres",
                 "postgres",
                 loyaltyService.allTransactions());
 
-        var clientCon = RMQChannelSender.factory(connection);
-        var serverCon = RMQChannelReceiver.factory();
+        // RabbitMQ connection
+//        var connectionFactory = new ConnectionFactory();
+//        connectionFactory.setHost(RMQ_ADDRESS);
+//        var connection = connectionFactory.newConnection();
+//        var clientCon = RMQChannelSender.factory(connection);
+//        var serverCon = RMQChannelReceiver.factory();
+
+        // Mailbox connection
+        var clientCon = MailboxFaultClientManager.factory(dataStore.db);
+        var serverCon = MailboxFaultServerManager.factory(dataStore.db);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
 
@@ -39,7 +42,8 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     }
 
     public void start() throws Exception {
-        server.listen(RMQ_ADDRESS);
+        System.out.println("Starting Loyalty on address " + SERVER_ADDRESS);
+        server.listen(SERVER_ADDRESS);
     }
 
     @Override

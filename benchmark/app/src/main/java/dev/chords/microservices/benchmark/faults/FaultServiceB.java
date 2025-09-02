@@ -7,6 +7,8 @@ import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
 
+import java.util.Set;
+
 public class FaultServiceB {
     private OpenTelemetry telemetry;
     private ReactiveServer serverB;
@@ -19,16 +21,17 @@ public class FaultServiceB {
         var connection = connectionFactory.newConnection();
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
-                "jdbc:postgresql://localhost:5432/benchmark_service_b",
+                "jdbc:postgresql://localhost:5432/benchmark_service_a",
                 "postgres",
-                "postgres"
+                "postgres",
+                Set.of()
         );
 
         this.serverB = new FaultTolerantServer(dataStore, connection, "serviceB", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
-                            ctx.symChan("serviceA"));
+                            ctx.symChan("serviceA", "serviceA"));
 
                     pingPongChor.pingPong();
 

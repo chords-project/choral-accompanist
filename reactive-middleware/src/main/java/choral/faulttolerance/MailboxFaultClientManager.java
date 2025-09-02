@@ -11,6 +11,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -33,8 +34,6 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, MailboxFaultClientManager.class.getName());
 
-        this.mailbox.createTables();
-
         URI uri = new URI(null, address, null, null, null).parseServerAuthority();
         InetSocketAddress socketAddr = new InetSocketAddress(uri.getHost(), uri.getPort());
 
@@ -45,6 +44,11 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
 
         this.futureStub = ChannelGrpc
                 .newFutureStub(channel);
+    }
+
+    public static ClientConnectionManager.Factory factory(DataSource db) throws SQLException {
+        SQLMailbox mailbox = new SQLMailbox(db);
+        return (String address, OpenTelemetry telemetry) -> new MailboxFaultClientManager(mailbox, address, telemetry);
     }
 
     @Override
