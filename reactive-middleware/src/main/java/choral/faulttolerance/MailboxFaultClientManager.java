@@ -82,7 +82,9 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
                 return;
             }
 
-            var result = futureStub.sendMessage(msg.toGrpcMessage());
+            var result = futureStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .sendMessage(msg.toGrpcMessage());
 
             Attributes attributes = Attributes.builder()
                     .put("message", msg.toString())
@@ -95,10 +97,14 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
                 try {
                     result.get();
 
+                    // Mark message as acknowledged in database
+                    mailbox.didDeliverMessage(msg);
+
                     double duration = (System.nanoTime() - startTime) / 1_000_000.0;
 
                     connectionSpan.addEvent("Message sent to " + address + " (" + (long) duration + " ms)", attributes);
                 } catch (Exception e) {
+                    logger.exception("failed to send message to " + address, e);
                     connectionSpan.setAttribute("error", true);
                     connectionSpan.recordException(e);
                 }

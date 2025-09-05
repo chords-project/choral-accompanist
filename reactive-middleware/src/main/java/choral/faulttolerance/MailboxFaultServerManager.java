@@ -113,6 +113,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
                 serverEvents.messageReceived(message);
             } catch (Exception e) {
+                responseObserver.onError(e);
                 throw new RuntimeException(e);
             }
 

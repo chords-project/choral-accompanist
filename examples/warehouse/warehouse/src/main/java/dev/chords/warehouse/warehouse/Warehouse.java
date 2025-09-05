@@ -2,8 +2,10 @@ package dev.chords.warehouse.warehouse;
 
 import choral.faulttolerance.*;
 import choral.reactive.Session;
+import choral.reactive.tracing.LocalConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
+import io.opentelemetry.api.OpenTelemetry;
 
 public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
@@ -19,6 +21,9 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
     protected final WarehouseService warehouseService;
 
     public Warehouse() throws Exception {
+        //final var telemetry = LocalConfiguration.initTelemetry(SERVICE_NAME);
+        final var telemetry = OpenTelemetry.noop();
+
         warehouseService = new WarehouseService();
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
@@ -39,7 +44,7 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
         var clientCon = MailboxFaultClientManager.factory(dataStore.db);
         var serverCon = MailboxFaultServerManager.factory(dataStore.db);
 
-        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, telemetry, this);
     }
 
     public void start() throws Exception {

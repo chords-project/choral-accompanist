@@ -58,6 +58,8 @@ dependencies {
     api("io.opentelemetry:opentelemetry-api")
     api("io.opentelemetry:opentelemetry-sdk")
     api("io.opentelemetry:opentelemetry-exporter-otlp")
+    api("io.opentelemetry:opentelemetry-exporter-logging-otlp")
+    api("io.opentelemetry:opentelemetry-exporter-logging")
     api("io.opentelemetry.instrumentation:opentelemetry-grpc-1.6:2.13.3-alpha")
 
     // ## gRPC ##

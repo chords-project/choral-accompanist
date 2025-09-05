@@ -95,6 +95,26 @@ public class SQLMailbox {
         return false;
     }
 
+    /**
+     * Called after a sent message has been acknowledged by the sender.
+     *
+     * @param message the message that was successfully delivered.
+     */
+    public void didDeliverMessage(Message message) throws SQLException {
+        try (
+                var con = db.getConnection();
+                PreparedStatement stmt = con.prepareStatement("""
+                        UPDATE outbox SET acknowledged = TRUE WHERE session_id = ? AND session_choreography = ? AND sequence_num = ?;
+                        """);
+        ) {
+            stmt.setInt(1, message.session.sessionID());
+            stmt.setString(2, message.session.choreographyName());
+            stmt.setInt(3, message.sequenceNumber);
+
+            stmt.executeUpdate();
+        }
+    }
+
     public Optional<Message> willReceiveMessage(Session session, int sequenceNum) throws SQLException, IOException, ClassNotFoundException {
         try (
                 var con = db.getConnection();

@@ -72,12 +72,11 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
         try {
             super.startNewSession(telemetrySession);
+            this.connectionManager().sessionCompleted(telemetrySession);
         } catch (Exception e) {
             this.connectionManager().recoverableSessionFailure(telemetrySession);
-            throw e;
+            telemetrySession.recordException("Session failed", e, true);
         }
-
-        this.connectionManager().sessionCompleted(telemetrySession);
     }
 
     @Override
