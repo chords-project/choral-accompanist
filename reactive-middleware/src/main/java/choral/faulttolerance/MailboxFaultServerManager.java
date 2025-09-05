@@ -65,7 +65,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
         }
     }
 
-    protected void recoverReceivedMessages() throws SQLException {
+    protected void recoverReceivedMessages() throws Exception {
         var msgs = this.mailbox.recoverReceivedMessages();
         logger.info("Recovered " + msgs.size() + " messages");
         for (var msg : msgs) {
@@ -108,6 +108,9 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
             try {
                 var message = new choral.reactive.connection.Message(request);
+
+                mailbox.didReceiveMessage(message);
+
                 serverEvents.messageReceived(message);
             } catch (Exception e) {
                 throw new RuntimeException(e);
