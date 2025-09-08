@@ -44,7 +44,7 @@ public class ChannelSelectTest {
 
         assertDoesNotThrow(() -> {
             try (ClientConnectionManager connManager =
-                         ClientConnectionManager.makeConnectionManager(
+                         ClientConnectionManager.defaultFactory().makeConnectionManager(
                                  "0.0.0.0:4567",
                                  OpenTelemetry.noop())
             ) {

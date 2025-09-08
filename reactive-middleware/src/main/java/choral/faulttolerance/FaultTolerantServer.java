@@ -1,11 +1,10 @@
 package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
-import choral.reactive.connection.ClientConnectionManager;
+import choral.reactive.connection.ClientConnectionsStore;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.JaegerConfiguration;
 import choral.reactive.tracing.TelemetrySession;
-import com.rabbitmq.client.Connection;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -13,19 +12,19 @@ import io.opentelemetry.api.trace.SpanKind;
 import java.sql.SQLException;
 import java.time.Duration;
 
-public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents {
-
+public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents, FaultClientConnectionManager.ClientEvents {
     protected final FaultSessionEvent newFaultSessionEvent;
     protected final FaultDataStore dataStore;
 
-    public FaultTolerantServer(FaultDataStore dataStore, ClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
-        super(serviceName, null, clientCon, telemetry, Duration.ofMinutes(10), null);
+    public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
+        super(serviceName, null, null, telemetry, Duration.ofMinutes(10), null);
         this.connectionManager = serverCon.makeConnectionManager(serviceName, this, telemetry);
+        this.clientConnectionsStore = new ClientConnectionsStore(clientCon.toNonFaultyFactory(this), telemetry);
         this.newFaultSessionEvent = newSessionEvent;
         this.dataStore = dataStore;
     }
 
-    public FaultTolerantServer(FaultDataStore dataStore, ClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {
+    public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {
         this(dataStore, clientCon, serverCon, serviceName, OpenTelemetry.noop(), newSessionEvent);
     }
 
@@ -117,6 +116,20 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         }
 
         super.messageReceived(msg);
+    }
+
+    @Override
+    public void messageDeliveryConfirmed(Message message) {
+
+    }
+
+    @Override
+    public void messageDeliveryFailed(Message message) {
+        try {
+            dataStore.restartSession(message.session.sessionID());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

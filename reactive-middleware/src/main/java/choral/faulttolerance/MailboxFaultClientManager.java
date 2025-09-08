@@ -20,19 +20,21 @@ import java.sql.SQLException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class MailboxFaultClientManager implements ClientConnectionManager {
+public class MailboxFaultClientManager implements FaultClientConnectionManager {
     private final ManagedChannel channel;
     private final ChannelGrpc.ChannelFutureStub futureStub;
     private final OpenTelemetry telemetry;
     private final Logger logger;
     private final String address;
     private final SQLMailbox mailbox;
+    private final ClientEvents events;
 
-    public MailboxFaultClientManager(SQLMailbox mailbox, String address, OpenTelemetry telemetry) throws URISyntaxException, SQLException {
+    public MailboxFaultClientManager(SQLMailbox mailbox, String address, ClientEvents events, OpenTelemetry telemetry) throws URISyntaxException, SQLException {
         this.mailbox = mailbox;
         this.address = address;
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, MailboxFaultClientManager.class.getName());
+        this.events = events;
 
         URI uri = new URI(null, address, null, null, null).parseServerAuthority();
         InetSocketAddress socketAddr = new InetSocketAddress(uri.getHost(), uri.getPort());
@@ -46,9 +48,9 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
                 .newFutureStub(channel);
     }
 
-    public static ClientConnectionManager.Factory factory(DataSource db) throws SQLException {
+    public static FaultClientConnectionManager.Factory factory(DataSource db) throws SQLException {
         SQLMailbox mailbox = new SQLMailbox(db);
-        return (String address, OpenTelemetry telemetry) -> new MailboxFaultClientManager(mailbox, address, telemetry);
+        return (String address, ClientEvents events, OpenTelemetry telemetry) -> new MailboxFaultClientManager(mailbox, address, events, telemetry);
     }
 
     @Override
@@ -98,6 +100,7 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
                     result.get();
 
                     // Mark message as acknowledged in database
+                    events.messageDeliveryConfirmed(msg);
                     mailbox.didDeliverMessage(msg);
 
                     double duration = (System.nanoTime() - startTime) / 1_000_000.0;
@@ -107,6 +110,7 @@ public class MailboxFaultClientManager implements ClientConnectionManager {
                     logger.exception("failed to send message to " + address, e);
                     connectionSpan.setAttribute("error", true);
                     connectionSpan.recordException(e);
+                    events.messageDeliveryFailed(msg);
                 }
             }, Executors.newVirtualThreadPerTaskExecutor());
         }

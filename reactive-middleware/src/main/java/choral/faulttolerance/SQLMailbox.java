@@ -1,6 +1,5 @@
 package choral.faulttolerance;
 
-import choral.reactive.Session;
 import choral.reactive.connection.Message;
 
 import javax.sql.DataSource;
@@ -10,7 +9,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class SQLMailbox {
     public final DataSource db;
@@ -115,7 +113,7 @@ public class SQLMailbox {
         }
     }
 
-    public Optional<Message> willReceiveMessage(Session session, int sequenceNum) throws SQLException, IOException, ClassNotFoundException {
+    /*public Optional<Message> willReceiveMessage(Session session, int sequenceNum) throws SQLException, IOException, ClassNotFoundException {
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
@@ -136,7 +134,7 @@ public class SQLMailbox {
         }
 
         return Optional.empty();
-    }
+    }*/
 
     public void didReceiveMessage(Message message) throws SQLException {
         try (
@@ -164,7 +162,7 @@ public class SQLMailbox {
             var resultSet = stmt.executeQuery("""
                     SELECT inbox.* FROM inbox
                         JOIN session_states ON inbox.session_id = session_states.session_id
-                        WHERE session_states.session_state = 'started';
+                        WHERE session_states.session_state IN ('started', 'restart');
                     """);
 
             var messages = new ArrayList<Message>();

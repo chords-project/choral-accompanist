@@ -48,7 +48,7 @@ public class ConnectionTest {
                 });
 
         assertDoesNotThrow(() -> {
-            try (ClientConnectionManager connManager = ClientConnectionManager.makeConnectionManager("127.0.0.1:4567",
+            try (ClientConnectionManager connManager = ClientConnectionManager.defaultFactory().makeConnectionManager("127.0.0.1:4567",
                     OpenTelemetry.noop());) {
 
                 Thread.sleep(1000);

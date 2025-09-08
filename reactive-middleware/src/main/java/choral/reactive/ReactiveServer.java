@@ -43,7 +43,7 @@ public class ReactiveServer
     protected final OpenTelemetry telemetry;
     protected final Logger logger;
     protected ServerConnectionManager connectionManager;
-    protected final ClientConnectionsStore clientConnectionsStore;
+    protected ClientConnectionsStore clientConnectionsStore;
     protected final DoubleHistogram receiveTimeHistogram;
     protected final DoubleHistogram sessionDurationHistogram;
 

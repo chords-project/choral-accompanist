@@ -46,7 +46,7 @@ public class SQLDataStore implements FaultDataStore {
                     -- create enum if not already exists
                     DO $$ BEGIN
                         IF to_regtype('session_state_enum') IS NULL THEN
-                    		CREATE TYPE session_state_enum AS ENUM ('started', 'completed', 'failed');
+                    		CREATE TYPE session_state_enum AS ENUM ('started', 'completed', 'failed', 'restart');
                         END IF;
                     END $$;
                     
@@ -79,39 +79,46 @@ public class SQLDataStore implements FaultDataStore {
     public void startSession(Session session) throws SQLException {
         System.out.println("Marking session as started in database: " + session);
 
-        try (var con = db.getConnection()) {
+        try (var con = db.getConnection();
+             var selectStmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ?");
+             PreparedStatement insertStmt = con.prepareStatement("""
+                     INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'started')
+                     ON CONFLICT (session_id) DO UPDATE SET session_state = 'started';
+                     """)) {
             con.setAutoCommit(false);
 
-            boolean alreadyStarted = false;
+            boolean insertSession = true;
 
             // Check if session already exists in database
-            try (var stmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ?")) {
-                stmt.setInt(1, session.sessionID());
+            selectStmt.setInt(1, session.sessionID());
 
-                var rs = stmt.executeQuery();
-                if (rs.next()) {
-                    var choreography = rs.getString("choreography");
-                    if (!Objects.equals(session.choreographyName(), choreography)) {
-                        throw new SQLException("choreography in session_states table did not match start session");
-                    }
+            var rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                var choreography = rs.getString("choreography");
+                if (!Objects.equals(session.choreographyName(), choreography)) {
+                    throw new SQLException("choreography in session_states table did not match start session");
+                }
 
-                    var state = rs.getString("session_state");
-                    if (Objects.equals(state, "started")) {
-                        alreadyStarted = true;
-                    } else {
+                var state = rs.getString("session_state");
+
+                switch (state) {
+                    case "started":
+                        insertSession = false;
+                        break;
+                    case "restart":
+                        break;
+                    case "completed":
+                    case "failed":
                         throw new SQLException("attempt to start session that has already been processed");
-                    }
                 }
             }
 
-            if (!alreadyStarted) {
-                try (PreparedStatement stmt = con.prepareStatement("INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'started');")) {
-                    stmt.setInt(1, session.sessionID());
-                    stmt.setString(2, session.choreographyName());
-                    int count = stmt.executeUpdate();
-                    if (count == 0) {
-                        throw new SQLException("failed to mark session as started in database: " + session.sessionID());
-                    }
+            if (insertSession) {
+                insertStmt.setInt(1, session.sessionID());
+                insertStmt.setString(2, session.choreographyName());
+                int count = insertStmt.executeUpdate();
+                if (count == 0) {
+                    throw new SQLException("failed to mark session as started in database: " + session.sessionID());
                 }
             }
 
@@ -145,6 +152,22 @@ public class SQLDataStore implements FaultDataStore {
         ) {
             stmt.setInt(1, sessionID);
             stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public void restartSession(int sessionID) throws SQLException {
+        System.out.println("Marking session to be restarted in database: " + sessionID);
+
+        try (
+                var con = db.getConnection();
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart' WHERE session_id = ? AND session_state IN ('started', 'completed');")
+        ) {
+            stmt.setInt(1, sessionID);
+            int count = stmt.executeUpdate();
+            if (count == 0) {
+                System.out.println("- Failed to mark session to restart in database: " + sessionID);
+            }
         }
     }
 
@@ -260,7 +283,7 @@ public class SQLDataStore implements FaultDataStore {
                 var con = db.getConnection();
                 var stmt = con.createStatement();
         ) {
-            var rs = stmt.executeQuery("SELECT * FROM session_states WHERE session_state = 'started';");
+            var rs = stmt.executeQuery("SELECT * FROM session_states WHERE session_state IN ('started', 'restart');");
             while (rs.next()) {
                 var sessionID = rs.getInt("session_id");
                 var choreography = rs.getString("choreography");
