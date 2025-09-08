@@ -14,7 +14,7 @@ public interface FaultDataStore extends AutoCloseable {
 
     void completeSession(int sessionID) throws SQLException;
 
-    void failSession(int sessionID) throws SQLException;
+    void failSession(Session session) throws SQLException;
 
     void restartSession(int sessionID) throws SQLException;
 

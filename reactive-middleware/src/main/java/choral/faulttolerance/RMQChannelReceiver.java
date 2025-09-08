@@ -1,5 +1,6 @@
 package choral.faulttolerance;
 
+import choral.reactive.Session;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.TelemetrySession;
 import com.rabbitmq.client.*;
@@ -72,7 +73,8 @@ public class RMQChannelReceiver implements FaultServerConnectionManager {
     @Override
     public void broadcastSessionFailure(TelemetrySession telemetrySession) throws IOException {
         var sessionID = telemetrySession.session.sessionID();
-        byte[] body = sessionID.toString().getBytes();
+        var choreography = telemetrySession.session.choreographyName();
+        byte[] body = (sessionID.toString() + "$" + choreography).getBytes();
         channel.basicPublish("faults", "", null, body);
     }
 
@@ -115,10 +117,12 @@ public class RMQChannelReceiver implements FaultServerConnectionManager {
     protected class FaultDeliverCallback implements DeliverCallback {
         @Override
         public void handle(String consumerTag, Delivery message) throws IOException {
-            int sessionID = Integer.parseInt(new String(message.getBody()));
+            var body = new String(message.getBody()).split("\\$", 2);
+            int sessionID = Integer.parseInt(body[0]);
+            var choreography = body[1];
             var ack = new MessageAck(message.getEnvelope().getDeliveryTag(), sessionID);
             try {
-                events.sessionFailed(sessionID);
+                events.sessionFailed(new Session(choreography, "UNKNOWN_SENDER", sessionID));
             } catch (Exception e) {
                 ack.nack();
                 throw new RuntimeException(e);

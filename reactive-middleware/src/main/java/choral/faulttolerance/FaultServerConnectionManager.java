@@ -1,5 +1,6 @@
 package choral.faulttolerance;
 
+import choral.reactive.Session;
 import choral.reactive.connection.ServerConnectionManager;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
@@ -21,6 +22,6 @@ public interface FaultServerConnectionManager extends ServerConnectionManager {
     }
 
     interface ServerEvents extends ServerConnectionManager.ServerEvents {
-        void sessionFailed(int sessionID) throws Exception;
+        void sessionFailed(Session sessionID) throws Exception;
     }
 }

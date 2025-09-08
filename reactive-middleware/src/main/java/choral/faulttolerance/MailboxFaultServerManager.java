@@ -1,5 +1,6 @@
 package choral.faulttolerance;
 
+import choral.reactive.connection.Message;
 import choral.reactive.connection.ServerConnectionManager;
 import choral.reactive.tracing.Logger;
 import choral.reactive.tracing.TelemetrySession;
@@ -15,6 +16,7 @@ import io.opentelemetry.api.OpenTelemetry;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.sql.SQLException;
@@ -22,23 +24,25 @@ import java.util.concurrent.TimeUnit;
 
 public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
-    private final ServerConnectionManager.ServerEvents serverEvents;
+    private final FaultServerConnectionManager.ServerEvents serverEvents;
     private final SQLMailbox mailbox;
+    private final String[] broadcastClients;
     private Server server;
     private final Logger logger;
     private final OpenTelemetry telemetry;
 
-    public MailboxFaultServerManager(SQLMailbox mailbox, String serviceName, ServerConnectionManager.ServerEvents serverEvents, OpenTelemetry telemetry) {
+    public MailboxFaultServerManager(SQLMailbox mailbox, String serviceName, FaultServerConnectionManager.ServerEvents serverEvents, OpenTelemetry telemetry, String[] broadcastClients) {
+        this.broadcastClients = broadcastClients;
         this.mailbox = mailbox;
         this.serverEvents = serverEvents;
         this.logger = new Logger(telemetry, MailboxFaultServerManager.class.getName());
         this.telemetry = telemetry;
     }
 
-    public static FaultServerConnectionManager.Factory factory(DataSource db) throws SQLException {
+    public static FaultServerConnectionManager.Factory factory(DataSource db, String[] broadcastClients) throws SQLException {
         SQLMailbox mailbox = new SQLMailbox(db);
         return (String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) ->
-                new MailboxFaultServerManager(mailbox, serviceName, events, telemetry);
+                new MailboxFaultServerManager(mailbox, serviceName, events, telemetry, broadcastClients);
     }
 
     @Override
@@ -93,7 +97,24 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
     @Override
     public void broadcastSessionFailure(TelemetrySession telemetrySession) throws Exception {
+        var clientFactory = MailboxFaultClientManager.factory(mailbox.db);
 
+        var clientEvents = new FaultClientConnectionManager.ClientEvents() {
+            public void messageDeliveryConfirmed(Message message) {
+            }
+
+            public void messageDeliveryFailed(Message message) {
+            }
+        };
+
+        var failureMessage = new Message(telemetrySession.session, new FailureMarker(), -1);
+        telemetrySession.injectSessionContext(failureMessage);
+
+        for (var clientAddress : broadcastClients) {
+            var client = clientFactory.makeConnectionManager(clientAddress, clientEvents, telemetry).makeConnection();
+
+            client.sendMessage(failureMessage);
+        }
     }
 
     @Override
@@ -109,9 +130,12 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
             try {
                 var message = new choral.reactive.connection.Message(request);
 
-                mailbox.didReceiveMessage(message);
-
-                serverEvents.messageReceived(message);
+                if (message.message instanceof FailureMarker) {
+                    serverEvents.sessionFailed(message.session);
+                } else {
+                    mailbox.didReceiveMessage(message);
+                    serverEvents.messageReceived(message);
+                }
             } catch (Exception e) {
                 responseObserver.onError(e);
                 throw new RuntimeException(e);
@@ -119,6 +143,11 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
+        }
+    }
+
+    public static class FailureMarker implements Serializable {
+        public FailureMarker() {
         }
     }
 }

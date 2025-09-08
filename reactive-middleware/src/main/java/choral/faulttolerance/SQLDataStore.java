@@ -143,14 +143,18 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public void failSession(int sessionID) throws SQLException {
-        System.out.println("Marking session as failed in database: " + sessionID);
+    public void failSession(Session session) throws SQLException {
+        System.out.println("Marking session as failed in database: " + session.sessionID());
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'failed' WHERE session_id = ?;")
+                PreparedStatement stmt = con.prepareStatement("""
+                        INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'failed')
+                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'failed';
+                        """)
         ) {
-            stmt.setInt(1, sessionID);
+            stmt.setInt(1, session.sessionID());
+            stmt.setString(2, session.choreographyName());
             stmt.executeUpdate();
         }
     }

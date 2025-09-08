@@ -1,6 +1,7 @@
 package choral.faulttolerance;
 
 import choral.reactive.ReactiveServer;
+import choral.reactive.Session;
 import choral.reactive.connection.ClientConnectionsStore;
 import choral.reactive.connection.Message;
 import choral.reactive.tracing.JaegerConfiguration;
@@ -73,6 +74,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             super.startNewSession(telemetrySession);
             this.connectionManager().sessionCompleted(telemetrySession);
         } catch (Exception e) {
+            dataStore.restartSession(telemetrySession.session.sessionID());
             this.connectionManager().recoverableSessionFailure(telemetrySession);
             telemetrySession.recordException("Session failed", e, true);
         }
@@ -87,17 +89,17 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             dataStore.completeSession(sessionID);
         } catch (ChoreographyInterruptedException e) {
             telemetrySession.log("Choreography interrupted: " + e.getMessage());
-            dataStore.failSession(sessionID);
+            dataStore.failSession(telemetrySession.session);
             dataStore.compensateTransactions(sessionID);
         }
     }
 
     @Override
-    public void sessionFailed(int sessionID) throws Exception {
-        logger.info("Received session failed event for sessionID: " + sessionID);
+    public void sessionFailed(Session session) throws Exception {
+        logger.info("Received session failed event for sessionID: " + session);
         try {
-            dataStore.failSession(sessionID);
-            dataStore.compensateTransactions(sessionID);
+            dataStore.failSession(session);
+            dataStore.compensateTransactions(session.sessionID());
         } catch (SQLException e) {
             logger.error("Session failed event caused SQL exception: " + e);
             throw e;

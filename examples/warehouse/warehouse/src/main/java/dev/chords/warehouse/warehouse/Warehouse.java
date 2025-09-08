@@ -41,8 +41,9 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 //        var serverCon = RMQChannelReceiver.factory();
 
         // Mailbox connection
+        String[] broadcastClients = {System.getenv("PAYMENT"), System.getenv("LOYALTY")};
         var clientCon = MailboxFaultClientManager.factory(dataStore.db);
-        var serverCon = MailboxFaultServerManager.factory(dataStore.db);
+        var serverCon = MailboxFaultServerManager.factory(dataStore.db, broadcastClients);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, telemetry, this);
     }

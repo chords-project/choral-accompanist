@@ -34,8 +34,9 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
 //        var serverCon = RMQChannelReceiver.factory();
 
         // Mailbox connection
+        String[] broadcastClients = {System.getenv("WAREHOUSE"), System.getenv("LOYALTY")};
         var clientCon = MailboxFaultClientManager.factory(dataStore.db);
-        var serverCon = MailboxFaultServerManager.factory(dataStore.db);
+        var serverCon = MailboxFaultServerManager.factory(dataStore.db, broadcastClients);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
     }
