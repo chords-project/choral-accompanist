@@ -1,0 +1,53 @@
+services:
+  warehouse:
+    image: accompanist-warehouse
+    depends_on:
+      - db-warehouse
+    environment:
+      WAREHOUSE: warehouse:4001
+      PAYMENT: payment:4002
+      LOYALTY: loyalty:4003
+      POSTGRES_URL: "postgresql://db-warehouse:5432/warehouse"
+  payment:
+    image: accompanist-payment
+    depends_on:
+      - db-payment
+    environment:
+      WAREHOUSE: warehouse:4001
+      PAYMENT: payment:4002
+      LOYALTY: loyalty:4003
+      POSTGRES_URL: "postgresql://db-payment:5432/payment"
+  loyalty:
+    image: accompanist-loyalty
+    depends_on:
+      - db-loyalty
+    environment:
+      WAREHOUSE: warehouse:4001
+      PAYMENT: payment:4002
+      LOYALTY: loyalty:4003
+      POSTGRES_URL: "postgresql://db-loyalty:5432/loyalty"
+
+  db-warehouse:
+    image: postgres
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: warehouse
+  db-payment:
+    image: postgres
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payment
+  db-loyalty:
+    image: postgres
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: loyalty

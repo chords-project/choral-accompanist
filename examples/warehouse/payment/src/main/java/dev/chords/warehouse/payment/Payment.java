@@ -19,8 +19,10 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
     public Payment() throws Exception {
         paymentService = new PaymentService();
 
+        var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_payment");
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
-                "jdbc:postgresql://localhost:5432/warehouse_payment",
+                "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
                 paymentService.allTransactions()

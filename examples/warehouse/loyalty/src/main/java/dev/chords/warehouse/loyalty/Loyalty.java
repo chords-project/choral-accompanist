@@ -17,8 +17,10 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     public final String SERVER_ADDRESS = System.getenv("LOYALTY");
 
     public Loyalty() throws Exception {
+        var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_loyalty");
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
-                "jdbc:postgresql://localhost:5432/warehouse_loyalty",
+                "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
                 loyaltyService.allTransactions());

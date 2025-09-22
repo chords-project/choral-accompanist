@@ -12,8 +12,11 @@ plugins {
     id("com.google.cloud.tools.jib")
 }
 
-jib.from.image = "eclipse-temurin:23"
-jib.container.mainClass = "dev.chords.warehouse.payment.Payment"
+jib {
+    from.image = "eclipse-temurin:23"
+    to.image = "accompanist-payment"
+    container.mainClass = "dev.chords.warehouse.payment.Payment"
+}
 
 repositories {
     // Use Maven Central for resolving dependencies.

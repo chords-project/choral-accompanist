@@ -26,8 +26,10 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
         warehouseService = new WarehouseService();
 
+        var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_warehouse");
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
-                "jdbc:postgresql://localhost:5432/warehouse_warehouse",
+                "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
                 warehouseService.allTransactions()
