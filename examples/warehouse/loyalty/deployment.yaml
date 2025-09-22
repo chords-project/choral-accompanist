@@ -6,8 +6,8 @@ metadata:
     app: loyalty
 spec:
   ports:
-  - port: 4003
-    protocol: TCP
+    - port: 4003
+      protocol: TCP
   clusterIP: None
   selector:
     app: loyalty
@@ -29,5 +29,55 @@ spec:
         app: loyalty
     spec:
       containers:
-      - name: loyalty
-        image: loyalty
+        - name: loyalty
+          image: loyalty
+          env:
+            - name: WAREHOUSE
+              value: warehouse:4001
+            - name: PAYMENT
+              value: payment:4002
+            - name: LOYALTY
+              value: loyalty:4003
+            - name: POSTGRES_URL
+              value: "postgresql://db-loyalty:5432/loyalty"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-loyalty
+  labels:
+    app: db-loyalty
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  clusterIP: None
+  selector:
+    app: db-loyalty
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-loyalty
+  labels:
+    app: db-loyalty
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-loyalty
+  template:
+    metadata:
+      labels:
+        app: db-loyalty
+    spec:
+      containers:
+        - name: db-loyalty
+          image: postgres
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: loyalty

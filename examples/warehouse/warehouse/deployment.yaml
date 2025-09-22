@@ -6,8 +6,8 @@ metadata:
     app: warehouse
 spec:
   ports:
-  - port: 4001
-    protocol: TCP
+    - port: 4003
+      protocol: TCP
   clusterIP: None
   selector:
     app: warehouse
@@ -29,5 +29,55 @@ spec:
         app: warehouse
     spec:
       containers:
-      - name: warehouse
-        image: warehouse
+        - name: warehouse
+          image: warehouse
+          env:
+            - name: WAREHOUSE
+              value: warehouse:4001
+            - name: PAYMENT
+              value: payment:4002
+            - name: LOYALTY
+              value: loyalty:4003
+            - name: POSTGRES_URL
+              value: "postgresql://db-warehouse:5432/warehouse"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-warehouse
+  labels:
+    app: db-warehouse
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  clusterIP: None
+  selector:
+    app: db-warehouse
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-warehouse
+  labels:
+    app: db-warehouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-warehouse
+  template:
+    metadata:
+      labels:
+        app: db-warehouse
+    spec:
+      containers:
+        - name: db-warehouse
+          image: postgres
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: warehouse
