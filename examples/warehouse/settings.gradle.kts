@@ -8,6 +8,8 @@
 plugins {
     // Apply the foojay-resolver plugin to allow automatic download of JDKs
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+
+    id("com.google.cloud.tools.jib") version "3.4.5" apply false
 }
 
 rootProject.name = "warehouse"

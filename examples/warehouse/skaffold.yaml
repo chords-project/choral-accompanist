@@ -1,0 +1,46 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: warehouse
+build:
+  artifacts:
+    - image: loyalty
+      context: loyalty
+      jib:
+        project: loyalty
+    #      buildpacks:
+    #        builder: gcr.io/buildpacks/builder:v1
+    - image: payment
+      context: payment
+      jib:
+        project: payment
+    #      buildpacks:
+    #        builder: gcr.io/buildpacks/builder:v1
+    - image: temporal
+      context: temporal
+      jib:
+        project: temporal
+    #      buildpacks:
+    #        builder: gcr.io/buildpacks/builder:v1
+    - image: warehouse
+      context: warehouse
+      jib:
+        project: warehouse
+#      buildpacks:
+#        builder: gcr.io/buildpacks/builder:v1
+manifests:
+  rawYaml:
+    - temporal/deployment.yaml
+    - warehouse/deployment.yaml
+    - loyalty/deployment.yaml
+    - payment/deployment.yaml
+portForward:
+  - resourceType: service
+    resourceName: loyalty
+    port: 4003
+  - resourceType: service
+    resourceName: payment
+    port: 4002
+  - resourceType: service
+    resourceName: warehouse
+    port: 4001

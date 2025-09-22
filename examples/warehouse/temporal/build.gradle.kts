@@ -1,7 +1,12 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+
+    id("com.google.cloud.tools.jib")
 }
+
+jib.from.image = "eclipse-temurin:23"
+jib.container.mainClass = "io.temporal.samples.ordersaga.Worker"
 
 val temporalVersion = "1.30.1"
 val otelVersion = "1.26.0"

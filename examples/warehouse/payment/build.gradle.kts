@@ -8,7 +8,12 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+
+    id("com.google.cloud.tools.jib")
 }
+
+jib.from.image = "eclipse-temurin:23"
+jib.container.mainClass = "dev.chords.warehouse.payment.Payment"
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -55,7 +60,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "dev.chords.payment.choreography.Payment"
+    mainClass = "dev.chords.warehouse.payment.Payment"
 }
 
 tasks.named<Test>("test") {
