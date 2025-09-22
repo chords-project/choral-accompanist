@@ -49,12 +49,12 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
     }
 
     @Override
-    public void onNewSession(FaultSessionContext ctx) {
+    public Object onNewSession(FaultSessionContext ctx) {
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
                 WarehouseOrder_Payment chor = new WarehouseOrder_Payment(ctx, paymentService);
                 chor.orderFulfillment();
-                break;
+                return null;
             default:
                 throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }

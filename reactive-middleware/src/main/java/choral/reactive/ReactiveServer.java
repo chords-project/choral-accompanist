@@ -176,7 +176,7 @@ public class ReactiveServer
      * @param telemetrySession the new session. The session ID must be new and unique.
      * @throws Exception an exception thrown by the invoked choreography.
      */
-    public void invokeManualSession(TelemetrySession telemetrySession) throws Exception {
+    public Object invokeManualSession(TelemetrySession telemetrySession) throws Exception {
         var session = telemetrySession.session;
         logger.debug("Registering session " + session.sessionID);
 
@@ -185,7 +185,7 @@ public class ReactiveServer
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
 
-        startNewSession(telemetrySession);
+        return startNewSession(telemetrySession);
     }
 
     public ReactiveChannel_B<Serializable> chanB(Session session, String clientName) {
@@ -244,7 +244,7 @@ public class ReactiveServer
         }
     }
 
-    protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
+    protected Object startNewSession(TelemetrySession telemetrySession) throws Exception {
         final Span span = telemetrySession.makeChoreographySpan();
 
         Long startTime = System.nanoTime();
@@ -255,8 +255,10 @@ public class ReactiveServer
                 "ReactiveServer handle new session",
                 Attributes.builder().put("service", serviceName).build());
 
+        Object result = null;
+
         try (Scope scope = span.makeCurrent()) {
-            runNewSessionEvent(telemetrySession);
+            result = runNewSessionEvent(telemetrySession);
         } finally {
             span.end();
         }
@@ -267,12 +269,16 @@ public class ReactiveServer
                 (endTime - startTime) / 1_000_000.0,
                 Attributes.builder().put("session", session.toString()).build()
         );
+
+        return result;
     }
 
-    protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+    protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+        Object result = null;
         try (SessionContext sessionCtx = new SessionContext(this, telemetrySession)) {
-            newSessionEvent.onNewSession(sessionCtx);
+            result = newSessionEvent.onNewSession(sessionCtx);
         }
+        return result;
     }
 
     protected void cleanupKey(Session session) {
@@ -292,7 +298,14 @@ public class ReactiveServer
     }
 
     public interface NewSessionEvent {
-        void onNewSession(SessionContext ctx) throws Exception;
+        /**
+         * Event handler that is responsible for starting the choreography
+         *
+         * @param ctx the session context object for this session
+         * @return a payload that is returned to {@link ReactiveServer#invokeManualSession}
+         * @throws Exception the session is allowed to throw arbitrary exceptions
+         */
+        Object onNewSession(SessionContext ctx) throws Exception;
     }
 
     @Override

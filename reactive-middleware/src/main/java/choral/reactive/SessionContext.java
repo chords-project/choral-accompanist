@@ -4,6 +4,7 @@ import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.connection.ClientConnectionsStore;
 import choral.reactive.tracing.TelemetrySession;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Tracer;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -105,6 +106,10 @@ public class SessionContext implements AutoCloseable {
 
     public void log(String message, Attributes attributes) {
         telemetrySession.log(message, attributes);
+    }
+
+    public Tracer tracer() {
+        return telemetrySession.tracer;
     }
 
     @Override

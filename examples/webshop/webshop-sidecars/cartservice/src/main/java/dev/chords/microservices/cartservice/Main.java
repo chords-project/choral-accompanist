@@ -33,10 +33,11 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("ASPNETCORE_HTTP_PORTS", "7070"));
         cartService = new CartService(new InetSocketAddress("localhost", rpcPort), telemetry);
 
-        shippingConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.shipping, telemetry);
+        shippingConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.shipping, telemetry);
 
-        productCatalogConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.productCatalog,
-                telemetry);
+        productCatalogConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.productCatalog, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.CART.name(), telemetry,
                 Main::handleNewSession);
@@ -44,7 +45,7 @@ public class Main {
         server.listen(ServiceResources.shared.cart);
     }
 
-    private static void handleNewSession(SessionContext ctx)
+    private static Object handleNewSession(SessionContext ctx)
             throws Exception {
         WebshopSession session = new WebshopSession(ctx.session);
 
@@ -61,11 +62,9 @@ public class Main {
                 placeOrderChor.placeOrder();
 
                 ctx.log("PLACE_ORDER choreography completed");
-
-                break;
+                return "successfully placed order: " + ctx.session.sessionID();
             default:
-                ctx.log("Invalid choreography " + ctx.session.choreographyName());
-                break;
+                throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
     }
 }

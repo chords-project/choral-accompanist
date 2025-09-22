@@ -50,12 +50,12 @@ public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
     }
 
     @Override
-    public void onNewSession(FaultSessionContext ctx) {
+    public Object onNewSession(FaultSessionContext ctx) {
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
                 WarehouseOrder_Loyalty chor = new WarehouseOrder_Loyalty(ctx, loyaltyService);
                 chor.orderFulfillment();
-                break;
+                return null;
             default:
                 throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }

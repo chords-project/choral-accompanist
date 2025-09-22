@@ -69,28 +69,31 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     }
 
     @Override
-    protected void startNewSession(TelemetrySession telemetrySession) throws Exception {
+    protected Object startNewSession(TelemetrySession telemetrySession) throws Exception {
         try {
-            super.startNewSession(telemetrySession);
+            Object result = super.startNewSession(telemetrySession);
             this.connectionManager().sessionCompleted(telemetrySession);
+            return result;
         } catch (Exception e) {
             dataStore.restartSession(telemetrySession.session.sessionID());
             this.connectionManager().recoverableSessionFailure(telemetrySession);
-            telemetrySession.recordException("Session failed", e, true);
+            throw e;
         }
     }
 
     @Override
-    protected void runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
+    protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
         var sessionID = telemetrySession.session.sessionID();
         dataStore.startSession(telemetrySession.session);
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
-            newFaultSessionEvent.onNewSession(sessionCtx);
+            Object result = newFaultSessionEvent.onNewSession(sessionCtx);
             dataStore.completeSession(sessionID);
+            return result;
         } catch (ChoreographyInterruptedException e) {
             telemetrySession.log("Choreography interrupted: " + e.getMessage());
             dataStore.failSession(telemetrySession.session);
             dataStore.compensateTransactions(sessionID);
+            return e;
         }
     }
 
@@ -139,7 +142,13 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         return "FaultTolerantServer [serviceName=" + serviceName + "]";
     }
 
+    /**
+     * This interface is the fault-tolerant equivalent to {@link ReactiveServer.NewSessionEvent}
+     */
     public interface FaultSessionEvent {
-        void onNewSession(FaultSessionContext ctx) throws Exception;
+        /**
+         * Event handler that is responsible for starting the choreography
+         */
+        Object onNewSession(FaultSessionContext ctx) throws Exception;
     }
 }

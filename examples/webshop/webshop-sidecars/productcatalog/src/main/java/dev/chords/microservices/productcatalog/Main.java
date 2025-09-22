@@ -9,6 +9,7 @@ import dev.chords.choreographies.Tracing;
 import dev.chords.choreographies.WebshopSession;
 import dev.chords.choreographies.WebshopSession.Service;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+
 import java.net.InetSocketAddress;
 
 public class Main {
@@ -26,7 +27,8 @@ public class Main {
         ProductCatalogService catalogService = new ProductCatalogService(new InetSocketAddress("localhost", rpcPort),
                 telemetry);
 
-        currencyConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.currency, telemetry);
+        currencyConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.currency, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.PRODUCT_CATALOG.name(), telemetry,
                 ctx -> {
@@ -43,10 +45,9 @@ public class Main {
                             placeOrderChor.placeOrder();
                             ctx.log("[PRODUCT_CATALOG] PLACE_ORDER choreography completed");
 
-                            break;
+                            return "PLACE_ORDER choreography completed";
                         default:
-                            ctx.log("[PRODUCT_CATALOG] Invalid choreography ID " + session.choreography.name());
-                            break;
+                            throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
                     }
                 });
 

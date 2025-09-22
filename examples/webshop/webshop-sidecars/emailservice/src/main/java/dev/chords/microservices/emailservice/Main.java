@@ -27,7 +27,8 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
         emailService = new EmailService(new InetSocketAddress("localhost", rpcPort), telemetry);
 
-        frontendConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.frontend, telemetry);
+        frontendConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.frontend, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.EMAIL.name(), telemetry,
                 Main::handleNewSession);
@@ -35,7 +36,7 @@ public class Main {
         server.listen(ServiceResources.shared.email);
     }
 
-    private static void handleNewSession(SessionContext ctx)
+    private static Object handleNewSession(SessionContext ctx)
             throws Exception {
         WebshopSession session = new WebshopSession(ctx.session);
 
@@ -51,11 +52,9 @@ public class Main {
                 placeOrderChor.placeOrder();
 
                 ctx.log("[EMAIL] PLACE_ORDER choreography completed");
-
-                break;
+                return "PLACE_ORDER choreography completed";
             default:
-                ctx.log("[EMAIL] Invalid choreography " + ctx.session.choreographyName());
-                break;
+                throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
     }
 }

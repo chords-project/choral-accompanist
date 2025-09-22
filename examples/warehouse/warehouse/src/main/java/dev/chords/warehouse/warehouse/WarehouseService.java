@@ -41,7 +41,7 @@ public class WarehouseService implements dev.chords.warehouse.choreograhpy.Wareh
 
                 // Create item row if not exists
                 try (var stmt = trans.prepareStatement("""
-                        INSERT INTO products (product_id, stock_quantity) VALUES (?, 5) ON CONFLICT DO NOTHING;
+                        INSERT INTO products (product_id, stock_quantity) VALUES (?, 1000000000) ON CONFLICT DO NOTHING;
                         """)) {
                     stmt.setInt(1, productID);
                     stmt.execute();

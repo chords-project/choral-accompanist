@@ -2,6 +2,8 @@ package choral.faulttolerance;
 
 import choral.reactive.Session;
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -16,8 +18,11 @@ import java.util.*;
 public class SQLDataStore implements FaultDataStore {
     public final DataSource db;
     public final Map<String, Transaction> transactions;
+    private final Logger logger;
 
     public SQLDataStore(DataSource db, Set<Transaction> transactions) throws SQLException {
+        logger = LoggerFactory.getLogger(SQLDataStore.class);
+
         this.transactions = new HashMap<>();
         for (Transaction tx : transactions) {
             this.transactions.put(tx.transactionName(), tx);
@@ -36,7 +41,7 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     protected void createTables() throws SQLException {
-        System.out.println("Creating tables in database...");
+        logger.info("Creating tables in database...");
 
         try (
                 var con = db.getConnection();
@@ -77,7 +82,7 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public void startSession(Session session) throws SQLException {
-        System.out.println("Marking session as started in database: " + session);
+        logger.info("Marking session as started in database: {}", session);
 
         try (var con = db.getConnection();
              var selectStmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ?");
@@ -128,7 +133,7 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public void completeSession(int sessionID) throws SQLException {
-        System.out.println("Marking session as completed in database: " + sessionID);
+        logger.info("Marking session as completed in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
@@ -137,14 +142,14 @@ public class SQLDataStore implements FaultDataStore {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
-                System.out.println("- Failed to complete session in database: " + sessionID);
+                logger.warn("- Failed to complete session in database: " + sessionID);
             }
         }
     }
 
     @Override
     public void failSession(Session session) throws SQLException {
-        System.out.println("Marking session as failed in database: " + session.sessionID());
+        logger.warn("Marking session as failed in database: " + session.sessionID());
 
         try (
                 var con = db.getConnection();
@@ -161,7 +166,7 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public void restartSession(int sessionID) throws SQLException {
-        System.out.println("Marking session to be restarted in database: " + sessionID);
+        logger.info("Marking session to be restarted in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
@@ -170,14 +175,14 @@ public class SQLDataStore implements FaultDataStore {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
-                System.out.println("- Failed to mark session to restart in database: " + sessionID);
+                logger.warn("- Failed to mark session to restart in database: {}", sessionID);
             }
         }
     }
 
     @Override
     public boolean hasSessionCompleted(int sessionID) throws SQLException {
-        System.out.println("Lookup session in database: " + sessionID);
+        logger.info("Lookup session in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
@@ -209,7 +214,7 @@ public class SQLDataStore implements FaultDataStore {
                     var foundRow = resultSet.next();
                     if (foundRow) {
                         String state = resultSet.getString("transaction_state");
-                        System.out.println("COMMIT IGNORED, transaction already committed: state=" + state);
+                        logger.info("COMMIT IGNORED, transaction already committed: state={}", state);
                         con.rollback();
                         return true; // duplicate commit is not a failure
                     }
@@ -218,7 +223,7 @@ public class SQLDataStore implements FaultDataStore {
 
             boolean success = tx.commit(sessionID, new SQLTransaction(con));
             if (!success) {
-                System.out.println("COMMIT FAILED, transaction returned false");
+                logger.warn("COMMIT FAILED, transaction returned false");
                 con.rollback();
                 return false;
             } else {
@@ -249,7 +254,7 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public void compensateTransactions(int sessionID) throws SQLException {
-        System.out.println("Compensating transactions for session: " + sessionID);
+        logger.info("Compensating transactions for session: {}", sessionID);
 
         try (
                 var con = db.getConnection();
@@ -265,7 +270,7 @@ public class SQLDataStore implements FaultDataStore {
                 while (transResult.next()) {
                     var txName = transResult.getString("transaction_name");
                     var tx = transactions.get(txName);
-                    System.out.println("- Compensating transaction: " + txName);
+                    logger.info("- Compensating transaction: {}", txName);
 
                     tx.compensate(sessionID, new SQLTransaction(compensateCon));
 
@@ -295,7 +300,7 @@ public class SQLDataStore implements FaultDataStore {
             }
         }
 
-        System.out.println("Found " + result.size() + " pending sessions to restart");
+        logger.info("Found {} pending sessions to restart", result.size());
 
         return result;
     }

@@ -7,7 +7,7 @@ import choral.reactive.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
 import io.opentelemetry.api.OpenTelemetry;
 
-public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
+public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEndpoint.Events {
 
     public static void main(String[] args) throws Exception {
         var warehouse = new Warehouse();
@@ -19,6 +19,7 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
 
     protected final FaultTolerantServer server;
     protected final WarehouseService warehouseService;
+    protected final RestEndpoint endpoint;
 
     public Warehouse() throws Exception {
         //final var telemetry = LocalConfiguration.initTelemetry(SERVICE_NAME);
@@ -48,6 +49,8 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
         var serverCon = MailboxFaultServerManager.factory(dataStore.db, broadcastClients);
 
         server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, telemetry, this);
+
+        endpoint = new RestEndpoint(this);
     }
 
     public void start() throws Exception {
@@ -60,29 +63,31 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent {
             }
         });
 
-        Thread.sleep(1000);
+        endpoint.start();
 
-        orderFulfillment();
+        // Thread.sleep(1000);
+        // orderFulfillment();
 
         serverThread.join();
     }
 
     @Override
-    public void onNewSession(FaultSessionContext ctx) {
+    public Object onNewSession(FaultSessionContext ctx) {
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
                 WarehouseOrder_Warehouse chor = new WarehouseOrder_Warehouse(ctx, warehouseService);
                 chor.orderFulfillment();
-                break;
+                return "successfully placed order: " + ctx.session.sessionID();
             default:
                 throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
     }
 
-    public void orderFulfillment() throws Exception {
+    @Override
+    public Object orderFulfillment() throws Exception {
         Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME);
         TelemetrySession telemetrySession = new TelemetrySession(session);
 
-        server.invokeManualSession(telemetrySession);
+        return server.invokeManualSession(telemetrySession);
     }
 }

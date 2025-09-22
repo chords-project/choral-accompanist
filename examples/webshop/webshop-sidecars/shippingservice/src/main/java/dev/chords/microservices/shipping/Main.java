@@ -30,9 +30,11 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("PORT", "50051"));
         shippingService = new ShippingService(new InetSocketAddress("localhost", rpcPort), telemetry);
 
-        frontendConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.frontend, telemetry);
+        frontendConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.frontend, telemetry);
 
-        currencyConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.currency, telemetry);
+        currencyConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.currency, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.SHIPPING.name(), telemetry,
                 Main::handleNewSession);
@@ -40,7 +42,7 @@ public class Main {
         server.listen(ServiceResources.shared.shipping);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static Object handleNewSession(SessionContext ctx) throws Exception {
         WebshopSession session = new WebshopSession(ctx.session);
         switch (session.choreography) {
             case PLACE_ORDER:
@@ -55,10 +57,9 @@ public class Main {
                 placeOrderChor.placeOrder();
                 ctx.log("[SHIPPING] PLACE_ORDER choreography completed");
 
-                break;
+                return "PLACE_ORDER choreography completed";
             default:
-                ctx.log("[SHIPPING] Invalid choreography " + ctx.session.choreographyName());
-                break;
+                throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
     }
 }

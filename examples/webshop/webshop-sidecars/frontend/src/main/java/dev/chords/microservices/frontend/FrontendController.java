@@ -1,6 +1,7 @@
 package dev.chords.microservices.frontend;
 
 import choral.reactive.ReactiveSymChannel;
+import choral.reactive.SessionContext;
 import choral.reactive.connection.ClientConnectionManager;
 import choral.reactive.ReactiveClient;
 import choral.reactive.ReactiveServer;
@@ -20,6 +21,7 @@ import io.opentelemetry.context.Scope;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,23 +46,23 @@ public class FrontendController {
         this.logger = new Logger(telemetry, FrontendController.class.getName());
 
         this.checkoutDurationHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-            .histogramBuilder("choral.frontend.checkout-duration")
-            .setUnit("ms")
-            .setDescription("Time it takes to perform a checkout")
-            .build();
+                .histogramBuilder("choral.frontend.checkout-duration")
+                .setUnit("ms")
+                .setDescription("Time it takes to perform a checkout")
+                .build();
 
         try {
-            cartConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.cart,
-                    telemetry);
-            currencyConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.currency,
-                    telemetry);
-            shippingConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.shipping,
-                    telemetry);
-            paymentConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.payment,
-                    telemetry);
-            emailConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.email,
-                telemetry);
-        } catch (URISyntaxException | IOException e) {
+            cartConn = ClientConnectionManager.defaultFactory()
+                    .makeConnectionManager(ServiceResources.shared.cart, telemetry);
+            currencyConn = ClientConnectionManager.defaultFactory()
+                    .makeConnectionManager(ServiceResources.shared.currency, telemetry);
+            shippingConn = ClientConnectionManager.defaultFactory()
+                    .makeConnectionManager(ServiceResources.shared.shipping, telemetry);
+            paymentConn = ClientConnectionManager.defaultFactory()
+                    .makeConnectionManager(ServiceResources.shared.payment, telemetry);
+            emailConn = ClientConnectionManager.defaultFactory()
+                    .makeConnectionManager(ServiceResources.shared.email, telemetry);
+        } catch (Exception e) {
             logger.exception("failed to start sidecar connections", e);
             throw new RuntimeException(e);
         }
@@ -69,6 +71,7 @@ public class FrontendController {
             logger.info(
                     "Received new session from " + ctx.session.senderName()
                             + " service: " + ctx.session);
+            return null;
         });
 
         Thread.ofVirtual()
@@ -76,12 +79,55 @@ public class FrontendController {
                 .start(() -> {
                     try {
                         server.listen(ServiceResources.shared.frontend);
-                    } catch (URISyntaxException | IOException e) {
+                    } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 });
 
         logger.info("Done configuring frontend controller");
+    }
+
+    public Object handleSession(SessionContext ctx) throws Exception {
+        WebshopSession session = new WebshopSession(ctx.session);
+        switch (session.choreography) {
+            case PLACE_ORDER:
+                ctx.log("[PAYMENT] New PLACE_ORDER request");
+
+
+                var currencyChan = new ReactiveSymChannel<>(
+                        ctx.chanA(currencyConn),
+                        ctx.chanB(Service.CURRENCY.name()));
+
+                var shippingChan = new ReactiveSymChannel<>(
+                        ctx.chanA(shippingConn),
+                        ctx.chanB(Service.SHIPPING.name()));
+
+                var paymentChan = new ReactiveSymChannel<>(
+                        ctx.chanA(paymentConn),
+                        ctx.chanB(Service.PAYMENT.name()));
+
+                var emailChan = new ReactiveSymChannel<>(
+                        ctx.chanA(emailConn),
+                        ctx.chanB(Service.EMAIL.name()));
+
+                ChorPlaceOrder_Client placeOrderChor = new ChorPlaceOrder_Client(
+                        new ClientService(ctx.tracer()),
+                        currencyChan,
+                        shippingChan,
+                        paymentChan,
+                        emailChan,
+                        ctx.chanA(cartConn)
+                );
+
+                // TODO: Allow payload to be passed with invokeManualSession()
+                OrderResult result = placeOrderChor.placeOrder(request);
+
+                ctx.log("[PAYMENT] PLACE_ORDER choreography completed");
+
+                return result;
+            default:
+                throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
+        }
     }
 
     @GetMapping("/ping")
@@ -108,54 +154,20 @@ public class FrontendController {
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session,
                 span);
 
-        server.registerSession(session, telemetrySession);
 
-        try (Scope scope = span.makeCurrent();
-                ReactiveClient cartClient = new ReactiveClient(
-                        cartConn, Service.FRONTEND.name(), telemetrySession);
-                ReactiveClient currencyClient = new ReactiveClient(
-                        currencyConn, Service.FRONTEND.name(), telemetrySession);
-                ReactiveClient shippingClient = new ReactiveClient(
-                        shippingConn, Service.FRONTEND.name(), telemetrySession);
-                ReactiveClient paymentClient = new ReactiveClient(
-                        paymentConn, Service.FRONTEND.name(), telemetrySession);
-             ReactiveClient emailClient = new ReactiveClient(
-                 emailConn, Service.FRONTEND.name(), telemetrySession);) {
-
+        try (Scope scope = span.makeCurrent();) {
             telemetrySession.log("Initiating PLACE_ORDER choreography");
-
-            var currencyChan = new ReactiveSymChannel<>(currencyClient.chanA(session),
-                    server.chanB(session, Service.CURRENCY.name()));
-
-            var shippingChan = new ReactiveSymChannel<>(shippingClient.chanA(session),
-                    server.chanB(session, Service.SHIPPING.name()));
-
-            var paymentChan = new ReactiveSymChannel<>(paymentClient.chanA(session),
-                    server.chanB(session, Service.PAYMENT.name()));
-
-            var emailChan = new ReactiveSymChannel<>(emailClient.chanA(session),
-                    server.chanB(session, Service.EMAIL.name()));
-
-            ChorPlaceOrder_Client placeOrderChor = new ChorPlaceOrder_Client(
-                    new ClientService(telemetrySession.tracer),
-                    currencyChan,
-                    shippingChan,
-                    paymentChan,
-                    emailChan,
-                    cartClient.chanA(session)
-                );
-
-            OrderResult result = placeOrderChor.placeOrder(request);
+            OrderResult result = (OrderResult) server.invokeManualSession(telemetrySession);
 
             telemetrySession.log("Finished PLACE_ORDER choreography",
                     Attributes.builder().put("order.result", result.toString()).build());
 
             Long endTime = System.nanoTime();
             checkoutDurationHistogram.record((endTime - startTime) / 1_000_000.,
-                Attributes.builder()
-                    .put("success", true)
-                    .build()
-                );
+                    Attributes.builder()
+                            .put("success", true)
+                            .build()
+            );
 
             return new PlaceOrderResponse(result);
         } catch (Exception e) {
@@ -164,14 +176,15 @@ public class FrontendController {
 
             Long endTime = System.nanoTime();
             checkoutDurationHistogram.record((endTime - startTime) / 1_000_000.,
-                Attributes.builder()
-                    .put("success", false)
-                    .build()
+                    Attributes.builder()
+                            .put("success", false)
+                            .build()
             );
 
             throw new RuntimeException(e);
         } finally {
             span.end();
         }
+
     }
 }

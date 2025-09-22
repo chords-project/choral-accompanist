@@ -29,7 +29,8 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("PORT", "50051"));
         paymentService = new PaymentService(new InetSocketAddress("localhost", rpcPort), telemetry);
 
-        frontendConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.frontend, telemetry);
+        frontendConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.frontend, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.PAYMENT.name(), telemetry,
                 Main::handleNewSession);
@@ -37,7 +38,7 @@ public class Main {
         server.listen(ServiceResources.shared.payment);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static Object handleNewSession(SessionContext ctx) throws Exception {
         WebshopSession session = new WebshopSession(ctx.session);
         switch (session.choreography) {
             case PLACE_ORDER:
@@ -50,10 +51,9 @@ public class Main {
                 placeOrderChor.placeOrder();
                 ctx.log("[PAYMENT] PLACE_ORDER choreography completed");
 
-                break;
+                return "PLACE_ORDER choreography completed";
             default:
-                ctx.log("[PAYMENT] Invalid choreography " + ctx.session.choreographyName());
-                break;
+                throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
     }
 }
