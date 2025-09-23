@@ -63,29 +63,13 @@ def on_request_finished(request_type, name, response_time, response_length, resp
         "{},{},{},{},{},{}\n".format(start_time, request_type, name, response_time, response_length, url)
     )
 
-TRAVEL_PARAMS = {
-    "fromLat": "0",
-    "fromLon": "0",
-    "toLat": "37.7749",
-    "toLon": "-122.4194",
-    "startDate": "2025-03-10",
-    "endDate": "2025-03-20",
-}
 
-class TravelChoreographyUser(FastHttpUser):
+class WebshopChoreographyUser(FastHttpUser):
     wait_time = between(1, 5)
 
     @task
     def choreography(self):
-        self.client.get("/bookTravel/choreography", params=TRAVEL_PARAMS)
-
-
-class TravelOrchestratorUser(FastHttpUser):
-    wait_time = between(1, 5)
-
-    @task
-    def orchestrator(self):
-        self.client.get("/bookTravel/orchestrator", params=TRAVEL_PARAMS)
+        self.client.get("/orderFulfillment")
 
 
 class WarmupBenchmarkShape(LoadTestShape):

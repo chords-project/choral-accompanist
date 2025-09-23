@@ -34,6 +34,7 @@ public class RestEndpoint {
                     success = false;
                 } else {
                     message = "success: " + result.toString();
+                    success = true;
                 }
             } catch (Exception e) {
                 message = "order failed: " + e.getMessage();
