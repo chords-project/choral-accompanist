@@ -6,7 +6,11 @@ metadata:
     app: warehouse
 spec:
   ports:
-    - port: 4003
+    - name: "choral"
+      port: 4003
+      protocol: TCP
+    - name: "web-endpoint"
+      port: 5000
       protocol: TCP
   clusterIP: None
   selector:
@@ -28,6 +32,14 @@ spec:
       labels:
         app: warehouse
     spec:
+      initContainers:
+        - name: check-warehouse-db-ready
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-warehouse -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
       containers:
         - name: warehouse
           image: warehouse
@@ -40,6 +52,8 @@ spec:
               value: loyalty:4003
             - name: POSTGRES_URL
               value: "postgresql://db-warehouse:5432/warehouse"
+            - name: LISTEN_PORT
+              value: "5000"
 ---
 apiVersion: v1
 kind: Service

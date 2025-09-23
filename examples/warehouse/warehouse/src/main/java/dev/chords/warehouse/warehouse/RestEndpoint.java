@@ -1,14 +1,11 @@
 package dev.chords.warehouse.warehouse;
 
-import choral.faulttolerance.SQLDataStore;
-import choral.reactive.ReactiveServer;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 
@@ -36,7 +33,7 @@ public class RestEndpoint {
                     message = "order exception: " + ((Exception) result).getMessage();
                     success = false;
                 } else {
-                    message = "order successfully placed: " + result.toString();
+                    message = "success: " + result.toString();
                 }
             } catch (Exception e) {
                 message = "order failed: " + e.getMessage();

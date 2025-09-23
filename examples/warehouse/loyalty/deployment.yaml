@@ -28,6 +28,14 @@ spec:
       labels:
         app: loyalty
     spec:
+      initContainers:
+        - name: check-loyalty-db-ready
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-loyalty -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
       containers:
         - name: loyalty
           image: loyalty

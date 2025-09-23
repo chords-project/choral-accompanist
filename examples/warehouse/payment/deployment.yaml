@@ -28,6 +28,14 @@ spec:
       labels:
         app: payment
     spec:
+      initContainers:
+        - name: check-payment-db-ready
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-payment -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
       containers:
         - name: payment
           image: payment

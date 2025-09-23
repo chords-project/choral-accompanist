@@ -78,6 +78,8 @@ public class SQLDataStore implements FaultDataStore {
                     );
                     """);
         }
+
+        logger.info("Successfully created tables in database");
     }
 
     @Override
