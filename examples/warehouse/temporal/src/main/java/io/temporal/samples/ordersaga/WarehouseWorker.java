@@ -45,7 +45,8 @@ public class WarehouseWorker {
         // register warehouse worker
         io.temporal.worker.Worker warehouseWorker = factory.newWorker(TASK_QUEUE, options);
         warehouseWorker.registerWorkflowImplementationTypes(WarehouseSagaImpl.class);
-        warehouseWorker.registerActivitiesImplementations(new WarehouseActivitiesImpl(ServerInfo.getDatabase("warehouse_warehouse")));
+        var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_warehouse");
+        warehouseWorker.registerActivitiesImplementations(new WarehouseActivitiesImpl(ServerInfo.getDatabase(dbUrl)));
 
         // Start all workers created by this factory.
         factory.start();

@@ -8,7 +8,7 @@ plugins {
 jib {
     from.image = "eclipse-temurin:23"
     to.image = "accompanist-temporal"
-    container.mainClass = "io.temporal.samples.ordersaga.Worker"
+    container.mainClass = "io.temporal.samples.ordersaga.Main"
 }
 
 val temporalVersion = "1.30.1"
@@ -59,7 +59,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "io.temporal.samples.ordersaga.Worker"
+    mainClass = "io.temporal.samples.ordersaga.Main"
 }
 
 tasks.named<Test>("test") {

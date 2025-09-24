@@ -79,9 +79,9 @@ public class ServerInfo {
         return info;
     }
 
-    public static HikariDataSource getDatabase(String dbName) {
+    public static HikariDataSource getDatabase(String dbUrl) {
         HikariDataSource db = new HikariDataSource();
-        db.setJdbcUrl("jdbc:postgresql://localhost:5432/" + dbName);
+        db.setJdbcUrl("jdbc:" + dbUrl);
         db.setUsername("postgres");
         db.setPassword("postgres");
 

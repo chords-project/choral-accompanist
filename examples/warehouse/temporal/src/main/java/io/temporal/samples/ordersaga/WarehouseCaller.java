@@ -19,8 +19,10 @@
 
 package io.temporal.samples.ordersaga;
 
+import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 
 import javax.net.ssl.SSLException;
@@ -30,21 +32,20 @@ import java.util.concurrent.TimeUnit;
 
 public class WarehouseCaller {
 
-    public static void runWorkflow() throws FileNotFoundException, SSLException {
-        // generate a random reference number
+    public WorkflowClient client;
+    final String WAREHOUSE_TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
 
-        // Workflow execution code
+    public WarehouseCaller() throws FileNotFoundException, SSLException {
+        client = TemporalClient.get();
+    }
 
-        WorkflowClient client = TemporalClient.get();
-        final String WAREHOUSE_TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
-
+    public WorkflowExecution runWorkflow() throws FileNotFoundException, SSLException {
         // get java timestamp
-        long javaTime = System.currentTimeMillis();
-        long timeSeconds = TimeUnit.MILLISECONDS.toSeconds(javaTime);
+        long javaTime = System.nanoTime();
 
         WorkflowOptions options =
                 WorkflowOptions.newBuilder()
-                        .setWorkflowId("WarehouseSaga-" + timeSeconds)
+                        .setWorkflowId("WarehouseSaga-" + javaTime)
                         .setTaskQueue(WAREHOUSE_TASK_QUEUE)
                         .build();
         WarehouseSaga workflow = client.newWorkflowStub(WarehouseSaga.class, options);
@@ -53,12 +54,12 @@ public class WarehouseCaller {
         int sessionID = rand.nextInt();
 
         // start the workflow
-        WorkflowClient.start(workflow::orderFulfillment, sessionID);
+        return WorkflowClient.start(workflow::orderFulfillment, sessionID);
     }
 
     @SuppressWarnings("CatchAndPrintStackTrace")
     public static void main(String[] args) throws Exception {
-        runWorkflow();
+        new WarehouseCaller().runWorkflow();
         System.exit(0);
     }
 }

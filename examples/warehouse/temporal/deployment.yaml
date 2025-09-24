@@ -1,30 +1,166 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: temporal
-  labels:
-    app: temporal
-spec:
-  clusterIP: None
-  selector:
-    app: temporal
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: temporal
+  name: temporal-worker-warehouse
   labels:
-    app: temporal
+    app: temporal-worker-warehouse
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: temporal
+      app: temporal-worker-warehouse
   template:
     metadata:
       labels:
-        app: temporal
+        app: temporal-worker-warehouse
     spec:
+      initContainers:
+        - name: wait-for-temporal-warehouse
+          image: busybox
+          command: [ "sh", "-c",
+                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+        - name: check-warehouse-db-ready
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-warehouse -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
       containers:
-      - name: temporal
-        image: temporal
+        - name: temporal-worker-warehouse
+          image: warehouse-temporal
+          env:
+            - name: WORKER_TYPE
+              value: warehouse
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+            - name: POSTGRES_URL
+              value: "postgresql://db-warehouse:5432/warehouse"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-worker-payment
+  labels:
+    app: temporal-worker-payment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-worker-payment
+  template:
+    metadata:
+      labels:
+        app: temporal-worker-payment
+    spec:
+      initContainers:
+        - name: wait-for-temporal-payment
+          image: busybox
+          command: [ "sh", "-c",
+                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+        - name: check-payment-db-ready-temporal
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-payment -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
+      containers:
+        - name: temporal-worker-payment
+          image: warehouse-temporal
+          env:
+            - name: WORKER_TYPE
+              value: payment
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+            - name: POSTGRES_URL
+              value: "postgresql://db-payment:5432/payment"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-worker-loyalty
+  labels:
+    app: temporal-worker-loyalty
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-worker-loyalty
+  template:
+    metadata:
+      labels:
+        app: temporal-worker-loyalty
+    spec:
+      initContainers:
+        - name: wait-for-temporal-loyalty
+          image: busybox
+          command: [ "sh", "-c",
+                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+        - name: check-loyalty-db-ready
+          image: postgres
+          command: [
+            'sh', '-c',
+            'until pg_isready -h db-loyalty -p 5432; 
+                    do echo waiting for database; sleep 2; done;'
+          ]
+      containers:
+        - name: temporal-worker-loyalty
+          image: warehouse-temporal
+          env:
+            - name: WORKER_TYPE
+              value: loyalty
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+            - name: POSTGRES_URL
+              value: "postgresql://db-loyalty:5432/loyalty"
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-warehouse-endpoint
+  labels:
+    app: temporal-warehouse-endpoint
+spec:
+  ports:
+    - port: 5001
+      name: rest-port
+  clusterIP: None
+  selector:
+    app: temporal-warehouse-endpoint
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-warehouse-endpoint
+  labels:
+    app: temporal-warehouse-endpoint
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-warehouse-endpoint
+  template:
+    metadata:
+      labels:
+        app: temporal-warehouse-endpoint
+    spec:
+      initContainers:
+        - name: wait-for-temporal-loyalty
+          image: busybox
+          command: [ "sh", "-c",
+                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+      containers:
+        - name: temporal-warehouse-endpoint
+          image: warehouse-temporal
+          env:
+            - name: WORKER_TYPE
+              value: endpoint
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+            - name: LISTEN_PORT
+              value: '5001'

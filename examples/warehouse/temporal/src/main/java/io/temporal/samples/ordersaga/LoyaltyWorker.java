@@ -44,7 +44,8 @@ public class LoyaltyWorker {
 
         // register loyalty worker
         io.temporal.worker.Worker loyaltyWorker = factory.newWorker(TASK_QUEUE, options);
-        loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl(ServerInfo.getDatabase("warehouse_loyalty")));
+        var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_loyalty");
+        loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl(ServerInfo.getDatabase(dbUrl)));
 
         // Start all workers created by this factory.
         factory.start();

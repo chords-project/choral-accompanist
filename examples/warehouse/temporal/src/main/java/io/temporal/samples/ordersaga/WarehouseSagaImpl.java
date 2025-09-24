@@ -44,10 +44,12 @@ public class WarehouseSagaImpl implements WarehouseSaga {
     }
 
     @Override
-    public void orderFulfillment(int sessionID) {
+    public String orderFulfillment(int sessionID) {
         Saga saga = new Saga(new Saga.Options.Builder().build());
 
         try {
+            var t1 = System.nanoTime();
+
             saga.addCompensation(warehouseActivities::cancelOrderReservation);
             warehouseActivities.checkItemInStockAndReserveForOrder();
 
@@ -59,6 +61,9 @@ public class WarehouseSagaImpl implements WarehouseSaga {
 
             saga.addCompensation(() -> warehouseActivities.cancelDelivery(sessionID));
             warehouseActivities.packageAndSendOrder(sessionID);
+
+            var t2 = System.nanoTime();
+            return "order " + sessionID + " processed in " + (t2 - t1) / 1000000.0 + " ms";
         } catch (Exception e) {
             logger.error("Order processing failed, compensating.", e);
             saga.compensate();

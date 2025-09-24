@@ -12,7 +12,7 @@ build:
       context: payment
       jib:
         project: payment
-    - image: temporal
+    - image: warehouse-temporal
       context: temporal
       jib:
         project: temporal
@@ -25,6 +25,7 @@ build:
 manifests:
   rawYaml:
     - temporal/deployment.yaml
+    - temporal/temporal.yaml
     - warehouse/deployment.yaml
     - loyalty/deployment.yaml
     - payment/deployment.yaml
@@ -36,3 +37,9 @@ portForward:
   - resourceType: service
     resourceName: loadgenerator
     port: 8089
+  - resourceType: service
+    resourceName: temporal-warehouse-endpoint
+    port: 5001
+  - resourceType: service
+    resourceName: temporal-ui
+    port: 8080

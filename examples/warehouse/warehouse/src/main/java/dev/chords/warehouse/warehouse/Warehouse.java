@@ -75,9 +75,11 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEnd
     public Object onNewSession(FaultSessionContext ctx) {
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
+                var t1 = System.nanoTime();
                 WarehouseOrder_Warehouse chor = new WarehouseOrder_Warehouse(ctx, warehouseService);
                 chor.orderFulfillment();
-                return "successfully placed order: " + ctx.session.sessionID();
+                var t2 = System.nanoTime();
+                return "run choreography: order %d processed in %s ms".formatted(ctx.session.sessionID(), (t2 - t1) / 1000000.0);
             default:
                 throw new IllegalStateException("Unexpected session choreography: " + ctx.session.choreographyName());
         }
