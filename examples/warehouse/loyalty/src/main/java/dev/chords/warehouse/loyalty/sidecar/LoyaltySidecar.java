@@ -11,7 +11,7 @@ public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {
     }
 
     protected final FaultTolerantServer server;
-    protected final LoyaltyTransactions loyaltyService = new LoyaltyTransactions();
+    protected final LoyaltyTransactions loyaltyService = new SidecarTransactions();
 
     public final String SERVICE_NAME = "LOYALTY";
     public final String SERVER_ADDRESS = System.getenv("LOYALTY");
