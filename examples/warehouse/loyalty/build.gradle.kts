@@ -9,13 +9,14 @@ plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
 
+    id("com.google.protobuf")
     id("com.google.cloud.tools.jib")
 }
 
 jib {
     from.image = "eclipse-temurin:23"
     to.image = "accompanist-loyalty"
-    container.mainClass = "dev.chords.warehouse.loyalty.Loyalty"
+    container.mainClass = "dev.chords.warehouse.loyalty.sidecar.LoyaltySidecar"
 }
 
 repositories {
@@ -39,6 +40,8 @@ repositories {
     }
 }
 
+var grpcVersion = "1.68.1"
+
 dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation(libs.junit.jupiter)
@@ -52,6 +55,12 @@ dependencies {
 
     implementation("org.postgresql:postgresql:42.7.5")
     implementation("com.zaxxer:HikariCP:6.3.0")
+
+    // gRPC
+    runtimeOnly("io.grpc:grpc-netty-shaded:${grpcVersion}")
+    implementation("io.grpc:grpc-protobuf:${grpcVersion}")
+    implementation("io.grpc:grpc-stub:${grpcVersion}")
+    compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -63,10 +72,30 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "dev.chords.warehouse.loyalty.Loyalty"
+    mainClass = "dev.chords.warehouse.loyalty.sidecar.LoyaltySidecar"
 }
 
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+// Compile protobuf code
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.5"
+    }
+    plugins {
+        create("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.68.1"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                create("grpc") {}
+            }
+        }
+    }
+}
+

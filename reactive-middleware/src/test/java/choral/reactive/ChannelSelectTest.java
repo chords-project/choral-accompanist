@@ -33,6 +33,7 @@ public class ChannelSelectTest {
             stats.label2 = ctx.chanB("client").select();
             System.out.println("Server received label");
             done.countDown();
+            return null;
         });
 
         Thread.ofVirtual()

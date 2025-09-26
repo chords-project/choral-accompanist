@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.chords.warehouse.proto;
+
+service Loyalty {
+  rpc CommitAwardPointsToCustomer (UserID) returns (Empty) {}
+  rpc CompensateAwardPointsToCustomer (UserID) returns (Empty) {}
+}
+
+message UserID {
+  int32 userID = 1;
+}
+
+message Empty {}

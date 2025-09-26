@@ -1,22 +1,22 @@
-package dev.chords.warehouse.loyalty;
+package dev.chords.warehouse.loyalty.sidecar;
 
 import choral.faulttolerance.*;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
-public class Loyalty implements FaultTolerantServer.FaultSessionEvent {
+public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {
 
     public static void main(String[] args) throws Exception {
-        var payment = new Loyalty();
+        var payment = new LoyaltySidecar();
         payment.start();
     }
 
     protected final FaultTolerantServer server;
-    protected final LoyaltyService loyaltyService = new LoyaltyService();
+    protected final LoyaltyTransactions loyaltyService = new LoyaltyTransactions();
 
     public final String SERVICE_NAME = "LOYALTY";
     public final String SERVER_ADDRESS = System.getenv("LOYALTY");
 
-    public Loyalty() throws Exception {
+    public LoyaltySidecar() throws Exception {
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_loyalty");
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(

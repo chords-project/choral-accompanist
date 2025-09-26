@@ -38,6 +38,7 @@ public class ConnectionTest {
             });
 
             done.countDown();
+            return null;
         });
 
         Thread.ofVirtual()

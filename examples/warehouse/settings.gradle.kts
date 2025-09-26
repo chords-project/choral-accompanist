@@ -10,6 +10,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 
     id("com.google.cloud.tools.jib") version "3.4.5" apply false
+    id("com.google.protobuf") version "0.9.4" apply false
 }
 
 rootProject.name = "warehouse"

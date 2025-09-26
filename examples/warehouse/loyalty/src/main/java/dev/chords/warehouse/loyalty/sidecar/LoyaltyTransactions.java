@@ -1,14 +1,13 @@
-package dev.chords.warehouse.loyalty;
+package dev.chords.warehouse.loyalty.sidecar;
 
 import choral.faulttolerance.SQLTransaction;
 import choral.faulttolerance.Transaction;
-import choral.reactive.Session;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Set;
 
-public class LoyaltyService implements dev.chords.warehouse.choreograhpy.LoyaltyService {
+public class LoyaltyTransactions implements dev.chords.warehouse.choreograhpy.LoyaltyService {
 
     public static final int userID = 100;
 
