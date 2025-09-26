@@ -37,7 +37,7 @@ repositories {
 }
 
 var choralVersion = "0.1.10"
-var grpcVersion = "1.68.1"
+var grpcVersion = "1.75.0"
 var otelVersion = "1.47.0"
 
 dependencies {
@@ -79,7 +79,7 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
