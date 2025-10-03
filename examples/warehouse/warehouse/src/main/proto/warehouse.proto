@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.chords.warehouse.proto;
+
+service Warehouse {
+  rpc CommitCheckItemInStockAndReserveForOrder (Product) returns (Empty) {}
+  rpc CompensateCheckItemInStockAndReserveForOrder (Product) returns (Empty) {}
+
+  rpc CommitPackageAndSendOrder (SendOrderReq) returns (Empty) {}
+  rpc CompensatePackageAndSendOrder (SendOrderReq) returns (Empty) {}
+}
+
+message Empty {}
+
+message SendOrderReq {
+  int32 UserID = 1;
+  int32 SessionID = 2;
+}
+
+message Product {
+  int32 ProductID = 1;
+}

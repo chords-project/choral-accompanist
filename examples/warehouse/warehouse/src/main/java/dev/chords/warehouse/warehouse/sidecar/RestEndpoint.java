@@ -1,4 +1,4 @@
-package dev.chords.warehouse.warehouse;
+package dev.chords.warehouse.warehouse.sidecar;
 
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 public class RestEndpoint {
 
     protected HttpServer server;
-    protected Warehouse warehouse;
+    protected WarehouseSidecar warehouse;
     private final Logger logger;
 
     public RestEndpoint(Events events) throws IOException {

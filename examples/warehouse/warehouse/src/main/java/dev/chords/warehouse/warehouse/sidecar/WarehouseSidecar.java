@@ -1,16 +1,16 @@
-package dev.chords.warehouse.warehouse;
+package dev.chords.warehouse.warehouse.sidecar;
 
 import choral.faulttolerance.*;
 import choral.reactive.Session;
-import choral.reactive.tracing.LocalConfiguration;
 import choral.reactive.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
+import dev.chords.warehouse.warehouse.service.WarehouseService;
 import io.opentelemetry.api.OpenTelemetry;
 
-public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEndpoint.Events {
+public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, RestEndpoint.Events {
 
     public static void main(String[] args) throws Exception {
-        var warehouse = new Warehouse();
+        var warehouse = new WarehouseSidecar();
         warehouse.start();
     }
 
@@ -18,14 +18,14 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEnd
     public static final String SERVER_ADDRESS = System.getenv("WAREHOUSE");
 
     protected final FaultTolerantServer server;
-    protected final WarehouseService warehouseService;
+    protected final WarehouseTransactions warehouseTransactions;
     protected final RestEndpoint endpoint;
 
-    public Warehouse() throws Exception {
+    public WarehouseSidecar() throws Exception {
         //final var telemetry = LocalConfiguration.initTelemetry(SERVICE_NAME);
         final var telemetry = OpenTelemetry.noop();
 
-        warehouseService = new WarehouseService();
+        warehouseTransactions = new DirectTransactions();
 
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_warehouse");
 
@@ -33,7 +33,7 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEnd
                 "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
-                warehouseService.allTransactions()
+                warehouseTransactions.allTransactions()
         );
 
         // RabbitMQ connection
@@ -76,7 +76,7 @@ public class Warehouse implements FaultTolerantServer.FaultSessionEvent, RestEnd
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
                 var t1 = System.nanoTime();
-                WarehouseOrder_Warehouse chor = new WarehouseOrder_Warehouse(ctx, warehouseService);
+                WarehouseOrder_Warehouse chor = new WarehouseOrder_Warehouse(ctx, warehouseTransactions);
                 chor.orderFulfillment();
                 var t2 = System.nanoTime();
                 return "run choreography: order %d processed in %s ms".formatted(ctx.session.sessionID(), (t2 - t1) / 1000000.0);

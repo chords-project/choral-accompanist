@@ -1,4 +1,4 @@
-package dev.chords.warehouse.warehouse;
+package dev.chords.warehouse.warehouse.sidecar;
 
 import choral.faulttolerance.SQLTransaction;
 import choral.faulttolerance.Transaction;
@@ -6,7 +6,7 @@ import choral.faulttolerance.Transaction;
 import java.sql.SQLException;
 import java.util.Set;
 
-public class WarehouseService implements dev.chords.warehouse.choreograhpy.WarehouseService {
+public class DirectTransactions implements WarehouseTransactions {
 
     public static final int userID = 100;
     public static final int productID = 123;

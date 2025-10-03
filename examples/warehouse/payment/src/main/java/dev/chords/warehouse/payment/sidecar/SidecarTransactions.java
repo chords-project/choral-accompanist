@@ -6,7 +6,9 @@ import dev.chords.warehouse.proto.PaymentGrpc;
 import dev.chords.warehouse.proto.PaymentOuterClass;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
 
+import java.sql.SQLException;
 import java.util.Set;
 
 public class SidecarTransactions implements PaymentTransactions {
@@ -37,14 +39,22 @@ public class SidecarTransactions implements PaymentTransactions {
             }
 
             @Override
-            public boolean commit(int sessionID, SQLTransaction trans) {
-                var _ = blockingStub.commitTakeMoneyFromCustomer(PaymentOuterClass.Empty.newBuilder().build());
-                return true;
+            public boolean commit(int sessionID, SQLTransaction trans) throws SQLException {
+                try {
+                    var _ = blockingStub.commitTakeMoneyFromCustomer(PaymentOuterClass.Empty.newBuilder().build());
+                    return true;
+                } catch (StatusRuntimeException e) {
+                    throw new SQLException(e);
+                }
             }
 
             @Override
-            public void compensate(int sessionID, SQLTransaction trans) {
-                var _ = blockingStub.compensateTakeMoneyFromCustomer(PaymentOuterClass.Empty.newBuilder().build());
+            public void compensate(int sessionID, SQLTransaction trans) throws SQLException {
+                try {
+                    var _ = blockingStub.compensateTakeMoneyFromCustomer(PaymentOuterClass.Empty.newBuilder().build());
+                } catch (StatusRuntimeException e) {
+                    throw new SQLException(e);
+                }
             }
         };
     }
