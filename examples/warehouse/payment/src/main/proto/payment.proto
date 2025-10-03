@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package dev.chords.warehouse.proto;
+
+service Payment {
+  rpc CommitTakeMoneyFromCustomer (Empty) returns (Empty) {}
+  rpc CompensateTakeMoneyFromCustomer (Empty) returns (Empty) {}
+}
+
+message Empty {}

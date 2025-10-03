@@ -1,23 +1,24 @@
-package dev.chords.warehouse.payment;
+package dev.chords.warehouse.payment.sidecar;
 
 import choral.faulttolerance.*;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
+import dev.chords.warehouse.payment.service.PaymentService;
 
-public class Payment implements FaultTolerantServer.FaultSessionEvent {
+public class PaymentSidecar implements FaultTolerantServer.FaultSessionEvent {
 
     public static void main(String[] args) throws Exception {
-        var payment = new Payment();
+        var payment = new PaymentSidecar();
         payment.start();
     }
 
     private final FaultTolerantServer server;
-    private final PaymentService paymentService;
+    private final PaymentTransactions paymentTransactions;
 
     public static final String SERVICE_NAME = "PAYMENT";
     public static final String SERVER_ADDRESS = System.getenv("PAYMENT");
 
-    public Payment() throws Exception {
-        paymentService = new PaymentService();
+    public PaymentSidecar() throws Exception {
+        paymentTransactions = new SidecarTransactions();
 
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_payment");
 
@@ -25,7 +26,7 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
                 "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
-                paymentService.allTransactions()
+                paymentTransactions.allTransactions()
         );
 
         // RabbitMQ connection
@@ -52,7 +53,7 @@ public class Payment implements FaultTolerantServer.FaultSessionEvent {
     public Object onNewSession(FaultSessionContext ctx) {
         switch (ctx.session.choreographyName()) {
             case "WAREHOUSE_ORDER":
-                WarehouseOrder_Payment chor = new WarehouseOrder_Payment(ctx, paymentService);
+                WarehouseOrder_Payment chor = new WarehouseOrder_Payment(ctx, paymentTransactions);
                 chor.orderFulfillment();
                 return null;
             default:

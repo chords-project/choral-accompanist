@@ -1,11 +1,11 @@
-package dev.chords.warehouse.payment;
+package dev.chords.warehouse.payment.sidecar;
 
 import choral.faulttolerance.SQLTransaction;
 import choral.faulttolerance.Transaction;
 
 import java.util.Set;
 
-public class PaymentService implements dev.chords.warehouse.choreograhpy.PaymentService {
+public class DirectTransactions implements PaymentTransactions {
 
     public Set<Transaction> allTransactions() {
         return Set.of(takeMoneyFromCustomer());
