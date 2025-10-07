@@ -28,6 +28,16 @@ spec:
       labels:
         app: payment
     spec:
+      affinity: # Deploy on same node as db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-payment
       initContainers:
         - name: check-payment-db-ready
           image: postgres

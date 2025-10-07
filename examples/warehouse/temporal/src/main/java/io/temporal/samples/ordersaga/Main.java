@@ -21,6 +21,9 @@ public class Main {
             case "warehouse":
                 WarehouseWorker.main(args);
                 break;
+            case "workflow":
+                WorkflowWorker.main(args);
+                break;
             case "endpoint":
                 WarehouseCaller caller = new WarehouseCaller();
                 RestEndpoint endpoint = new RestEndpoint(() -> {

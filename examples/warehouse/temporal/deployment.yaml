@@ -1,6 +1,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: temporal-worker-workflow
+  labels:
+    app: temporal-worker-workflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-worker-workflow
+  template:
+    metadata:
+      labels:
+        app: temporal-worker-workflow
+    spec:
+      affinity: # Deploy on same node as temporal db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: io.kompose.service
+                    operator: In
+                    values:
+                      - postgresql
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: [ "sh", "-c",
+                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+      containers:
+        - name: temporal-worker-workflow
+          image: warehouse-temporal
+          env:
+            - name: WORKER_TYPE
+              value: workflow
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   name: temporal-worker-warehouse
   labels:
     app: temporal-worker-warehouse
@@ -14,8 +55,18 @@ spec:
       labels:
         app: temporal-worker-warehouse
     spec:
+      affinity: # Deploy on same node as warehouse db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-warehouse
       initContainers:
-        - name: wait-for-temporal-warehouse
+        - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
                      "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
@@ -54,8 +105,18 @@ spec:
       labels:
         app: temporal-worker-payment
     spec:
+      affinity: # Deploy on same node as payment db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-payment
       initContainers:
-        - name: wait-for-temporal-payment
+        - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
                      "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
@@ -94,8 +155,18 @@ spec:
       labels:
         app: temporal-worker-loyalty
     spec:
+      affinity: # Deploy on same node as loyalty db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-loyalty
       initContainers:
-        - name: wait-for-temporal-loyalty
+        - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
                      "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
@@ -149,8 +220,18 @@ spec:
       labels:
         app: temporal-warehouse-endpoint
     spec:
+      affinity: # Deploy on same node as temporal db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: io.kompose.service
+                    operator: In
+                    values:
+                      - postgresql
       initContainers:
-        - name: wait-for-temporal-loyalty
+        - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
                      "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]

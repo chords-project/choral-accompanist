@@ -114,6 +114,16 @@ spec:
       labels:
         io.kompose.service: temporal
     spec:
+      affinity: # Deploy on same node as temporal db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: io.kompose.service
+                    operator: In
+                    values:
+                      - postgresql
       containers:
         - env:
             - name: DB
@@ -162,6 +172,16 @@ spec:
       labels:
         io.kompose.service: temporal-admin-tools
     spec:
+      affinity: # Deploy on same node as temporal db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: io.kompose.service
+                    operator: In
+                    values:
+                      - postgresql
       containers:
         - env:
             - name: TEMPORAL_ADDRESS
@@ -197,6 +217,16 @@ spec:
       labels:
         io.kompose.service: temporal-ui
     spec:
+      affinity: # Deploy on same node as temporal db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: io.kompose.service
+                    operator: In
+                    values:
+                      - postgresql
       containers:
         - env:
             - name: TEMPORAL_ADDRESS

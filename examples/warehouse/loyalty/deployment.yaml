@@ -28,6 +28,16 @@ spec:
       labels:
         app: loyalty
     spec:
+      affinity: # Deploy on same node as db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-loyalty
       initContainers:
         - name: check-loyalty-db-ready
           image: postgres

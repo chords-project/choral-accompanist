@@ -22,6 +22,7 @@ metadata:
   name: warehouse
   labels:
     app: warehouse
+    group: warehouse
 spec:
   replicas: 1
   selector:
@@ -32,6 +33,16 @@ spec:
       labels:
         app: warehouse
     spec:
+      affinity: # Deploy on same node as db service
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - db-warehouse
       initContainers:
         - name: check-warehouse-db-ready
           image: postgres
