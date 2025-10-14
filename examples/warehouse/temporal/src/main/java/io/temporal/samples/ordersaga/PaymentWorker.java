@@ -34,16 +34,11 @@ public class PaymentWorker {
 
         final String TASK_QUEUE = ServerInfo.getPaymentTaskQueue();
 
-        // set activities per second across *all* workers
-        // prevents resource exhausted errors
-        WorkerOptions options =
-                WorkerOptions.newBuilder().build();
-
         // worker factory that can be used to create workers for specific task queues
         WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
 
         // register payment worker
-        io.temporal.worker.Worker paymentWorker = factory.newWorker(TASK_QUEUE, options);
+        io.temporal.worker.Worker paymentWorker = factory.newWorker(TASK_QUEUE, TemporalClient.getWorkerOptions());
         paymentWorker.registerActivitiesImplementations(new PaymentActivitiesImpl());
 
         // Start all workers created by this factory.

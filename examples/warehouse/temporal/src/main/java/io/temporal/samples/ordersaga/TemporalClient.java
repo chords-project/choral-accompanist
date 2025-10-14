@@ -25,58 +25,70 @@ import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.serviceclient.SimpleSslContextBuilder;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
+import io.temporal.worker.WorkerOptions;
+
+import javax.net.ssl.SSLException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import javax.net.ssl.SSLException;
 
 public class TemporalClient {
-  public static WorkflowServiceStubs getWorkflowServiceStubs()
-      throws FileNotFoundException, SSLException {
-    WorkflowServiceStubsOptions.Builder workflowServiceStubsOptionsBuilder =
-        WorkflowServiceStubsOptions.newBuilder();
+    public static WorkflowServiceStubs getWorkflowServiceStubs()
+            throws FileNotFoundException, SSLException {
+        WorkflowServiceStubsOptions.Builder workflowServiceStubsOptionsBuilder =
+                WorkflowServiceStubsOptions.newBuilder();
 
-    if (!ServerInfo.getCertPath().equals("") && !"".equals(ServerInfo.getKeyPath())) {
-      InputStream clientCert = new FileInputStream(ServerInfo.getCertPath());
+        if (!ServerInfo.getCertPath().equals("") && !"".equals(ServerInfo.getKeyPath())) {
+            InputStream clientCert = new FileInputStream(ServerInfo.getCertPath());
 
-      InputStream clientKey = new FileInputStream(ServerInfo.getKeyPath());
+            InputStream clientKey = new FileInputStream(ServerInfo.getKeyPath());
 
-      workflowServiceStubsOptionsBuilder.setSslContext(
-          SimpleSslContextBuilder.forPKCS8(clientCert, clientKey).build());
+            workflowServiceStubsOptionsBuilder.setSslContext(
+                    SimpleSslContextBuilder.forPKCS8(clientCert, clientKey).build());
+        }
+
+        // For temporal cloud this would likely be ${namespace}.tmprl.cloud:7233
+        String targetEndpoint = ServerInfo.getAddress();
+        // Your registered namespace.
+
+        workflowServiceStubsOptionsBuilder.setTarget(targetEndpoint);
+        WorkflowServiceStubs service = null;
+
+        if (!ServerInfo.getAddress().equals("localhost:7233")) {
+            // if not local server, then use the workflowServiceStubsOptionsBuilder
+            service = WorkflowServiceStubs.newServiceStubs(workflowServiceStubsOptionsBuilder.build());
+        } else {
+            service = WorkflowServiceStubs.newLocalServiceStubs();
+        }
+
+        return service;
     }
 
-    // For temporal cloud this would likely be ${namespace}.tmprl.cloud:7233
-    String targetEndpoint = ServerInfo.getAddress();
-    // Your registered namespace.
+    public static WorkflowClient get() throws FileNotFoundException, SSLException {
+        // TODO support local server
+        // Get worker to poll the common task queue.
+        // gRPC stubs wrapper that talks to the local docker instance of temporal service.
+        // WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
 
-    workflowServiceStubsOptionsBuilder.setTarget(targetEndpoint);
-    WorkflowServiceStubs service = null;
+        WorkflowServiceStubs service = getWorkflowServiceStubs();
 
-    if (!ServerInfo.getAddress().equals("localhost:7233")) {
-      // if not local server, then use the workflowServiceStubsOptionsBuilder
-      service = WorkflowServiceStubs.newServiceStubs(workflowServiceStubsOptionsBuilder.build());
-    } else {
-      service = WorkflowServiceStubs.newLocalServiceStubs();
+        WorkflowClientOptions.Builder builder = WorkflowClientOptions.newBuilder();
+
+        System.out.println("<<<<SERVER INFO>>>>:\n " + ServerInfo.getServerInfo());
+        WorkflowClientOptions clientOptions = builder.setNamespace(ServerInfo.getNamespace()).build();
+
+        // client that can be used to start and signal workflows
+        WorkflowClient client = WorkflowClient.newInstance(service, clientOptions);
+        return client;
     }
 
-    return service;
-  }
-
-  public static WorkflowClient get() throws FileNotFoundException, SSLException {
-    // TODO support local server
-    // Get worker to poll the common task queue.
-    // gRPC stubs wrapper that talks to the local docker instance of temporal service.
-    // WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-
-    WorkflowServiceStubs service = getWorkflowServiceStubs();
-
-    WorkflowClientOptions.Builder builder = WorkflowClientOptions.newBuilder();
-
-    System.out.println("<<<<SERVER INFO>>>>:\n " + ServerInfo.getServerInfo());
-    WorkflowClientOptions clientOptions = builder.setNamespace(ServerInfo.getNamespace()).build();
-
-    // client that can be used to start and signal workflows
-    WorkflowClient client = WorkflowClient.newInstance(service, clientOptions);
-    return client;
-  }
+    public static WorkerOptions getWorkerOptions() {
+        return WorkerOptions.newBuilder()
+                .setMaxConcurrentActivityTaskPollers(10) // connections to server
+                .setMaxConcurrentActivityExecutionSize(500) // concurrent jobs
+                .setMaxConcurrentWorkflowTaskPollers(20)
+                .setMaxConcurrentWorkflowTaskExecutionSize(500)
+                .setUsingVirtualThreads(true)
+                .build();
+    }
 }

@@ -21,9 +21,8 @@ package io.temporal.samples.ordersaga;
 
 import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.worker.WorkerFactory;
-import io.temporal.worker.WorkerOptions;
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LoyaltyWorker {
 
@@ -34,16 +33,11 @@ public class LoyaltyWorker {
 
         final String TASK_QUEUE = ServerInfo.getLoyaltyTaskQueue();
 
-        // set activities per second across *all* workers
-        // prevents resource exhausted errors
-        WorkerOptions options =
-                WorkerOptions.newBuilder().build();
-
         // worker factory that can be used to create workers for specific task queues
         WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
 
         // register loyalty worker
-        io.temporal.worker.Worker loyaltyWorker = factory.newWorker(TASK_QUEUE, options);
+        io.temporal.worker.Worker loyaltyWorker = factory.newWorker(TASK_QUEUE, TemporalClient.getWorkerOptions());
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_loyalty");
         loyaltyWorker.registerActivitiesImplementations(new LoyaltyActivitiesImpl(ServerInfo.getDatabase(dbUrl)));
 
