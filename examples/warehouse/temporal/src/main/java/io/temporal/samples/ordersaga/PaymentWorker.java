@@ -25,6 +25,8 @@ import io.temporal.worker.WorkerOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.TimeUnit;
+
 public class PaymentWorker {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentWorker.class);
@@ -44,5 +46,9 @@ public class PaymentWorker {
         // Start all workers created by this factory.
         factory.start();
         logger.info("Worker payment started for task queues: {}", TASK_QUEUE);
+
+        while (!factory.isTerminated()) {
+            factory.awaitTermination(1000, TimeUnit.DAYS);
+        }
     }
 }

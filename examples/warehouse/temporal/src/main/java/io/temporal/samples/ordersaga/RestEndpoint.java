@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class RestEndpoint {
 
@@ -51,8 +52,19 @@ public class RestEndpoint {
 
 
         System.out.println("Starting RestEndpoint on port " + server.getAddress().getPort());
-        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        server.setExecutor(executor);
+
         server.start();
+
+        try {
+            while (!executor.isTerminated()) {
+                var _ = executor.awaitTermination(1, TimeUnit.DAYS);
+            }
+        } catch (InterruptedException e) {
+            // executor stopped
+        }
     }
 
     public void stop() {

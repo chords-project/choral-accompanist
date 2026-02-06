@@ -24,6 +24,8 @@ import io.temporal.worker.WorkerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.TimeUnit;
+
 public class LoyaltyWorker {
 
     private static final Logger logger = LoggerFactory.getLogger(LoyaltyWorker.class);
@@ -44,5 +46,9 @@ public class LoyaltyWorker {
         // Start all workers created by this factory.
         factory.start();
         logger.info("Worker loyalty started for task queues: {}", TASK_QUEUE);
+
+        while (!factory.isTerminated()) {
+            factory.awaitTermination(1000, TimeUnit.DAYS);
+        }
     }
 }

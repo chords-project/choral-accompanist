@@ -14,21 +14,21 @@ spec:
       labels:
         app: temporal-worker-workflow
     spec:
-      affinity: # Deploy on same node as temporal db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: io.kompose.service
-                    operator: In
-                    values:
-                      - postgresql
+      #      affinity: # Deploy on same node as temporal db service
+      #        podAffinity:
+      #          requiredDuringSchedulingIgnoredDuringExecution:
+      #            - topologyKey: kubernetes.io/hostname
+      #              labelSelector:
+      #                matchExpressions:
+      #                  - key: io.kompose.service
+      #                    operator: In
+      #                    values:
+      #                      - postgresql
       initContainers:
         - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
-                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+                     "until nc -z temporaltest-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
       containers:
         - name: temporal-worker-workflow
           image: warehouse-temporal
@@ -36,7 +36,7 @@ spec:
             - name: WORKER_TYPE
               value: workflow
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporaltest-frontend:7233
 ---
 
 apiVersion: apps/v1
@@ -69,7 +69,7 @@ spec:
         - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
-                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+                     "until nc -z temporaltest-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
         - name: check-warehouse-db-ready
           image: postgres
           command: [
@@ -84,7 +84,7 @@ spec:
             - name: WORKER_TYPE
               value: warehouse
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporaltest-frontend:7233
             - name: POSTGRES_URL
               value: "postgresql://db-warehouse:5432/warehouse"
 
@@ -119,7 +119,7 @@ spec:
         - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
-                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+                     "until nc -z temporaltest-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
         - name: check-payment-db-ready-temporal
           image: postgres
           command: [
@@ -134,7 +134,7 @@ spec:
             - name: WORKER_TYPE
               value: payment
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporaltest-frontend:7233
             - name: POSTGRES_URL
               value: "postgresql://db-payment:5432/payment"
 
@@ -169,7 +169,7 @@ spec:
         - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
-                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+                     "until nc -z temporaltest-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
         - name: check-loyalty-db-ready
           image: postgres
           command: [
@@ -184,7 +184,7 @@ spec:
             - name: WORKER_TYPE
               value: loyalty
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporaltest-frontend:7233
             - name: POSTGRES_URL
               value: "postgresql://db-loyalty:5432/loyalty"
 
@@ -220,21 +220,21 @@ spec:
       labels:
         app: temporal-warehouse-endpoint
     spec:
-      affinity: # Deploy on same node as temporal db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: io.kompose.service
-                    operator: In
-                    values:
-                      - postgresql
+      #      affinity: # Deploy on same node as temporal db service
+      #        podAffinity:
+      #          requiredDuringSchedulingIgnoredDuringExecution:
+      #            - topologyKey: kubernetes.io/hostname
+      #              labelSelector:
+      #                matchExpressions:
+      #                  - key: io.kompose.service
+      #                    operator: In
+      #                    values:
+      #                      - postgresql
       initContainers:
         - name: wait-for-temporal
           image: busybox
           command: [ "sh", "-c",
-                     "until nc -z temporal 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+                     "until nc -z temporaltest-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
       containers:
         - name: temporal-warehouse-endpoint
           image: warehouse-temporal
@@ -242,6 +242,6 @@ spec:
             - name: WORKER_TYPE
               value: endpoint
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporaltest-frontend:7233
             - name: LISTEN_PORT
               value: '5001'

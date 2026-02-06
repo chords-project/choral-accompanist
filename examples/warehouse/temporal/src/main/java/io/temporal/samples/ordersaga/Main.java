@@ -36,5 +36,7 @@ public class Main {
             default:
                 throw new IllegalArgumentException("Unknown worker type: " + workerType);
         }
+
+        System.out.println("Program finished execution");
     }
 }
