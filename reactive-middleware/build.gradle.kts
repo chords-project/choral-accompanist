@@ -36,7 +36,7 @@ repositories {
     }
 }
 
-var choralVersion = "0.1.10"
+var choralVersion = "0.1.12"
 var grpcVersion = "1.68.1"
 var otelVersion = "1.47.0"
 
