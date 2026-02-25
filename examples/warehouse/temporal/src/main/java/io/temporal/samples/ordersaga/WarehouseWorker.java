@@ -36,7 +36,7 @@ public class WarehouseWorker {
         final String TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
 
         // worker factory that can be used to create workers for specific task queues
-        WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
+        WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get(), TemporalClient.getWorkerFactoryOptions());
 
         // register warehouse worker
         io.temporal.worker.Worker warehouseWorker = factory.newWorker(TASK_QUEUE, TemporalClient.getWorkerOptions());

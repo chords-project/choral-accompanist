@@ -6,7 +6,7 @@ plugins {
 }
 
 jib {
-    from.image = "eclipse-temurin:23"
+    //from.image = "eclipse-temurin:23"
     to.image = "accompanist-temporal"
     container.mainClass = "io.temporal.samples.ordersaga.Main"
 }
@@ -53,7 +53,7 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 

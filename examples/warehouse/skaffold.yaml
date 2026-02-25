@@ -25,7 +25,7 @@ build:
 manifests:
   rawYaml:
     - temporal/deployment.yaml
-    #    - temporal/temporal.yaml
+    #- temporal/temporal.yaml
     - warehouse/deployment.yaml
     - loyalty/deployment.yaml
     - payment/deployment.yaml

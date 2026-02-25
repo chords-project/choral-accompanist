@@ -100,7 +100,7 @@ metadata:
     kompose.version: 1.37.0 (HEAD)
   labels:
     io.kompose.service: temporal
-  name: temporal
+  name: temporal-frontend
 spec:
   replicas: 1
   selector:
@@ -114,16 +114,16 @@ spec:
       labels:
         io.kompose.service: temporal
     spec:
-      affinity: # Deploy on same node as temporal db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: io.kompose.service
-                    operator: In
-                    values:
-                      - postgresql
+      #      affinity: # Deploy on same node as temporal db service
+      #        podAffinity:
+      #          requiredDuringSchedulingIgnoredDuringExecution:
+      #            - topologyKey: kubernetes.io/hostname
+      #              labelSelector:
+      #                matchExpressions:
+      #                  - key: io.kompose.service
+      #                    operator: In
+      #                    values:
+      #                      - postgresql
       containers:
         - env:
             - name: DB
@@ -137,11 +137,11 @@ spec:
             - name: POSTGRES_USER
               value: temporal
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporal-frontend:7233
             - name: TEMPORAL_CLI_ADDRESS
-              value: temporal:7233
+              value: temporal-frontend:7233
           image: temporalio/auto-setup:1.28.0
-          name: temporal
+          name: temporal-frontend
           ports:
             - containerPort: 7233
               protocol: TCP
@@ -185,9 +185,9 @@ spec:
       containers:
         - env:
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporal-frontend:7233
             - name: TEMPORAL_CLI_ADDRESS
-              value: temporal:7233
+              value: temporal-frontend:7233
           image: temporalio/admin-tools:1.28.0-tctl-1.18.2-cli-1.3.0
           name: temporal-admin-tools
           stdin: true
@@ -230,7 +230,7 @@ spec:
       containers:
         - env:
             - name: TEMPORAL_ADDRESS
-              value: temporal:7233
+              value: temporal-frontend:7233
             - name: TEMPORAL_CORS_ORIGINS
               value: http://localhost:3000
             - name: TEMPORAL_UI_PORT

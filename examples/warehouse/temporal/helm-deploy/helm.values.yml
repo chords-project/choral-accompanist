@@ -1,0 +1,62 @@
+server:
+  config:
+    persistence:
+      datastores:
+        default:
+          sql:
+            createDatabase: true
+            manageSchema: true
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal
+            connectAddr: "temporal-postgres-postgresql.default.svc.cluster.local:5432"
+            user: postgres
+            existingSecret: temporal-postgres-postgresql
+            secretKey: postgres-password
+        visibility:
+          sql:
+            createDatabase: true
+            manageSchema: true
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal_visibility
+            connectAddr: "temporal-postgres-postgresql.default.svc.cluster.local:5432"
+            user: postgres
+            existingSecret: temporal-postgres-postgresql
+            secretKey: postgres-password
+
+
+  # BEGIN GEMINI SUGGESTIONS
+  # Increase replicas for high-traffic services
+  replicaCount: 2
+
+  # Set higher RPS limits (Default is often too low)
+  dynamicConfig:
+    frontend.persistenceMaxQPS:
+      - value: 2000
+    frontend.namespaceRPS:
+      - value: 1000
+    matching.persistenceMaxQPS:
+      - value: 2000
+    history.persistenceMaxQPS:
+      - value: 2000
+
+# Allocate resources strictly to prevent "Noisy Neighbor" issues
+# Note: m5.large has 2 vCPUs and 8GB RAM.
+services:
+  frontend:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  history:
+    resources:
+      requests:
+        cpu: 1000m  # History is the heaviest hitter
+        memory: 2Gi
+  matching:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+        # END GEMINI SUGGESTIONS

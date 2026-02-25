@@ -37,7 +37,7 @@ public class PaymentWorker {
         final String TASK_QUEUE = ServerInfo.getPaymentTaskQueue();
 
         // worker factory that can be used to create workers for specific task queues
-        WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get());
+        WorkerFactory factory = WorkerFactory.newInstance(TemporalClient.get(), TemporalClient.getWorkerFactoryOptions());
 
         // register payment worker
         io.temporal.worker.Worker paymentWorker = factory.newWorker(TASK_QUEUE, TemporalClient.getWorkerOptions());

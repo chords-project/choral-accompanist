@@ -25,6 +25,7 @@ import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.serviceclient.SimpleSslContextBuilder;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
+import io.temporal.worker.WorkerFactoryOptions;
 import io.temporal.worker.WorkerOptions;
 
 import javax.net.ssl.SSLException;
@@ -84,11 +85,20 @@ public class TemporalClient {
 
     public static WorkerOptions getWorkerOptions() {
         return WorkerOptions.newBuilder()
-                .setMaxConcurrentActivityTaskPollers(10) // connections to server
-                .setMaxConcurrentActivityExecutionSize(500) // concurrent jobs
-                .setMaxConcurrentWorkflowTaskPollers(20)
-                .setMaxConcurrentWorkflowTaskExecutionSize(500)
+                // concurrent jobs
+                .setMaxConcurrentActivityExecutionSize(1000)
+                .setMaxConcurrentWorkflowTaskExecutionSize(1000)
+                // connections to server
+                .setMaxConcurrentActivityTaskPollers(64)
+                .setMaxConcurrentWorkflowTaskPollers(64)
                 .setUsingVirtualThreads(true)
+                .build();
+    }
+
+    public static WorkerFactoryOptions getWorkerFactoryOptions() {
+        return WorkerFactoryOptions.newBuilder()
+                // Must be >= total MaxConcurrentWorkflowTaskExecutionSize
+                .setWorkflowCacheSize(2000)
                 .build();
     }
 }
