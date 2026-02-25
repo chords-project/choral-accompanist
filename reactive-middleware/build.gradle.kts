@@ -11,6 +11,7 @@ version = "0.1.0"
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     `java-library`
+    `maven-publish`
 
     id("com.google.protobuf") version "0.9.4"
 }
@@ -103,6 +104,14 @@ protobuf {
             task.plugins {
                 create("grpc") {}
             }
+        }
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
         }
     }
 }
