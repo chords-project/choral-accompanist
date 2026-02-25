@@ -14,7 +14,7 @@ plugins {
     application
 
     id("com.google.protobuf") version "0.9.4"
-    id("com.google.cloud.tools.jib") version "3.4.4"
+    id("com.google.cloud.tools.jib") version "3.5.2"
 }
 
 java {
@@ -64,7 +64,7 @@ dependencies {
 
     implementation("com.rabbitmq:amqp-client:5.25.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    
+
     implementation("org.postgresql:postgresql:42.7.5")
 }
 
