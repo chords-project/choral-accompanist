@@ -5,7 +5,7 @@
  * For more details on building Java & JVM projects, please refer to https://docs.gradle.org/8.10.2/userguide/building_java_projects.html in the Gradle documentation.
  */
 
-group = "dev.chords"
+group = "org.choral-lang"
 version = "0.1.0"
 
 plugins {
