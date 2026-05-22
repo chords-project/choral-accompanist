@@ -1,4 +1,4 @@
-package choral.reactive;
+package org.choral.accompanist;
 
 public class SessionContext@(A) {
     public void log(String@A message) {}

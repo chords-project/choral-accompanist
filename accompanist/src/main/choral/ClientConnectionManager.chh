@@ -1,3 +1,3 @@
-package choral.reactive.connection;
+package org.choral.accompanist.connection;
 
 public interface ClientConnectionManager@A { }

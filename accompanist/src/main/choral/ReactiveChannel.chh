@@ -1,10 +1,10 @@
-package choral.reactive;
+package org.choral.accompanist;
 
 import java.io.Serializable;
 
-import choral.channels.AsyncDiChannel;
-import choral.channels.Future;
-import choral.reactive.connection.ClientConnectionManager;
+import org.choral.accompanist.channels.AsyncDiChannel;
+import org.choral.accompanist.channels.Future;
+import org.choral.accompanist.connection.ClientConnectionManager;
 
 public class ReactiveChannel@(A,B)<T@X> implements AsyncDiChannel@(A,B)<T> {
     public static ReactiveChannel@(A,B)<Serializable> connect(SessionContext@A ctxA, SessionContext@B ctxB, String@B recvServiceName, String@A serverAddressEnv) {}

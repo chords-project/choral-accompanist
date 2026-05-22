@@ -1,6 +1,5 @@
 package dev.chords.warehouse.loyalty.sidecar;
 
-import choral.faulttolerance.*;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
 
 public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {

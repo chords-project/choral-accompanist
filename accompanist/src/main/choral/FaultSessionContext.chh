@@ -1,6 +1,6 @@
-package choral.faulttolerance;
+package org.choral.accompanist.faulttolerance;
 
-import choral.reactive.SessionContext;
+import org.choral.accompanist.SessionContext;
 
 public class FaultSessionContext@A extends SessionContext@A {
     public void transaction(Transaction@A trans) {}
