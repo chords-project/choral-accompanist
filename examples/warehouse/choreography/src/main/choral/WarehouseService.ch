@@ -1,6 +1,6 @@
-package dev.chords.warehouse.choreograhpy;
+package choral.accompanist.examples.warehouse.choreograhpy;
 
-import choral.faulttolerance.Transaction;
+import choral.accompanist.faulttolerance.Transaction;
 
 public interface WarehouseService@A {
     Transaction@A checkItemInStockAndReserveForOrder();

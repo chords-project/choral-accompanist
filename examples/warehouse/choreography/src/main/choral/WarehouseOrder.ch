@@ -1,4 +1,4 @@
-package dev.chords.warehouse.choreograhpy;
+package choral.accompanist.examples.warehouse.choreograhpy;
 
 import java.io.Serializable;
 
@@ -6,7 +6,7 @@ import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
 import choral.accompanist.ReactiveChannel;
-import choral.faulttolerance.FaultSessionContext;
+import choral.accompanist.faulttolerance.FaultSessionContext;
 
 public class WarehouseOrder@(Warehouse, Payment, Loyalty) {
 

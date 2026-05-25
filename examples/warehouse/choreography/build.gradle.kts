@@ -16,22 +16,6 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
-
-    // Choral can either be installed locally...
-    mavenLocal()
-
-    // ...or from the GitHub maven package repository
-    val githubUsername = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-    val githubToken = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
-    if (githubUsername != null && githubToken != null) {
-        maven {
-            url = uri("https://maven.pkg.github.com/choral-lang/choral")
-            credentials {
-                username = githubUsername
-                password = githubToken
-            }
-        }
-    }
 }
 
 dependencies {
@@ -40,7 +24,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
 }
 
 tasks.register("compileChoral") {
@@ -56,7 +40,7 @@ tasks.register("compileChoral") {
                     listOf(
                         "choral", "epp",
                         "--sources=${layout.projectDirectory.dir("src/main/choral")}",
-                        "--headers=${layout.projectDirectory.dir("src/main/choral")}:${layout.projectDirectory.dir("../../../reactive-middleware/src/main/choral")}",
+                        "--headers=${layout.projectDirectory.dir("src/main/choral")}:${layout.projectDirectory.dir("../../../accompanist/src/main/choral")}",
                         "--target=${layout.buildDirectory.dir("generated/choral").get()}",
                         name
                     )

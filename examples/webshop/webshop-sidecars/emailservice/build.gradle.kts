@@ -39,7 +39,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
     implementation(project(":webshop-choreographies"))
 }
 

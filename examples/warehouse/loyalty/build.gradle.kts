@@ -16,7 +16,7 @@ plugins {
 jib {
     //from.image = "eclipse-temurin:23"
     to.image = "accompanist-loyalty"
-    container.mainClass = "dev.chords.warehouse.loyalty.Main"
+    container.mainClass = "choral.accompanist.examples.warehouse.loyalty.Main"
 }
 
 repositories {
@@ -48,7 +48,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
 
     implementation(project(":choreography"))
     implementation("ch.qos.logback:logback-classic:1.5.13")
@@ -72,7 +72,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "dev.chords.warehouse.loyalty.Main"
+    mainClass = "choral.accompanist.examples.warehouse.loyalty.Main"
 }
 
 tasks.named<Test>("test") {

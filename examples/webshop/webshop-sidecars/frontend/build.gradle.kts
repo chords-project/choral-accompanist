@@ -46,7 +46,7 @@ dependencies {
     // This dependency is used by the application.
     implementation(libs.guava)
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
     implementation(project(":webshop-choreographies"))
 
     // Spring

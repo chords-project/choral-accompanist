@@ -1,33 +1,36 @@
 services:
-  warehouse:
+  warehouse-sidecar:
     image: accompanist-warehouse
     depends_on:
       - db-warehouse
     environment:
-      WAREHOUSE: warehouse:4001
-      PAYMENT: payment:4002
-      LOYALTY: loyalty:4003
+      RUN: "sidecar"
+      WAREHOUSE: warehouse-sidecar:4001
+      PAYMENT: payment-sidecar:4002
+      LOYALTY: loyalty-sidecar:4003
       POSTGRES_URL: "postgresql://db-warehouse:5432/warehouse"
       LISTEN_PORT: 5000
     ports:
       - "5000:5000"
-  payment:
+  payment-sidecar:
     image: accompanist-payment
     depends_on:
       - db-payment
     environment:
-      WAREHOUSE: warehouse:4001
-      PAYMENT: payment:4002
-      LOYALTY: loyalty:4003
+      RUN: "sidecar"
+      WAREHOUSE: warehouse-sidecar:4001
+      PAYMENT: payment-sidecar:4002
+      LOYALTY: loyalty-sidecar:4003
       POSTGRES_URL: "postgresql://db-payment:5432/payment"
-  loyalty:
+  loyalty-sidecar:
     image: accompanist-loyalty
     depends_on:
       - db-loyalty
     environment:
-      WAREHOUSE: warehouse:4001
-      PAYMENT: payment:4002
-      LOYALTY: loyalty:4003
+      RUN: "sidecar"
+      WAREHOUSE: warehouse-sidecar:4001
+      PAYMENT: payment-sidecar:4002
+      LOYALTY: loyalty-sidecar:4003
       POSTGRES_URL: "postgresql://db-loyalty:5432/loyalty"
 
   db-warehouse:
