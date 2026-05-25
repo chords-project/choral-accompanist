@@ -14,25 +14,41 @@ plugins {
     `maven-publish`
 
     id("com.google.protobuf") version "0.9.4"
+    id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+}
 
-    // Choral can either be installed locally...
-    mavenLocal()
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
 
-    // ...or from the GitHub maven package repository
-    val githubUsername = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-    val githubToken = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
-    if (githubUsername != null && githubToken != null) {
-        maven {
-            url = uri("https://maven.pkg.github.com/choral-lang/choral")
-            credentials {
-                username = githubUsername
-                password = githubToken
+    pom {
+        name.set("Accompanist")
+        description.set("A fault-tolerant runtime for Choral choreographies.")
+        inceptionYear.set("2025")
+        url.set("https://github.com/chords-project/choral-accompanist")
+        licenses {
+            license {
+                name.set("GNU Lesser General Public License v3.0")
+                url.set("https://www.gnu.org/licenses/lgpl-3.0.html")
+                distribution.set("https://www.gnu.org/licenses/lgpl-3.0.html")
             }
+        }
+        developers {
+            developer {
+                id.set("viktorstrate")
+                name.set("Viktor Strate Kløvedal")
+                url.set("https://qpqp.dk/")
+            }
+        }
+        scm {
+            url.set("https://github.com/chords-project/choral-accompanist")
+            connection.set("scm:git:git://github.com/chords-project/choral-accompanist.git")
+            developerConnection.set("scm:git:ssh://git@github.com/chords-project/choral-accompanist.git")
         }
     }
 }
@@ -104,14 +120,6 @@ protobuf {
             task.plugins {
                 create("grpc") {}
             }
-        }
-    }
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
         }
     }
 }
