@@ -1,6 +1,6 @@
 package dev.chords.travel.clientservice;
 
-import choral.reactive.tracing.Logger;
+import choral.accompanist.tracing.Logger;
 import choreography.ChoreographyGrpc;
 import choreography.ChoreographyOuterClass;
 import dev.chords.travel.choreographies.*;
@@ -9,11 +9,11 @@ import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.OpenTelemetry;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class GrpcServer {
 
@@ -24,6 +24,7 @@ public class GrpcServer {
 
     public interface RequestHandler {
         BookTravelResult bookTravel(BookTravelRequest req) throws Exception;
+
         ArrayList<Hotel> searchHotels(SearchHotelsRequest request) throws Exception;
     }
 
@@ -37,19 +38,19 @@ public class GrpcServer {
         server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create()).addService(new ChoreographyImpl()).build().start();
 
         Runtime.getRuntime()
-            .addShutdownHook(
-                new Thread(() -> {
-                    // Use stderr here since the logger may have been reset by its JVM shutdown
-                    // hook.
-                    logger.info("GrpcServer: shutting down gRPC server since JVM is shutting down");
-                    try {
-                        GrpcServer.this.stop();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace(System.err);
-                    }
-                    logger.info("GrpcServer: server shut down");
-                })
-            );
+                .addShutdownHook(
+                        new Thread(() -> {
+                            // Use stderr here since the logger may have been reset by its JVM shutdown
+                            // hook.
+                            logger.info("GrpcServer: shutting down gRPC server since JVM is shutting down");
+                            try {
+                                GrpcServer.this.stop();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace(System.err);
+                            }
+                            logger.info("GrpcServer: server shut down");
+                        })
+                );
     }
 
     public void stop() throws InterruptedException {
@@ -86,11 +87,11 @@ public class GrpcServer {
             }
 
             responseObserver.onNext(
-                ChoreographyOuterClass.BookTravelResult.newBuilder()
-                    .setOutFlight(flightToGrpc(res.outFlight))
-                    .setHomeFlight(flightToGrpc(res.homeFlight))
-                    .setHotelId(res.hotelID)
-                    .build()
+                    ChoreographyOuterClass.BookTravelResult.newBuilder()
+                            .setOutFlight(flightToGrpc(res.outFlight))
+                            .setHomeFlight(flightToGrpc(res.homeFlight))
+                            .setHotelId(res.hotelID)
+                            .build()
             );
             responseObserver.onCompleted();
         }
@@ -121,12 +122,12 @@ public class GrpcServer {
 
     private static ChoreographyOuterClass.Flight flightToGrpc(Flight flight) {
         return ChoreographyOuterClass.Flight.newBuilder()
-            .setId(flight.id)
-            .setFromAirport(flight.fromAirport)
-            .setToAirport(flight.toAirport)
-            .setDepartureTime(flight.departureTime)
-            .setArrivalTime(flight.arrivalTime)
-            .build();
+                .setId(flight.id)
+                .setFromAirport(flight.fromAirport)
+                .setToAirport(flight.toAirport)
+                .setDepartureTime(flight.departureTime)
+                .setArrivalTime(flight.arrivalTime)
+                .build();
     }
 
     private static ChoreographyOuterClass.Hotel hotelToGrpc(Hotel hotel) {

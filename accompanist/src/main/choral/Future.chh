@@ -1,4 +1,4 @@
-package org.choral.accompanist.channels;
+package choral.accompanist.channels;
 
 public interface Future@A<T@X> {
     T@A get();

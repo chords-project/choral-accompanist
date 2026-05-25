@@ -1,9 +1,8 @@
 package dev.chords.travel.clientservice;
 
-import choral.reactive.ReactiveServer;
-import choral.reactive.SessionContext;
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.SessionContext;
+import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.ChorBookTravel_Flight;
 import dev.chords.travel.choreographies.ServiceResources;
 import dev.chords.travel.choreographies.Tracing;

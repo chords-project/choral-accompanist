@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.choreographies.Money;
 import dev.chords.choreographies.OrderItem;
 import dev.chords.choreographies.OrderItems;

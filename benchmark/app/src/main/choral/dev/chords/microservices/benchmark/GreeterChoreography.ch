@@ -3,8 +3,8 @@ package dev.chords.microservices.benchmark;
 import java.io.Serializable;
 //import choral.channels.DiChannel;
 //import choral.channels.SymChannel;
-import choral.channels.AsyncDiChannel;
-import choral.channels.AsyncSymChannel;
+import choral.accompanist.channels.AsyncDiChannel;
+import choral.accompanist.channels.AsyncSymChannel;
 
 public class GreeterChoreography@(A, B) {
     private AsyncSymChannel@(A, B)<Serializable> ch;

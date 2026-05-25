@@ -1,7 +1,7 @@
 package dev.chords.choreographies;
 
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.LgtmConfiguration;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.LgtmConfiguration;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class Tracing {

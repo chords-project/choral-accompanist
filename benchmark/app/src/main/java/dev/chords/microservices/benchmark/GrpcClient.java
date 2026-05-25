@@ -2,7 +2,7 @@ package dev.chords.microservices.benchmark;
 
 import java.util.concurrent.TimeUnit;
 
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.JaegerConfiguration;
 import accompanist.benchmark.greeting.GreeterGrpc;
 import accompanist.benchmark.greeting.GreeterGrpc.GreeterBlockingStub;
 import accompanist.benchmark.greeting.Greeting.HelloReply;

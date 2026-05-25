@@ -1,6 +1,6 @@
 package dev.chords.travel.choreographies;
 
-import choral.reactive.Session;
+import choral.accompanist.Session;
 
 import java.util.Random;
 

@@ -1,8 +1,8 @@
 package dev.chords.microservices.productcatalog;
 
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.ReactiveServer;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.connection.ClientConnectionManager;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.tracing.JaegerConfiguration;
 import dev.chords.choreographies.ChorPlaceOrder_ProductCatalog;
 import dev.chords.choreographies.ServiceResources;
 import dev.chords.choreographies.Tracing;

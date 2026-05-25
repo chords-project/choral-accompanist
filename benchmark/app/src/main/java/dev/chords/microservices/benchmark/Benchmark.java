@@ -9,7 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import accompanist.benchmark.chain.Chain;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.JaegerConfiguration;
 import dev.chords.microservices.benchmark.chain.ChainBenchmark;
 import dev.chords.microservices.benchmark.chain.ChainChoreographyStart;
 import dev.chords.microservices.benchmark.chain.ChainOrchestrator;

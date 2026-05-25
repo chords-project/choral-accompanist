@@ -1,6 +1,6 @@
-package org.choral.accompanist.channels;
+package choral.accompanist.channels;
 
-import org.choral.accompanist.channels.SymChannel;
+import choral.channels.SymChannel;
 
 public interface AsyncSymChannel@(A, B)<T@X> extends
     AsyncDiChannel@(A, B)<T>,

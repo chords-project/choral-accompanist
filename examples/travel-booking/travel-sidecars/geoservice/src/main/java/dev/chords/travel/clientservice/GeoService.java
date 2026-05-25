@@ -1,14 +1,15 @@
 package dev.chords.travel.clientservice;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.Coordinate;
 import geo.GeoGrpc;
 import geo.GeoOuterClass;
 import io.grpc.ManagedChannel;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -32,9 +33,9 @@ public class GeoService implements dev.chords.travel.choreographies.GeoService {
     public List<String> nearbyHotelIDs(Coordinate location) {
         try {
             var result =
-                this.connection.nearby(GeoOuterClass.Request.newBuilder().setLat((float) location.latitude).setLon((float) location.longitude).build()).get(
-                        10,
-                        TimeUnit.SECONDS
+                    this.connection.nearby(GeoOuterClass.Request.newBuilder().setLat((float) location.latitude).setLon((float) location.longitude).build()).get(
+                            10,
+                            TimeUnit.SECONDS
                     );
 
             return result.getHotelIdsList();

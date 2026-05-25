@@ -2,7 +2,7 @@ package dev.chords.choreographies;
 
 import java.util.Random;
 
-import choral.reactive.Session;
+import choral.accompanist.Session;
 
 public class WebshopSession extends Session {
 

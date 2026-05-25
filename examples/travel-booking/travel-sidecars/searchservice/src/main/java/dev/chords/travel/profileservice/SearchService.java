@@ -1,8 +1,8 @@
 package dev.chords.travel.profileservice;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.SerializableList;
 import io.grpc.ManagedChannel;
 import io.opentelemetry.api.OpenTelemetry;

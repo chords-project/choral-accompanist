@@ -1,6 +1,6 @@
 package dev.chords.travel.choreographies;
 
-import choral.reactive.tracing.LgtmConfiguration;
+import choral.accompanist.tracing.LgtmConfiguration;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 

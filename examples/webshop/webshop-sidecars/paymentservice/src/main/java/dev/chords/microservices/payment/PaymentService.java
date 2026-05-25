@@ -1,6 +1,6 @@
 package dev.chords.microservices.payment;
 
-import choral.reactive.tracing.Logger;
+import choral.accompanist.tracing.Logger;
 import dev.chords.choreographies.CreditCardInfo;
 import dev.chords.choreographies.Money;
 import hipstershop.Demo;
@@ -17,8 +17,8 @@ import io.opentelemetry.context.Scope;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
 
 public class PaymentService implements dev.chords.choreographies.PaymentService {
 

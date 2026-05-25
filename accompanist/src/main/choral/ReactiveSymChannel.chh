@@ -1,10 +1,10 @@
-package org.choral.accompanist;
+package choral.accompanist;
 
 import java.io.Serializable;
 
-import org.choral.accompanist.channels.AsyncSymChannel;
-import org.choral.accompanist.channels.Future;
-import org.choral.accompanist.connection.ClientConnectionManager;
+import choral.accompanist.channels.AsyncSymChannel;
+import choral.accompanist.channels.Future;
+import choral.accompanist.connection.ClientConnectionManager;
 
 public class ReactiveSymChannel@(A,B)<T@X> implements AsyncSymChannel@(A,B)<T> {
     public ReactiveSymChannel(

@@ -1,6 +1,6 @@
-package org.choral.accompanist.channels;
+package choral.accompanist.channels;
 
-import org.choral.accompanist.channels.DiChannel;
+import choral.channels.DiChannel;
 
 public interface AsyncDiChannel@(A, B)<T@X> extends DiChannel@(A,B)<T> {
     < S@Y extends T@Y > Future@B<S> fcom( S@A m );

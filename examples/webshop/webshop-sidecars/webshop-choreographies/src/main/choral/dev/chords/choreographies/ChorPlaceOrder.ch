@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.ArrayList;
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
-//import choral.channels.AsyncDiChannel;
-//import choral.channels.AsyncSymChannel;
+//import choral.accompanist.channels.AsyncDiChannel;
+//import choral.accompanist.channels.AsyncSymChannel;
 import choral.channels.Future;
 
 public class ChorPlaceOrder@(Client, Cart, ProductCatalog, Currency, Payment, Shipping, Email) {
