@@ -1,6 +1,7 @@
 package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
+import choral.accompanist.ReactiveClient;
 import choral.accompanist.ReactiveServer;
 import choral.accompanist.ReactiveSymChannel;
 import choral.accompanist.Session;
@@ -29,7 +30,35 @@ public class ChainSidecar {
 
     public static ChainSidecar makeChainStart(OpenTelemetry telemetry, String nextSidecarAddress) throws Exception {
         var server = new ReactiveServer("CHAIN_START", telemetry, ctx -> {
-            return null;
+            ArrayList<Long> result = switch (ctx.session.choreographyName()) {
+                case "chain1" -> {
+                    var chanA = ctx.chanA(nextSidecarAddress);
+                    var chanB = ctx.chanB("CHAIN_A");
+                    ChainChoreography1_Start chainChor = new ChainChoreography1_Start(
+                            new ReactiveSymChannel<>(chanA, chanB)
+                    );
+                    yield chainChor.chain();
+                }
+                case "chain3" -> {
+                    ChainChoreography3_Start chainChor = new ChainChoreography3_Start(
+                            ctx.chanA(nextSidecarAddress),
+                            ctx.chanB("CHAIN_C")
+                    );
+                    yield chainChor.chain();
+                }
+                case "chain5" -> {
+                    ChainChoreography5_Start chainChor = new ChainChoreography5_Start(
+                            ctx.chanA(nextSidecarAddress),
+                            ctx.chanB("CHAIN_E")
+                    );
+                    yield chainChor.chain();
+                }
+                default -> throw new RuntimeException("Invalid choreography name: " + ctx.session.choreographyName());
+            };
+
+            System.out.println("GOT RESULT: " + result);
+
+            return result;
         });
 
         return new ChainSidecar(server, "CHAIN_START", nextSidecarAddress, null, telemetry);
@@ -234,40 +263,6 @@ public class ChainSidecar {
         Session session = Session.makeSession(choreographyName, serviceName);
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, Span.getInvalid());
 
-        throw new RuntimeException("Fix this");
-//        try (var ctx = server.registerSession(session, telemetrySession);) {
-//
-//            //ReactiveClient client = new ReactiveClient(nextSidecarConnection, serviceName, telemetrySession);
-//
-//            ArrayList<Long> result = switch (chainLength) {
-//                case ONE -> {
-//                    var chanA = ctx.chanA(nextSidecarAddress);
-//                    var chanB = ctx.chanB("CHAIN_A");
-//                    ChainChoreography1_Start chainChor = new ChainChoreography1_Start(
-//                            new ReactiveSymChannel<>(chanA, chanB)
-//                    );
-//                    yield chainChor.chain();
-//                }
-//                case THREE -> {
-//                    ChainChoreography3_Start chainChor = new ChainChoreography3_Start(
-//                            ctx.chanA(nextSidecarAddress),
-//                            ctx.chanB("CHAIN_C")
-//                    );
-//                    yield chainChor.chain();
-//                }
-//                case FIVE -> {
-//                    ChainChoreography5_Start chainChor = new ChainChoreography5_Start(
-//                            ctx.chanA(nextSidecarAddress),
-//                            ctx.chanB("CHAIN_E")
-//                    );
-//                    yield chainChor.chain();
-//                }
-//                default -> throw new RuntimeException("Invalid chain length: " + chainLength);
-//            };
-//
-//            System.out.println("GOT RESULT: " + result);
-//
-//            return result;
-//        }
+        return (ArrayList<Long>) server.invokeManualSession(telemetrySession);
     }
 }
