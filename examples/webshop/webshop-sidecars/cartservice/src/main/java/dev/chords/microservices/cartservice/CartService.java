@@ -5,9 +5,9 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.choreographies.Cart;
 import dev.chords.choreographies.CartItem;
 import hipstershop.CartServiceGrpc;
@@ -37,21 +37,21 @@ public class CartService implements dev.chords.choreographies.CartService, AutoC
 
     public void addItem(String userID, String productID, int quantity) {
         Span span = span = tracer.spanBuilder("CartService.addItem")
-            .setAttribute("request.userID", userID)
-            .setAttribute("request.productID", productID)
-            .setAttribute("request.quantity", quantity)
-            .startSpan();
+                .setAttribute("request.userID", userID)
+                .setAttribute("request.productID", productID)
+                .setAttribute("request.quantity", quantity)
+                .startSpan();
 
         try (Scope scope = span.makeCurrent();) {
             logger.info("Adding item to cart");
 
             Demo.AddItemRequest request = Demo.AddItemRequest.newBuilder()
-                .setUserId(userID)
-                .setItem(
-                    Demo.CartItem.newBuilder()
-                        .setProductId(productID)
-                        .setQuantity(quantity))
-                .build();
+                    .setUserId(userID)
+                    .setItem(
+                            Demo.CartItem.newBuilder()
+                                    .setProductId(productID)
+                                    .setQuantity(quantity))
+                    .build();
 
             connection.addItem(request);
 

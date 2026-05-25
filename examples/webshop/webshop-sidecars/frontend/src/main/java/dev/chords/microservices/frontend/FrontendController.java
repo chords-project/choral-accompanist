@@ -1,13 +1,13 @@
 package dev.chords.microservices.frontend;
 
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.SessionContext;
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.ReactiveClient;
-import choral.reactive.ReactiveServer;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.ReactiveSymChannel;
+import choral.accompanist.SessionContext;
+import choral.accompanist.connection.ClientConnectionManager;
+import choral.accompanist.ReactiveClient;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
+import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.choreographies.*;
 import dev.chords.choreographies.WebshopSession.Choreography;
 import dev.chords.choreographies.WebshopSession.Service;

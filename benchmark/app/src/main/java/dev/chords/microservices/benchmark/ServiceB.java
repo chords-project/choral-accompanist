@@ -1,7 +1,7 @@
 package dev.chords.microservices.benchmark;
 
-import choral.reactive.ReactiveServer;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.tracing.JaegerConfiguration;
 import io.opentelemetry.api.OpenTelemetry;
 
 public class ServiceB {
@@ -22,14 +22,14 @@ public class ServiceB {
 
                     pingPongChor.pingPong();
 
-                    break;
+                    return null;
                 case "greeting":
                     GreeterChoreography_B greeterChor = new GreeterChoreography_B(
                             ctx.symChan("serviceA", addressServiceA), grpcClient);
 
                     greeterChor.greet();
 
-                    break;
+                    return null;
                 default:
                     throw new RuntimeException("unknown choreography: " + ctx.session.choreographyName());
             }

@@ -1,13 +1,10 @@
 package dev.chords.travel.clientservice;
 
-import choral.reactive.ReactiveClient;
-import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.SessionContext;
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.SessionContext;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
+import choral.accompanist.tracing.TelemetrySession;
 import choreography.ChoreographyGrpc;
 import dev.chords.travel.choreographies.*;
 import dev.chords.travel.choreographies.TravelSession.Choreography;

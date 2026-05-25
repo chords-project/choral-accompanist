@@ -2,7 +2,7 @@ package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
 import accompanist.benchmark.chain.ChoreographyGrpc;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.JaegerConfiguration;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.opentelemetry.api.OpenTelemetry;

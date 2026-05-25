@@ -1,8 +1,8 @@
 package dev.chords.travel.profileservice;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.Address;
 import dev.chords.travel.choreographies.Hotel;
 import dev.chords.travel.choreographies.Image;
@@ -12,8 +12,6 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
 import profile.ProfileGrpc;
 import profile.ProfileOuterClass;
-import search.SearchGrpc;
-import search.SearchOuterClass;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -43,23 +41,23 @@ public class ProfileService implements dev.chords.travel.choreographies.ProfileS
 
             return new SerializableList<>(new ArrayList<>(
                     result.getHotelsList().stream().map(
-                    hotel -> new Hotel(
-                            hotel.getId(),
-                            hotel.getName(),
-                            hotel.getPhoneNumber(),
-                            hotel.getDescription(),
-                            new Address(
-                                    hotel.getAddress().getStreetNumber(),
-                                    hotel.getAddress().getStreetName(),
-                                    hotel.getAddress().getCity(),
-                                    hotel.getAddress().getCountry(),
-                                    hotel.getAddress().getPostalCode(),
-                                    (double) hotel.getAddress().getLat(),
-                                    (double) hotel.getAddress().getLon()
-                            ),
-                            new ArrayList<>(hotel.getImagesList().stream().map(img -> new Image(img.getUrl(), img.getDefault())).toList())
-                    )
-                ).toList()
+                            hotel -> new Hotel(
+                                    hotel.getId(),
+                                    hotel.getName(),
+                                    hotel.getPhoneNumber(),
+                                    hotel.getDescription(),
+                                    new Address(
+                                            hotel.getAddress().getStreetNumber(),
+                                            hotel.getAddress().getStreetName(),
+                                            hotel.getAddress().getCity(),
+                                            hotel.getAddress().getCountry(),
+                                            hotel.getAddress().getPostalCode(),
+                                            (double) hotel.getAddress().getLat(),
+                                            (double) hotel.getAddress().getLon()
+                                    ),
+                                    new ArrayList<>(hotel.getImagesList().stream().map(img -> new Image(img.getUrl(), img.getDefault())).toList())
+                            )
+                    ).toList()
             ));
         } catch (Exception e) {
             throw new RuntimeException(e);

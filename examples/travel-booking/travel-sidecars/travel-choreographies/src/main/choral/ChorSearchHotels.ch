@@ -5,8 +5,8 @@ import java.io.Serializable;
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
-import choral.reactive.SessionContext;
-import choral.reactive.ReactiveChannel;
+import choral.accompanist.SessionContext;
+import choral.accompanist.ReactiveChannel;
 
 public class ChorSearchHotels@(Client, Search, Reservation, Profile) {
     private SearchService@Search searchSvc;

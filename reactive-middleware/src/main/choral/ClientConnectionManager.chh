@@ -1,3 +1,0 @@
-package choral.reactive.connection;
-
-public interface ClientConnectionManager@A { }

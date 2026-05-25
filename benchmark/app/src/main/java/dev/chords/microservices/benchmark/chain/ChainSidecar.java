@@ -1,10 +1,10 @@
 package dev.chords.microservices.benchmark.chain;
 
 import accompanist.benchmark.chain.Chain;
-import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.Session;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.ReactiveSymChannel;
+import choral.accompanist.Session;
+import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.microservices.benchmark.*;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -29,6 +29,7 @@ public class ChainSidecar {
 
     public static ChainSidecar makeChainStart(OpenTelemetry telemetry, String nextSidecarAddress) throws Exception {
         var server = new ReactiveServer("CHAIN_START", telemetry, ctx -> {
+            return null;
         });
 
         return new ChainSidecar(server, "CHAIN_START", nextSidecarAddress, null, telemetry);
@@ -49,6 +50,7 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
                 case "chain3" -> {
                     ChainChoreography3_A chainChor = new ChainChoreography3_A(
@@ -57,6 +59,7 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
                 case "chain5" -> {
                     ChainChoreography5_A chainChor = new ChainChoreography5_A(
@@ -65,8 +68,12 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
-                default -> System.err.println("Unknown choreography name: " + ctx.session);
+                default -> {
+                    System.err.println("Unknown choreography name: " + ctx.session);
+                    return null;
+                }
             }
         });
 
@@ -86,6 +93,7 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
                 case "chain5" -> {
                     ChainChoreography5_B chainChor = new ChainChoreography5_B(
@@ -94,8 +102,12 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
-                default -> System.err.println("Unknown choreography name: " + ctx.session);
+                default -> {
+                    System.err.println("Unknown choreography name: " + ctx.session);
+                    return null;
+                }
             }
         });
 
@@ -116,6 +128,7 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
                 case "chain5" -> {
                     ChainChoreography5_C chainChor = new ChainChoreography5_C(
@@ -124,8 +137,12 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
-                default -> System.err.println("Unknown choreography name: " + ctx.session);
+                default -> {
+                    System.err.println("Unknown choreography name: " + ctx.session);
+                    return null;
+                }
             }
         });
 
@@ -146,8 +163,12 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
-                default -> System.err.println("Unknown choreography name: " + ctx.session);
+                default -> {
+                    System.err.println("Unknown choreography name: " + ctx.session);
+                    return null;
+                }
             }
         });
 
@@ -169,8 +190,12 @@ public class ChainSidecar {
                             grpcClient
                     );
                     chainChor.chain();
+                    return null;
                 }
-                default -> System.err.println("Unknown choreography name: " + ctx.session);
+                default -> {
+                    System.err.println("Unknown choreography name: " + ctx.session);
+                    return null;
+                }
             }
         });
 

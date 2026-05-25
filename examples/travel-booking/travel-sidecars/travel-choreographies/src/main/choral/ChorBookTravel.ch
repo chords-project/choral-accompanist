@@ -6,9 +6,9 @@ import java.util.Optional;
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
-import choral.reactive.SessionContext;
-import choral.reactive.ReactiveChannel;
-import choral.reactive.ReactiveSymChannel;
+import choral.accompanist.SessionContext;
+import choral.accompanist.ReactiveChannel;
+import choral.accompanist.ReactiveSymChannel;
 
 public class ChorBookTravel@(Client, Flight, Geo, Reservation) {
     private FlightService@Flight flightSvc;

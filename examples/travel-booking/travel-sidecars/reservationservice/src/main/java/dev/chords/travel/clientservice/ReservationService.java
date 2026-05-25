@@ -1,15 +1,17 @@
 package dev.chords.travel.clientservice;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.Logger;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.SerializableList;
 import io.grpc.ManagedChannel;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
+
 import reservation.ReservationGrpc;
 import reservation.ReservationOuterClass;
 import reservation.ReservationOuterClass.Result;
@@ -47,7 +49,7 @@ public class ReservationService implements dev.chords.travel.choreographies.Rese
 
     @Override
     public SerializableList<String> checkAvailability(String customerName, SerializableList<String> hotelID,
-            String inDate, String outDate, int roomNumber) {
+                                                      String inDate, String outDate, int roomNumber) {
         try {
             var request = ReservationOuterClass.Request.newBuilder()
                     .setCustomerName(customerName)

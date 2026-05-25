@@ -1,0 +1,3 @@
+package choral.accompanist.faulttolerance;
+
+public interface Transaction@A {}

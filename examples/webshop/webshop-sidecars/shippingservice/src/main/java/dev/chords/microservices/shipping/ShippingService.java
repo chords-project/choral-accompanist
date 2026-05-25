@@ -3,8 +3,8 @@ package dev.chords.microservices.shipping;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import choral.reactive.ChannelConfigurator;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.ChannelConfigurator;
+import choral.accompanist.tracing.JaegerConfiguration;
 import dev.chords.choreographies.Address;
 import dev.chords.choreographies.Cart;
 import dev.chords.choreographies.CartItem;

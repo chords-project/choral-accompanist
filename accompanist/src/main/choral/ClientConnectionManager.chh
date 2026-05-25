@@ -1,0 +1,3 @@
+package choral.accompanist.connection;
+
+public interface ClientConnectionManager@A { }

@@ -1,8 +1,10 @@
 package dev.chords.microservices.benchmark.faults;
 
-import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.SQLDataStore;
-import choral.reactive.ReactiveServer;
+import choral.accompanist.faulttolerance.FaultTolerantServer;
+import choral.accompanist.faulttolerance.RMQChannelReceiver;
+import choral.accompanist.faulttolerance.RMQChannelSender;
+import choral.accompanist.faulttolerance.SQLDataStore;
+import choral.accompanist.ReactiveServer;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
@@ -20,6 +22,9 @@ public class FaultServiceB {
         connectionFactory.setHost(rmqAddress);
         var connection = connectionFactory.newConnection();
 
+        var clientConn = RMQChannelSender.factory(connection);
+        var serverConn = RMQChannelReceiver.factory();
+
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/benchmark_service_a",
                 "postgres",
@@ -27,7 +32,7 @@ public class FaultServiceB {
                 Set.of()
         );
 
-        this.serverB = new FaultTolerantServer(dataStore, connection, "serviceB", telemetry, ctx -> {
+        this.serverB = new FaultTolerantServer(dataStore, clientConn, serverConn, "serviceB", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
@@ -35,7 +40,7 @@ public class FaultServiceB {
 
                     pingPongChor.pingPong();
 
-                    break;
+                    return null;
                 default:
                     throw new RuntimeException("unknown choreography: " + ctx.session.choreographyName());
             }

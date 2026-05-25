@@ -1,10 +1,8 @@
 package dev.chords.warehouse.warehouse.sidecar;
 
-import choral.faulttolerance.*;
-import choral.reactive.Session;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.Session;
+import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
-import dev.chords.warehouse.warehouse.service.WarehouseService;
 import io.opentelemetry.api.OpenTelemetry;
 
 public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, RestEndpoint.Events {

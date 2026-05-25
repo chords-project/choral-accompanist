@@ -5,7 +5,7 @@ import java.io.Serializable;
 import choral.channels.DiChannel;
 import choral.channels.SymChannel;
 
-import choral.reactive.ReactiveChannel;
+import choral.accompanist.ReactiveChannel;
 import choral.faulttolerance.FaultSessionContext;
 
 public class WarehouseOrder@(Warehouse, Payment, Loyalty) {

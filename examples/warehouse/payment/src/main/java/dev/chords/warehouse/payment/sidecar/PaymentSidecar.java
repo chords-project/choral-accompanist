@@ -1,8 +1,6 @@
 package dev.chords.warehouse.payment.sidecar;
 
-import choral.faulttolerance.*;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
-import dev.chords.warehouse.payment.service.PaymentService;
 
 public class PaymentSidecar implements FaultTolerantServer.FaultSessionEvent {
 

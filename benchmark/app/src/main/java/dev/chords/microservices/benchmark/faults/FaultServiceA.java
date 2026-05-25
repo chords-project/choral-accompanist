@@ -1,13 +1,14 @@
 package dev.chords.microservices.benchmark.faults;
 
-import choral.faulttolerance.FaultTolerantServer;
-import choral.faulttolerance.RMQChannelSender;
-import choral.faulttolerance.SQLDataStore;
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.Session;
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.faulttolerance.FaultTolerantServer;
+import choral.accompanist.faulttolerance.RMQChannelReceiver;
+import choral.accompanist.faulttolerance.RMQChannelSender;
+import choral.accompanist.faulttolerance.SQLDataStore;
+import choral.accompanist.ReactiveSymChannel;
+import choral.accompanist.Session;
+import choral.accompanist.connection.ClientConnectionManager;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.TelemetrySession;
 import com.rabbitmq.client.ConnectionFactory;
 import dev.chords.microservices.benchmark.SimpleChoreography_B;
 import io.opentelemetry.api.OpenTelemetry;
@@ -19,7 +20,7 @@ import java.util.Set;
 public class FaultServiceA {
     private OpenTelemetry telemetry;
     private FaultTolerantServer serverA;
-    private ClientConnectionManager connectionServiceB;
+    //private ClientConnectionManager connectionServiceB;
 
     public FaultServiceA(OpenTelemetry telemetry, String rmqAddress) throws Exception {
         this.telemetry = telemetry;
@@ -28,7 +29,9 @@ public class FaultServiceA {
         connectionFactory.setHost(rmqAddress);
         var connection = connectionFactory.newConnection();
 
-        this.connectionServiceB = new RMQChannelSender(connection, "serviceB");
+        //this.connectionServiceB = new RMQChannelSender(connection, "serviceB");
+        var clientConn = RMQChannelSender.factory(connection);
+        var serverConn = RMQChannelReceiver.factory();
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:postgresql://localhost:5432/benchmark_service_a",
@@ -37,7 +40,7 @@ public class FaultServiceA {
                 Set.of()
         );
 
-        this.serverA = new FaultTolerantServer(dataStore, connection, "serviceA", telemetry, ctx -> {
+        this.serverA = new FaultTolerantServer(dataStore, clientConn, serverConn, "serviceA", telemetry, ctx -> {
             switch (ctx.session.choreographyName()) {
                 case "ping-pong":
                     SimpleChoreography_B pingPongChor = new SimpleChoreography_B(
@@ -45,7 +48,7 @@ public class FaultServiceA {
 
                     pingPongChor.pingPong();
 
-                    break;
+                    return null;
                 default:
                     throw new RuntimeException("unknown choreography: " + ctx.session.choreographyName());
             }
@@ -80,7 +83,7 @@ public class FaultServiceA {
     }
 
     public void close() throws Exception {
-        connectionServiceB.close();
+        //connectionServiceB.close();
         serverA.close();
     }
 

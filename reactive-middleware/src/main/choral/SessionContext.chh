@@ -1,5 +1,0 @@
-package choral.reactive;
-
-public class SessionContext@(A) {
-    public void log(String@A message) {}
-}

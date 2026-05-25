@@ -1,9 +1,9 @@
 package dev.chords.microservices.payment;
 
-import choral.reactive.connection.ClientConnectionManager;
-import choral.reactive.ReactiveServer;
-import choral.reactive.SessionContext;
-import choral.reactive.tracing.JaegerConfiguration;
+import choral.accompanist.connection.ClientConnectionManager;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.SessionContext;
+import choral.accompanist.tracing.JaegerConfiguration;
 import dev.chords.choreographies.ChorPlaceOrder_Payment;
 import dev.chords.choreographies.ServiceResources;
 import dev.chords.choreographies.Tracing;

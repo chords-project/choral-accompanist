@@ -1,10 +1,10 @@
 package dev.chords.microservices.benchmark;
 
-import choral.reactive.ReactiveServer;
-import choral.reactive.ReactiveSymChannel;
-import choral.reactive.Session;
-import choral.reactive.tracing.JaegerConfiguration;
-import choral.reactive.tracing.TelemetrySession;
+import choral.accompanist.ReactiveServer;
+import choral.accompanist.ReactiveSymChannel;
+import choral.accompanist.Session;
+import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -29,16 +29,17 @@ public class ServiceA {
                     ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
                     SimpleChoreography_A chor = new SimpleChoreography_A(ch);
                     chor.pingPong();
-                    break;
+                    return null;
                 }
                 case "greeting": {
                     ReactiveSymChannel<Serializable> ch = ctx.symChan("serviceB", addressServiceB);
                     GreeterChoreography_A chor = new GreeterChoreography_A(ch);
                     chor.greet();
-                    break;
+                    return null;
                 }
                 default:
                     System.out.println("Unknown session choreography: " + ctx.session.choreographyName());
+                    return null;
             }
         });
     }
