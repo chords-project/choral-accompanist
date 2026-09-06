@@ -48,7 +48,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
 
     implementation(project(":choreography"))
     implementation("ch.qos.logback:logback-classic:1.5.13")
@@ -98,4 +98,3 @@ protobuf {
         }
     }
 }
-

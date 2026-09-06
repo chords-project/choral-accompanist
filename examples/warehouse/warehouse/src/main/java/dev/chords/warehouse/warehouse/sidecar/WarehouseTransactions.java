@@ -1,6 +1,6 @@
 package dev.chords.warehouse.warehouse.sidecar;
 
-import choral.faulttolerance.Transaction;
+import choral.accompanist.faulttolerance.Transaction;
 import dev.chords.warehouse.choreograhpy.WarehouseService;
 
 import java.util.Set;

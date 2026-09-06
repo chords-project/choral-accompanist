@@ -1,6 +1,7 @@
 package dev.chords.warehouse.warehouse.sidecar;
 
 import choral.accompanist.Session;
+import choral.accompanist.faulttolerance.*;
 import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
 import io.opentelemetry.api.OpenTelemetry;

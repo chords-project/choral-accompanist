@@ -1,4 +1,31 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fault-tolerance-loadgenerator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fault-tolerance-loadgenerator
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["payment"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fault-tolerance-loadgenerator
+subjects:
+  - kind: ServiceAccount
+    name: fault-tolerance-loadgenerator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fault-tolerance-loadgenerator
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: loadgenerator
@@ -28,6 +55,7 @@ spec:
       labels:
         app: loadgenerator
     spec:
+      serviceAccountName: fault-tolerance-loadgenerator
       containers:
         - name: loadgenerator
           image: loadgenerator
@@ -36,3 +64,19 @@ spec:
               value: "warehouse:5000"
             - name: USERS
               value: "10"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: FAULT_DEPLOYMENT
+              value: payment
+            - name: FAULT_AFTER_SECONDS
+              value: "120"
+            - name: FAULT_DURATION_SECONDS
+              value: "60"
+            - name: FAULT_RESTORE_REPLICAS
+              value: "1"
+            - name: FAULT_EVENTS_PATH
+              value: /tmp/fault_events.csv
+            - name: REQUEST_PERIOD_SECONDS
+              value: "3"

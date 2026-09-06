@@ -1,7 +1,7 @@
 package dev.chords.warehouse.warehouse.sidecar;
 
-import choral.faulttolerance.SQLTransaction;
-import choral.faulttolerance.Transaction;
+import choral.accompanist.faulttolerance.SQLTransaction;
+import choral.accompanist.faulttolerance.Transaction;
 import dev.chords.warehouse.proto.WarehouseGrpc;
 import dev.chords.warehouse.proto.WarehouseOuterClass;
 import io.grpc.ManagedChannel;

@@ -9,14 +9,14 @@ plugins {
     // Apply the foojay-resolver plugin to allow automatic download of JDKs
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 
-    id("com.google.cloud.tools.jib") version "3.5.2" apply false
+    id("com.google.cloud.tools.jib") version "3.5.4" apply false
     id("com.google.protobuf") version "0.9.4" apply false
 }
 
 rootProject.name = "warehouse"
 
-include("reactive-middleware")
-project(":reactive-middleware").projectDir = file("../../reactive-middleware")
+include("accompanist")
+project(":accompanist").projectDir = file("../../accompanist")
 
 include("choreography")
 

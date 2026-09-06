@@ -7,7 +7,8 @@ metadata:
 spec:
   ports:
     - name: "choral"
-      port: 4003
+      port: 4001
+      targetPort: 4001
       protocol: TCP
     - name: "web-endpoint"
       port: 5000

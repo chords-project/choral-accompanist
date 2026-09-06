@@ -1,6 +1,6 @@
 package dev.chords.warehouse.loyalty.sidecar;
 
-import choral.faulttolerance.Transaction;
+import choral.accompanist.faulttolerance.Transaction;
 
 import java.sql.Connection;
 import java.sql.SQLException;

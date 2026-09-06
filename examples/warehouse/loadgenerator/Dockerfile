@@ -27,9 +27,9 @@ WORKDIR /loadgen
 COPY --from=builder /install /usr/local
 
 # Add application code.
-COPY locustfile.py .
+COPY locustfile.py fault_tolerance.py .
 
 # enable gevent support in debugger
 ENV GEVENT_SUPPORT=True
 
-ENTRYPOINT locust --host="http://${FRONTEND_ADDR}" --csv /tmp/webshop --csv-full-history -u "${USERS:-10}" --class-picker 2>&1
+ENTRYPOINT locust -f locustfile.py,fault_tolerance.py --host="http://${FRONTEND_ADDR}" --csv /tmp/webshop --csv-full-history -u "${USERS:-10}" --class-picker 2>&1

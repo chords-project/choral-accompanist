@@ -6,7 +6,8 @@ metadata:
     app: payment
 spec:
   ports:
-    - port: 4003
+    - port: 4002
+      targetPort: 4002
       protocol: TCP
   clusterIP: None
   selector:
