@@ -5,7 +5,7 @@ import choral.accompanist.connection.ClientConnectionManager;
 import choral.accompanist.connection.ClientConnectionsStore;
 import choral.accompanist.connection.Message;
 import choral.accompanist.connection.ServerConnectionManager;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
@@ -63,13 +63,13 @@ public class ReactiveServer
         } else {
             this.msgQueue = new MessageQueue<>(telemetry);
         }
-        this.receiveTimeHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-                .histogramBuilder("choral.reactive.server.receive-time")
+        this.receiveTimeHistogram = telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .histogramBuilder("accompanist.server.receive-time")
                 .setDescription("Channel receive time")
                 .setUnit("ms")
                 .build();
-        this.sessionDurationHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-                .histogramBuilder("choral.reactive.server.session-duration")
+        this.sessionDurationHistogram = telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .histogramBuilder("accompanist.server.session-duration")
                 .setDescription("Session duration")
                 .setUnit("ms")
                 .build();
@@ -129,7 +129,7 @@ public class ReactiveServer
 
         Long startTime = System.nanoTime();
 
-        Span span = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+        Span span = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("Receive message (" + session.senderName().toLowerCase() + ")")
                 .setAllAttributes(attributes)
                 .startSpan();

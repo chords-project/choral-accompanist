@@ -1,6 +1,6 @@
 package choral.accompanist.connection;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral_reactive.ChannelOuterClass;
 import choral_reactive.StreamingChannelGrpc;
 import com.google.protobuf.Empty;
@@ -55,7 +55,7 @@ public class GRPCStreamingClientManager implements ClientConnectionManager {
         private StreamObserver<ChannelOuterClass.Message> streamObserver;
 
         private ClientConnection() {
-            this.connectionSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+            this.connectionSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder("GRPCConnection: " + address)
                     .setAttribute("address", address)
                     .startSpan();

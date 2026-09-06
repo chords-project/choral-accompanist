@@ -1,6 +1,6 @@
 package choral.accompanist.connection;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral_reactive.ChannelGrpc;
 import choral_reactive.ChannelGrpc.ChannelFutureStub;
@@ -44,8 +44,8 @@ public class GRPCClientManager implements ClientConnectionManager {
                 .newFutureStub(channel);
         //.withDeadlineAfter(10, TimeUnit.SECONDS);
 
-        this.sendHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-                .histogramBuilder("choral.reactive.grpc-client.send-duration")
+        this.sendHistogram = telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .histogramBuilder("accompanist.grpc-client.send-duration")
                 .setDescription("Duration for sending a message")
                 .setUnit("ms")
                 .build();
@@ -67,7 +67,7 @@ public class GRPCClientManager implements ClientConnectionManager {
         Span connectionSpan;
 
         private ClientConnection() {
-            this.connectionSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+            this.connectionSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder("GRPCConnection: " + address)
                     .setAttribute("address", address)
                     .startSpan();

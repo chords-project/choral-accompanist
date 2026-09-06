@@ -13,7 +13,7 @@ public class Logger implements io.opentelemetry.api.logs.Logger {
     private final String className;
 
     public Logger(OpenTelemetry openTelemetry, String className) {
-        this.logger = openTelemetry.getLogsBridge().get(JaegerConfiguration.TRACER_NAME);
+        this.logger = openTelemetry.getLogsBridge().get(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.className = className;
     }
 

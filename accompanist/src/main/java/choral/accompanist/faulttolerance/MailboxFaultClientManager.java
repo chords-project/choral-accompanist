@@ -1,7 +1,7 @@
 package choral.accompanist.faulttolerance;
 
 import choral.accompanist.connection.Message;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral_reactive.ChannelGrpc;
 import io.grpc.ManagedChannel;
@@ -68,7 +68,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
         Span connectionSpan;
 
         private ClientConnection() {
-            this.connectionSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+            this.connectionSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder("GRPCConnection: " + address)
                     .setAttribute("address", address)
                     .startSpan();

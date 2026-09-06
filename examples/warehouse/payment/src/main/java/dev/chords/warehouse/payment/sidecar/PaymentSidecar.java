@@ -1,7 +1,9 @@
 package dev.chords.warehouse.payment.sidecar;
 
 import choral.accompanist.faulttolerance.*;
+import choral.accompanist.tracing.LgtmConfiguration;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Payment;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class PaymentSidecar implements FaultTolerantServer.FaultSessionEvent {
 
@@ -11,12 +13,19 @@ public class PaymentSidecar implements FaultTolerantServer.FaultSessionEvent {
     }
 
     private final FaultTolerantServer server;
+    private final OpenTelemetrySdk telemetry;
     private final PaymentTransactions paymentTransactions;
 
     public static final String SERVICE_NAME = "PAYMENT";
+    public static final String TELEMETRY_SERVICE_NAME = "payment";
     public static final String SERVER_ADDRESS = System.getenv("PAYMENT");
 
     public PaymentSidecar() throws Exception {
+        String otelEndpoint = System.getenv().getOrDefault(
+                "OTEL_EXPORTER_OTLP_ENDPOINT", LgtmConfiguration.DEFAULT_ENDPOINT);
+        telemetry = LgtmConfiguration.initTelemetry(otelEndpoint, TELEMETRY_SERVICE_NAME);
+        Runtime.getRuntime().addShutdownHook(new Thread(telemetry::close, "payment-telemetry-shutdown"));
+
         paymentTransactions = new SidecarTransactions();
 
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_payment");
@@ -40,7 +49,7 @@ public class PaymentSidecar implements FaultTolerantServer.FaultSessionEvent {
         var clientCon = MailboxFaultClientManager.factory(dataStore.db);
         var serverCon = MailboxFaultServerManager.factory(dataStore.db, broadcastClients);
 
-        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, telemetry, this);
     }
 
     public void start() throws Exception {

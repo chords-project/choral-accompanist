@@ -68,6 +68,14 @@ spec:
               value: "postgresql://db-warehouse:5432/warehouse"
             - name: LISTEN_PORT
               value: "5000"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://lgtm:4317"
+            - name: OTEL_METRIC_EXPORT_INTERVAL_SECONDS
+              value: "1"
+            - name: OTEL_SERVICE_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
         - name: warehouse-service
           image: warehouse
           env:

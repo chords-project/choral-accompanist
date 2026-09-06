@@ -21,13 +21,25 @@ import java.time.Duration;
 
 public class LgtmConfiguration {
 
-    public static String TRACER_NAME = "choral.reactive.Choreography";
+    public static final String DEFAULT_ENDPOINT = "http://localhost:4317";
+    public static final Duration DEFAULT_METRIC_EXPORT_INTERVAL = Duration.ofSeconds(5);
 
     public static OpenTelemetrySdk initTelemetry(String endpoint, String serviceName) {
+        long intervalSeconds = parsePositiveLong(
+                System.getenv("OTEL_METRIC_EXPORT_INTERVAL_SECONDS"),
+                DEFAULT_METRIC_EXPORT_INTERVAL.toSeconds());
+        return initTelemetry(endpoint, serviceName, Duration.ofSeconds(intervalSeconds));
+    }
+
+    public static OpenTelemetrySdk initTelemetry(String endpoint, String serviceName, Duration metricExportInterval) {
+        String instanceId = System.getenv().getOrDefault("OTEL_SERVICE_INSTANCE_ID",
+                System.getenv().getOrDefault("HOSTNAME", "local"));
 
         Resource resource = Resource.getDefault().toBuilder()
-                //.put(ServiceAttributes.SERVICE_NAME, serviceName)
                 .put("service.name", serviceName)
+                .put("service.instance.id", instanceId)
+                .put("service.version", AccompanistTelemetry.IMPLEMENTATION_VERSION)
+                .put("service.namespace", "choral-accompanist")
                 .build();
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
@@ -40,7 +52,7 @@ public class LgtmConfiguration {
                                         .build()
                         ).build()
                 )
-                //.setSampler(Sampler.parentBased(Sampler.traceIdRatioBased(0.5)))
+                .setSampler(Sampler.parentBased(Sampler.alwaysOn()))
                 .build();
 
         SdkMeterProvider meterProvider = SdkMeterProvider.builder()
@@ -51,7 +63,7 @@ public class LgtmConfiguration {
                                         .setEndpoint(endpoint)
                                         .setTimeout(Duration.ofSeconds(30))
                                         .build()
-                        ).setInterval(Duration.ofSeconds(5)).build()
+                        ).setInterval(metricExportInterval).build()
                 )
                 .build();
 
@@ -78,5 +90,17 @@ public class LgtmConfiguration {
                 .setLoggerProvider(loggerProvider)
                 .setPropagators(propagators)
                 .build();
+    }
+
+    private static long parsePositiveLong(String value, long fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed > 0 ? parsed : fallback;
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 }

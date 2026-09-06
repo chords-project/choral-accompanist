@@ -23,7 +23,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 
 public class TCPServerManagerNio implements ServerConnectionManager {
 
@@ -38,7 +38,7 @@ public class TCPServerManagerNio implements ServerConnectionManager {
     private long lastSpanReset = 0;
 
     public TCPServerManagerNio(ServerEvents serverEvents, OpenTelemetry telemetry) {
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, TCPServerManagerNio.class.getName());
         this.serverEvents = serverEvents;
     }

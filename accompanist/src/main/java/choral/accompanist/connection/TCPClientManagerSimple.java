@@ -1,6 +1,6 @@
 package choral.accompanist.connection;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -48,7 +48,7 @@ public class TCPClientManagerSimple implements ClientConnectionManager {
         private Tracer tracer;
 
         protected ClientConnection() throws IOException {
-            this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+            this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
 
             Span span = tracer.spanBuilder("ClientConnection connect").setAttribute("connection.address", address)
                     .startSpan();

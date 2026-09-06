@@ -1,6 +1,6 @@
 package choral.accompanist;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.metrics.LongUpDownCounter;
@@ -25,8 +25,8 @@ public class MessageQueue<T> {
 
     public MessageQueue(Duration timeout, OpenTelemetry openTelemetry) {
         this.timeout = timeout;
-        queueSizeGauge = openTelemetry.getMeter(JaegerConfiguration.TRACER_NAME)
-                .upDownCounterBuilder("choral.reactive.MessageQueue.size")
+        queueSizeGauge = openTelemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .upDownCounterBuilder("accompanist.message-queue.size")
                 .setUnit("messages")
                 .setDescription("The size of the message queue")
                 .build();

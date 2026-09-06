@@ -10,8 +10,7 @@ from pathlib import Path
 
 import gevent
 import requests
-from locust import FastHttpUser, constant_pacing, events, task
-
+from locust import FastHttpUser, constant, events, task
 
 LOG = logging.getLogger(__name__)
 TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
@@ -110,7 +109,7 @@ def stop_fault_controller(environment, **kwargs):
 
 class FaultToleranceWarehouseUser(FastHttpUser):
     # Keep the offered load stable across baseline, outage, and recovery.
-    wait_time = constant_pacing(float(setting("REQUEST_PERIOD_SECONDS", 3)))
+    wait_time = constant(float(setting("REQUEST_PERIOD_SECONDS", 3)))
 
     def on_start(self):
         # Tying activation to this class guarantees that choosing the ordinary

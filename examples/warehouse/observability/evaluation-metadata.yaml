@@ -1,0 +1,20 @@
+phase: 1
+lgtmImage: grafana/otel-lgtm:0.32.1
+telemetry:
+  protocol: otlp-grpc
+  endpoint: http://lgtm:4317
+  metricExportIntervalSeconds: 1
+  traceSampling: always_on
+endpoints:
+  grafana: http://localhost:3000
+  otlpGrpc: http://localhost:4317
+  otlpHttp: http://localhost:4318
+  locust: http://localhost:8089
+  warehouse: http://localhost:5000/orderFulfillment
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 3Gi

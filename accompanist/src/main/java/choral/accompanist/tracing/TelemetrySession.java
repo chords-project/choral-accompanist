@@ -35,9 +35,9 @@ public class TelemetrySession {
         this.telemetry = telemetry;
         this.session = msg.session;
 
-        this.tracer = this.telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
-        this.meter = this.telemetry.getMeter(JaegerConfiguration.TRACER_NAME);
-        this.logger = this.telemetry.getLogsBridge().get(JaegerConfiguration.TRACER_NAME);
+        this.tracer = this.telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
+        this.meter = this.telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
+        this.logger = this.telemetry.getLogsBridge().get(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
 
         this.senderLinkContext = msg.senderSpanContext.toSpanContext();
         this.choreographyContext = telemetry.getPropagators()
@@ -54,14 +54,25 @@ public class TelemetrySession {
         this.choreographyContext = Context.root().with(span);
         this.choreographySpan = span;
 
-        this.tracer = this.telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
-        this.meter = this.telemetry.getMeter(JaegerConfiguration.TRACER_NAME);
-        this.logger = this.telemetry.getLogsBridge().get(JaegerConfiguration.TRACER_NAME);
+        this.tracer = this.telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
+        this.meter = this.telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
+        this.logger = this.telemetry.getLogsBridge().get(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
     }
 
     // Configure dummy telemetry session
     public TelemetrySession(Session session) {
         this(OpenTelemetry.noop(), session, Span.getInvalid());
+    }
+
+    /** Creates a telemetry-backed session with a valid root span for a manual invocation. */
+    public static TelemetrySession createRoot(OpenTelemetry telemetry, Session session) {
+        Span rootSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .spanBuilder("choreography session")
+                .setNoParent()
+                .setSpanKind(SpanKind.SERVER)
+                .setAttribute("choreography.session", session.toString())
+                .startSpan();
+        return new TelemetrySession(telemetry, session, rootSpan);
     }
 
     public Span makeChoreographySpan() {
@@ -70,7 +81,7 @@ public class TelemetrySession {
 
         this.choreographySpan = tracer.spanBuilder("choreography session")
                 .setParent(choreographyContext)
-                .addLink(senderLinkContext)
+                .addLink(senderLinkContext == null ? SpanContext.getInvalid() : senderLinkContext)
                 .setSpanKind(SpanKind.SERVER)
                 .setAttribute("choreography.session", session.toString())
                 .startSpan();

@@ -13,7 +13,7 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
@@ -41,7 +41,7 @@ public class TCPClientManagerPool implements ClientConnectionManager {
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, TCPClientManagerPool.class.getName());
 
-        this.poolSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+        this.poolSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("TCPClientManagerPool pool")
                 .setAttribute("channel.address", address)
                 .startSpan();
@@ -123,7 +123,7 @@ public class TCPClientManagerPool implements ClientConnectionManager {
         private final Span connectionSpan;
 
         public ClientConnection() {
-            this.connectionSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+            this.connectionSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder("TCPClientManagerPool connection")
                     .setParent(poolSpan.storeInContext(Context.current()))
                     .startSpan();
@@ -132,7 +132,7 @@ public class TCPClientManagerPool implements ClientConnectionManager {
         @Override
         public void sendMessage(Message msg) throws IOException, InterruptedException {
 
-            Span sendMessageSpan = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+            Span sendMessageSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder("TCPClientManagerPool send message")
                     .setParent(connectionSpan.storeInContext(Context.current()))
                     .startSpan();

@@ -4,7 +4,7 @@ import choral.accompanist.ReactiveServer;
 import choral.accompanist.Session;
 import choral.accompanist.connection.ClientConnectionsStore;
 import choral.accompanist.connection.Message;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.TelemetrySession;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -43,7 +43,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         var pendingSessions = this.dataStore.recoverStartedSessions();
         for (var session : pendingSessions) {
             Thread.ofVirtual().start(() -> {
-                Span span = telemetry.getTracer(JaegerConfiguration.TRACER_NAME)
+                Span span = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                         .spanBuilder("choreography session (recover)")
                         .setSpanKind(SpanKind.SERVER)
                         .setAttribute("choreography.session", session.toString())

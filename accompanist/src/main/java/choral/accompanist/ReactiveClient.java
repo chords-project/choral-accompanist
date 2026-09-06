@@ -27,7 +27,7 @@ public class ReactiveClient implements ReactiveSender<Serializable>, AutoCloseab
         this.serviceName = serviceName;
         this.telemetrySession = telemetrySession;
         this.sendCounter = telemetrySession.meter
-                .counterBuilder("choral.reactive.client.message-count")
+                .counterBuilder("accompanist.client.message-count")
                 .setDescription("The total number of messages sent")
                 .setUnit("messages")
                 .build();

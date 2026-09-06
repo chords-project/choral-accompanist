@@ -1,7 +1,9 @@
 package dev.chords.warehouse.loyalty.sidecar;
 
 import choral.accompanist.faulttolerance.*;
+import choral.accompanist.tracing.LgtmConfiguration;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Loyalty;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {
 
@@ -11,12 +13,19 @@ public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {
     }
 
     protected final FaultTolerantServer server;
+    protected final OpenTelemetrySdk telemetry;
     protected final LoyaltyTransactions loyaltyService = new SidecarTransactions();
 
-    public final String SERVICE_NAME = "LOYALTY";
+    public static final String SERVICE_NAME = "LOYALTY";
+    public static final String TELEMETRY_SERVICE_NAME = "loyalty";
     public final String SERVER_ADDRESS = System.getenv("LOYALTY");
 
     public LoyaltySidecar() throws Exception {
+        String otelEndpoint = System.getenv().getOrDefault(
+                "OTEL_EXPORTER_OTLP_ENDPOINT", LgtmConfiguration.DEFAULT_ENDPOINT);
+        telemetry = LgtmConfiguration.initTelemetry(otelEndpoint, TELEMETRY_SERVICE_NAME);
+        Runtime.getRuntime().addShutdownHook(new Thread(telemetry::close, "loyalty-telemetry-shutdown"));
+
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_loyalty");
 
         SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
@@ -37,7 +46,7 @@ public class LoyaltySidecar implements FaultTolerantServer.FaultSessionEvent {
         var clientCon = MailboxFaultClientManager.factory(dataStore.db);
         var serverCon = MailboxFaultServerManager.factory(dataStore.db, broadcastClients);
 
-        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, this);
+        server = new FaultTolerantServer(dataStore, clientCon, serverCon, SERVICE_NAME, telemetry, this);
 
         try (var con = dataStore.db.getConnection()) {
             loyaltyService.createTables(con);

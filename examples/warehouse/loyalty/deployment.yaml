@@ -60,6 +60,14 @@ spec:
               value: loyalty:4003
             - name: POSTGRES_URL
               value: "postgresql://db-loyalty:5432/loyalty"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://lgtm:4317"
+            - name: OTEL_METRIC_EXPORT_INTERVAL_SECONDS
+              value: "1"
+            - name: OTEL_SERVICE_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
         - name: loyalty-service
           image: loyalty
           env:

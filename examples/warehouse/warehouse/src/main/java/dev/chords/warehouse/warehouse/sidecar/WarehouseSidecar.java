@@ -2,9 +2,10 @@ package dev.chords.warehouse.warehouse.sidecar;
 
 import choral.accompanist.Session;
 import choral.accompanist.faulttolerance.*;
+import choral.accompanist.tracing.LgtmConfiguration;
 import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.warehouse.choreograhpy.WarehouseOrder_Warehouse;
-import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, RestEndpoint.Events {
 
@@ -14,15 +15,19 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
     }
 
     public static final String SERVICE_NAME = "WAREHOUSE";
+    public static final String TELEMETRY_SERVICE_NAME = "warehouse";
     public static final String SERVER_ADDRESS = System.getenv("WAREHOUSE");
 
     protected final FaultTolerantServer server;
+    protected final OpenTelemetrySdk telemetry;
     protected final WarehouseTransactions warehouseTransactions;
     protected final RestEndpoint endpoint;
 
     public WarehouseSidecar() throws Exception {
-        //final var telemetry = LocalConfiguration.initTelemetry(SERVICE_NAME);
-        final var telemetry = OpenTelemetry.noop();
+        String otelEndpoint = System.getenv().getOrDefault(
+                "OTEL_EXPORTER_OTLP_ENDPOINT", LgtmConfiguration.DEFAULT_ENDPOINT);
+        telemetry = LgtmConfiguration.initTelemetry(otelEndpoint, TELEMETRY_SERVICE_NAME);
+        Runtime.getRuntime().addShutdownHook(new Thread(telemetry::close, "warehouse-telemetry-shutdown"));
 
         warehouseTransactions = new DirectTransactions();
 
@@ -87,7 +92,7 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
     @Override
     public Object orderFulfillment() throws Exception {
         Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME);
-        TelemetrySession telemetrySession = new TelemetrySession(session);
+        TelemetrySession telemetrySession = TelemetrySession.createRoot(telemetry, session);
 
         return server.invokeManualSession(telemetrySession);
     }

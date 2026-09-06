@@ -13,9 +13,6 @@ import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import java.util.concurrent.TimeUnit;
 
 public class JaegerConfiguration {
-
-    public static String TRACER_NAME = "choral.reactive.Choreography";
-
     public static OpenTelemetry initTelemetry(String jaegerEndpoint, String serviceName) {
         // Export traces to Jaeger over OTLP
         OtlpGrpcSpanExporter jaegerOtlpExporter = OtlpGrpcSpanExporter.builder()
