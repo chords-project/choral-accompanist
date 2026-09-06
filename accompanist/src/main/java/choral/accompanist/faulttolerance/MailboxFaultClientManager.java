@@ -3,6 +3,7 @@ package choral.accompanist.faulttolerance;
 import choral.accompanist.connection.Message;
 import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
+import choral.accompanist.tracing.FaultToleranceTelemetry;
 import choral_reactive.ChannelGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -27,6 +28,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
     private final String address;
     private final SQLMailbox mailbox;
     private final ClientEvents events;
+    private final FaultToleranceTelemetry faultToleranceTelemetry;
 
     public MailboxFaultClientManager(SQLMailbox mailbox, String address, ClientEvents events, OpenTelemetry telemetry) throws URISyntaxException, SQLException {
         this.mailbox = mailbox;
@@ -34,6 +36,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, MailboxFaultClientManager.class.getName());
         this.events = events;
+        this.faultToleranceTelemetry = new FaultToleranceTelemetry(telemetry, "client");
 
         URI uri = new URI(null, address, null, null, null).parseServerAuthority();
         InetSocketAddress socketAddr = new InetSocketAddress(uri.getHost(), uri.getPort());
@@ -80,8 +83,11 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
             boolean alreadySent = mailbox.aboutToSendMessage(msg);
             if (alreadySent) {
                 logger.info("Message already sent");
+                faultToleranceTelemetry.sendAttempt(msg.session, address, "already_acknowledged");
                 return;
             }
+
+            faultToleranceTelemetry.sendAttempt(msg.session, address, "physical");
 
             var result = futureStub
                     .withDeadlineAfter(5, TimeUnit.SECONDS)
@@ -101,6 +107,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
                     // Mark message as acknowledged in database
                     events.messageDeliveryConfirmed(msg);
                     mailbox.didDeliverMessage(msg);
+                    faultToleranceTelemetry.confirmation(msg.session);
 
                     double duration = (System.nanoTime() - startTime) / 1_000_000.0;
 
@@ -110,8 +117,16 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
                     connectionSpan.setAttribute("error", true);
                     connectionSpan.recordException(e);
                     events.messageDeliveryFailed(msg);
+                    faultToleranceTelemetry.sendFailure(msg.session, failureCategory(e));
                 }
             }, Executors.newVirtualThreadPerTaskExecutor());
+        }
+
+        private String failureCategory(Exception error) {
+            if (error instanceof java.util.concurrent.TimeoutException) return "deadline_exceeded";
+            if (error.getCause() instanceof io.grpc.StatusRuntimeException status)
+                return status.getStatus().getCode().name().toLowerCase();
+            return "transport_error";
         }
 
         @Override

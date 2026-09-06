@@ -6,6 +6,7 @@ import choral.accompanist.connection.ClientConnectionsStore;
 import choral.accompanist.connection.Message;
 import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.TelemetrySession;
+import choral.accompanist.tracing.FaultToleranceTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -16,6 +17,7 @@ import java.time.Duration;
 public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents, FaultClientConnectionManager.ClientEvents {
     protected final FaultSessionEvent newFaultSessionEvent;
     protected final FaultDataStore dataStore;
+    protected final FaultToleranceTelemetry faultToleranceTelemetry;
 
     public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
         super(serviceName, null, null, telemetry, Duration.ofMinutes(10), null);
@@ -23,6 +25,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         this.clientConnectionsStore = new ClientConnectionsStore(clientCon.toNonFaultyFactory(this), telemetry);
         this.newFaultSessionEvent = newSessionEvent;
         this.dataStore = dataStore;
+        this.faultToleranceTelemetry = new FaultToleranceTelemetry(telemetry, serviceName);
     }
 
     public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {
@@ -46,10 +49,11 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
                 Span span = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                         .spanBuilder("choreography session (recover)")
                         .setSpanKind(SpanKind.SERVER)
-                        .setAttribute("choreography.session", session.toString())
+                        .setAllAttributes(TelemetrySession.commonAttributes(session))
                         .startSpan();
 
                 var telemetrySession = new TelemetrySession(telemetry, session, span);
+                faultToleranceTelemetry.attempt(session, "recovery");
 
                 try {
                     startNewSession(telemetrySession);
@@ -75,7 +79,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             this.connectionManager().sessionCompleted(telemetrySession);
             return result;
         } catch (Exception e) {
-            dataStore.restartSession(telemetrySession.session.sessionID());
+            if (dataStore.restartSession(telemetrySession.session.sessionID()))
+                faultToleranceTelemetry.restart(telemetrySession.session, "retry");
             this.connectionManager().recoverableSessionFailure(telemetrySession);
             throw e;
         }
@@ -84,14 +89,16 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     @Override
     protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
         var sessionID = telemetrySession.session.sessionID();
-        dataStore.startSession(telemetrySession.session);
+        if (dataStore.startSession(telemetrySession.session))
+            faultToleranceTelemetry.attempt(telemetrySession.session, "new");
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             Object result = newFaultSessionEvent.onNewSession(sessionCtx);
-            dataStore.completeSession(sessionID);
+            if (dataStore.completeSession(sessionID)) faultToleranceTelemetry.completion(telemetrySession.session);
             return result;
         } catch (ChoreographyInterruptedException e) {
             telemetrySession.log("Choreography interrupted: " + e.getMessage());
-            dataStore.failSession(telemetrySession.session);
+            if (dataStore.failSession(telemetrySession.session))
+                faultToleranceTelemetry.failure(telemetrySession.session, "interrupted");
             dataStore.compensateTransactions(sessionID);
             return e;
         }
@@ -101,7 +108,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     public void sessionFailed(Session session) throws Exception {
         logger.info("Received session failed event for sessionID: " + session);
         try {
-            dataStore.failSession(session);
+            if (dataStore.failSession(session)) faultToleranceTelemetry.failure(session, "remote");
             dataStore.compensateTransactions(session.sessionID());
         } catch (SQLException e) {
             logger.error("Session failed event caused SQL exception: " + e);
@@ -131,7 +138,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     @Override
     public void messageDeliveryFailed(Message message) {
         try {
-            dataStore.restartSession(message.session.sessionID());
+            if (dataStore.restartSession(message.session.sessionID()))
+                faultToleranceTelemetry.restart(message.session, "delivery_failure");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

@@ -11,16 +11,27 @@ public class Session implements Serializable {
     protected final String choreographyID;
     protected final String sender; // TODO The sender should not be here, but some of the logic in ReactiveServer depends on it
     protected final Integer sessionID;
+    /** Optional identity of the benchmark run that created this choreography. */
+    protected final String benchmarkRunId;
 
     public Session(String choreographyID, String sender, Integer sessionID) {
+        this(choreographyID, sender, sessionID, null);
+    }
+
+    public Session(String choreographyID, String sender, Integer sessionID, String benchmarkRunId) {
         this.choreographyID = choreographyID;
         this.sender = sender;
         this.sessionID = sessionID;
+        this.benchmarkRunId = benchmarkRunId;
     }
 
     public static Session makeSession(String choreographyID, String sender) {
+        return makeSession(choreographyID, sender, null);
+    }
+
+    public static Session makeSession(String choreographyID, String sender, String benchmarkRunId) {
         Random rand = new Random();
-        return new Session(choreographyID, sender, Math.abs(rand.nextInt()));
+        return new Session(choreographyID, sender, Math.abs(rand.nextInt()), benchmarkRunId);
     }
 
     @Override
@@ -59,7 +70,9 @@ public class Session implements Serializable {
         return sessionID;
     }
 
+    public String benchmarkRunId() { return benchmarkRunId; }
+
     public Session replacingSender(String senderName) {
-        return new Session(this.choreographyID, senderName, this.sessionID);
+        return new Session(this.choreographyID, senderName, this.sessionID, this.benchmarkRunId);
     }
 }

@@ -176,8 +176,18 @@ public class SQLMailbox {
             return messages;
         }
     }
-}
 
+    /** Durable mailbox depths; acknowledged outbox rows are retained history, not backlog. */
+    public long pendingOutboxCount() throws SQLException { return count("SELECT COUNT(*) FROM outbox WHERE acknowledged = FALSE"); }
+    public long totalOutboxCount() throws SQLException { return count("SELECT COUNT(*) FROM outbox"); }
+    public long inboxCount() throws SQLException { return count("SELECT COUNT(*) FROM inbox"); }
+    private long count(String query) throws SQLException {
+        try (var con = db.getConnection(); var stmt = con.createStatement(); var rs = stmt.executeQuery(query)) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+}
 
 
 

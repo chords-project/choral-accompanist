@@ -6,6 +6,8 @@ import csv
 import logging
 import os
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import gevent
@@ -18,21 +20,31 @@ CA_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 EVENTS_PATH = Path(os.getenv("FAULT_EVENTS_PATH", "/tmp/fault_events.csv"))
 
 fault_greenlet = None
+run_id = None
+test_started_monotonic = None
+
+
+@events.test_start.add_listener
+def initialise_run_identity(environment, **kwargs):
+    global run_id, test_started_monotonic
+    run_id = os.getenv("BENCHMARK_RUN_ID", str(uuid.uuid4()))
+    test_started_monotonic = time.monotonic()
 
 
 def setting(name, default):
     return os.getenv(name, str(default))
 
 
-def record_event(event, replicas, detail=""):
+def record_event(phase, replicas="", detail=""):
     new_file = not EVENTS_PATH.exists()
     EVENTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with EVENTS_PATH.open("a", newline="") as file:
         writer = csv.writer(file)
         if new_file:
-            writer.writerow(["timestamp", "event", "deployment", "replicas", "detail"])
+            writer.writerow(["run_id", "elapsed_seconds", "timestamp_utc", "phase", "deployment", "replicas", "detail"])
         writer.writerow(
-            [time.time(), event, setting("FAULT_DEPLOYMENT", "payment"), replicas, detail]
+            [run_id, time.monotonic() - test_started_monotonic, datetime.now(timezone.utc).isoformat(), phase,
+             setting("FAULT_DEPLOYMENT", "payment"), replicas, detail]
         )
 
 
@@ -56,16 +68,21 @@ def scale_deployment(replicas):
         timeout=15,
     )
     response.raise_for_status()
-    record_event("scaled", replicas)
+    record_event("scale-api-acknowledged", replicas)
     LOG.warning("Scaled deployment/%s to %d replica(s)", deployment, replicas)
 
 
 def inject_fault(environment):
     try:
         gevent.sleep(float(setting("FAULT_AFTER_SECONDS", 120)))
+        record_event("scale-down-api-request", 0)
         scale_deployment(0)
+        wait_for_ready_replicas(0, "target-unavailable")
         gevent.sleep(float(setting("FAULT_DURATION_SECONDS", 60)))
-        scale_deployment(int(setting("FAULT_RESTORE_REPLICAS", 1)))
+        replicas = int(setting("FAULT_RESTORE_REPLICAS", 1))
+        record_event("scale-up-api-request", replicas)
+        scale_deployment(replicas)
+        wait_for_ready_replicas(replicas, "target-ready")
     except gevent.GreenletExit:
         raise
     except Exception as error:
@@ -76,7 +93,7 @@ def inject_fault(environment):
 
 
 def start_fault_controller(environment):
-    global fault_greenlet
+    global fault_greenlet, run_id, test_started_monotonic
     if fault_greenlet is not None:
         return
     if not TOKEN_PATH.exists():
@@ -85,6 +102,7 @@ def start_fault_controller(environment):
         )
     EVENTS_PATH.unlink(missing_ok=True)
     record_event("test-start", int(setting("FAULT_RESTORE_REPLICAS", 1)))
+    record_event("warm-up-end", int(setting("FAULT_RESTORE_REPLICAS", 1)), "configured at test start")
     fault_greenlet = gevent.spawn(inject_fault, environment)
 
 
@@ -93,13 +111,19 @@ def stop_fault_controller(environment, **kwargs):
     global fault_greenlet
     if fault_greenlet is None:
         return
-    if fault_greenlet is not None:
-        fault_greenlet.kill(block=True)
-        fault_greenlet = None
+    controller = fault_greenlet
+    fault_greenlet = None
+    # runner.quit() may synchronously fire test_stop from inside the fault
+    # controller's own exception handler. Killing the current greenlet here
+    # would abort this listener before it can restore the Deployment.
+    if controller is not gevent.getcurrent():
+        controller.kill(block=True)
     # Restoring unconditionally closes the small interruption window between the
     # API accepting a scale-to-zero request and the controller recording it.
     try:
-        scale_deployment(int(setting("FAULT_RESTORE_REPLICAS", 1)))
+        replicas = int(setting("FAULT_RESTORE_REPLICAS", 1))
+        record_event("scale-up-api-request", replicas)
+        scale_deployment(replicas)
     except Exception as error:
         LOG.exception("Could not restore the faulted Deployment")
         record_event("restore-error", "", str(error))
@@ -118,4 +142,22 @@ class FaultToleranceWarehouseUser(FastHttpUser):
 
     @task
     def order_fulfillment(self):
-        self.client.get("/orderFulfillment", name="orderFulfillment")
+        self.client.get("/orderFulfillment", name="orderFulfillment", headers={"X-Benchmark-Run-Id": run_id})
+
+
+def wait_for_ready_replicas(expected, phase):
+    """Use the deployment status as the durable Kubernetes availability marker."""
+    host = os.environ["KUBERNETES_SERVICE_HOST"]
+    port = os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS", "443")
+    namespace, deployment = setting("POD_NAMESPACE", "default"), setting("FAULT_DEPLOYMENT", "payment")
+    url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/deployments/{deployment}"
+    deadline = time.monotonic() + float(setting("FAULT_READY_TIMEOUT_SECONDS", 120))
+    while time.monotonic() < deadline:
+        response = requests.get(url, headers={"Authorization": f"Bearer {TOKEN_PATH.read_text().strip()}"}, verify=CA_PATH, timeout=15)
+        response.raise_for_status()
+        ready = response.json().get("status", {}).get("readyReplicas", 0)
+        if ready == expected:
+            record_event(phase, expected)
+            return
+        gevent.sleep(1)
+    record_event("observation-timeout", expected, phase)

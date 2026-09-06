@@ -9,7 +9,7 @@ metadata:
   name: fault-tolerance-loadgenerator
 rules:
   - apiGroups: ["apps"]
-    resources: ["deployments/scale"]
+    resources: ["deployments", "deployments/scale"]
     resourceNames: ["payment"]
     verbs: ["get", "patch", "update"]
 ---

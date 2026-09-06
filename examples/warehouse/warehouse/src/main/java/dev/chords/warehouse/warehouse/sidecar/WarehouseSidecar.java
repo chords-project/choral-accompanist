@@ -90,8 +90,11 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
     }
 
     @Override
-    public Object orderFulfillment() throws Exception {
-        Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME);
+    public Object orderFulfillment(String benchmarkRunId) throws Exception {
+        if (benchmarkRunId != null && !benchmarkRunId.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")) {
+            throw new IllegalArgumentException("X-Benchmark-Run-Id must be a UUID");
+        }
+        Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME, benchmarkRunId);
         TelemetrySession telemetrySession = TelemetrySession.createRoot(telemetry, session);
 
         return server.invokeManualSession(telemetrySession);

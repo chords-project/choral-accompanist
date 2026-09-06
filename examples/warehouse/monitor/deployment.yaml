@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: warehouse-monitor
+  labels: {app: warehouse-monitor}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: warehouse-monitor}}
+  template:
+    metadata: {labels: {app: warehouse-monitor}}
+    spec:
+      containers:
+        - name: warehouse-monitor
+          image: warehouse-monitor
+          env:
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://lgtm:4317"}
+            - {name: MONITOR_INTERVAL_SECONDS, value: "1"}
+            - {name: MONITOR_SAMPLES_PATH, value: /results/mailbox_samples.csv}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}

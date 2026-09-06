@@ -58,7 +58,13 @@ public class SQLDataStore implements FaultDataStore {
                     CREATE TABLE IF NOT EXISTS session_states (
                       session_id INT PRIMARY KEY,
                       choreography VARCHAR(255) NOT NULL,
-                      session_state session_state_enum NOT NULL
+                      session_state session_state_enum NOT NULL,
+                      run_id UUID,
+                      started_at TIMESTAMPTZ,
+                      completed_at TIMESTAMPTZ,
+                      failed_at TIMESTAMPTZ,
+                      attempt_count INTEGER NOT NULL DEFAULT 0,
+                      restart_count INTEGER NOT NULL DEFAULT 0
                     );
                     """);
 
@@ -83,14 +89,16 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public void startSession(Session session) throws SQLException {
+    public boolean startSession(Session session) throws SQLException {
         logger.info("Marking session as started in database: {}", session);
 
         try (var con = db.getConnection();
              var selectStmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ?");
              PreparedStatement insertStmt = con.prepareStatement("""
-                     INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'started')
-                     ON CONFLICT (session_id) DO UPDATE SET session_state = 'started';
+                     INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count)
+                     VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1)
+                     ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
+                         attempt_count = session_states.attempt_count + 1;
                      """)) {
             con.setAutoCommit(false);
 
@@ -123,6 +131,7 @@ public class SQLDataStore implements FaultDataStore {
             if (insertSession) {
                 insertStmt.setInt(1, session.sessionID());
                 insertStmt.setString(2, session.choreographyName());
+                insertStmt.setString(3, session.benchmarkRunId());
                 int count = insertStmt.executeUpdate();
                 if (count == 0) {
                     throw new SQLException("failed to mark session as started in database: " + session.sessionID());
@@ -130,55 +139,61 @@ public class SQLDataStore implements FaultDataStore {
             }
 
             con.commit();
+            return insertSession;
         }
     }
 
     @Override
-    public void completeSession(int sessionID) throws SQLException {
+    public boolean completeSession(int sessionID) throws SQLException {
         logger.info("Marking session as completed in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed' WHERE session_id = ? AND session_state = 'started';")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed', completed_at = NOW() WHERE session_id = ? AND session_state = 'started';")
         ) {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
                 logger.warn("- Failed to complete session in database: " + sessionID);
             }
+            return count == 1;
         }
     }
 
     @Override
-    public void failSession(Session session) throws SQLException {
+    public boolean failSession(Session session) throws SQLException {
         logger.warn("Marking session as failed in database: " + session.sessionID());
 
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
-                        INSERT INTO session_states (session_id, choreography, session_state) VALUES (?, ?, 'failed')
-                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'failed';
+                        INSERT INTO session_states (session_id, choreography, session_state, run_id, failed_at)
+                        VALUES (?, ?, 'failed', CAST(? AS UUID), NOW())
+                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'failed', failed_at = NOW()
+                        WHERE session_states.session_state <> 'failed';
                         """)
         ) {
             stmt.setInt(1, session.sessionID());
             stmt.setString(2, session.choreographyName());
-            stmt.executeUpdate();
+            stmt.setString(3, session.benchmarkRunId());
+            return stmt.executeUpdate() == 1;
         }
     }
 
     @Override
-    public void restartSession(int sessionID) throws SQLException {
+    public boolean restartSession(int sessionID) throws SQLException {
         logger.info("Marking session to be restarted in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart' WHERE session_id = ? AND session_state IN ('started', 'completed');")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', restart_count = restart_count + 1 WHERE session_id = ? AND session_state IN ('started', 'completed');")
         ) {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
                 logger.warn("- Failed to mark session to restart in database: {}", sessionID);
             }
+            return count == 1;
         }
     }
 
@@ -298,7 +313,7 @@ public class SQLDataStore implements FaultDataStore {
             while (rs.next()) {
                 var sessionID = rs.getInt("session_id");
                 var choreography = rs.getString("choreography");
-                result.add(new Session(choreography, "", sessionID));
+                result.add(new Session(choreography, "", sessionID, rs.getString("run_id")));
             }
         }
 

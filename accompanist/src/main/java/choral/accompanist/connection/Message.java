@@ -84,7 +84,8 @@ public class Message implements Serializable {
     }
 
     public Message(ChannelOuterClass.Message grpcMessage) throws Exception {
-        this.session = new Session(grpcMessage.getChoreography(), grpcMessage.getSender(), grpcMessage.getSessionId());
+        this.session = new Session(grpcMessage.getChoreography(), grpcMessage.getSender(), grpcMessage.getSessionId(),
+                grpcMessage.getBenchmarkRunId().isBlank() ? null : grpcMessage.getBenchmarkRunId());
         this.headers = new HashMap<>(grpcMessage.getHeadersMap());
         this.sequenceNumber = grpcMessage.getSequenceNumber();
 
@@ -109,6 +110,7 @@ public class Message implements Serializable {
                 .setSender(this.session.senderName())
                 .setSequenceNumber(this.sequenceNumber)
                 .setSessionId(this.session.sessionID())
+                .setBenchmarkRunId(this.session.benchmarkRunId() == null ? "" : this.session.benchmarkRunId())
                 .setPayload(ByteString.copyFrom(buf.toByteArray()))
                 .putAllHeaders(this.headers)
                 .setSpanContext(ChannelOuterClass.SpanContext.newBuilder()

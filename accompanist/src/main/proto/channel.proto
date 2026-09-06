@@ -20,6 +20,7 @@ message Message {
   bytes payload = 5;
   map<string, string> headers = 6;
   SpanContext span_context = 7;
+  string benchmark_run_id = 8;
 }
 
 message SpanContext {

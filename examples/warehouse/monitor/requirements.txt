@@ -1,0 +1,3 @@
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp-proto-grpc==1.44.0
+psycopg[binary]==3.2.9

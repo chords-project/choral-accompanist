@@ -8,6 +8,7 @@ import choral.accompanist.connection.ServerConnectionManager;
 import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
+import choral.accompanist.tracing.FaultToleranceTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.logs.Severity;
@@ -147,7 +148,8 @@ public class ReactiveServer
                 span.setAttribute("message", message.toString());
 
                 Long endTime = System.nanoTime();
-                receiveTimeHistogram.record((endTime - startTime) / 1_000_000.0, attributes);
+                receiveTimeHistogram.record((endTime - startTime) / 1_000_000.0,
+                        FaultToleranceTelemetry.metricAttributes(session, serviceName));
 
                 return message;
             } catch (InterruptedException | ExecutionException e) {
@@ -267,7 +269,7 @@ public class ReactiveServer
         Long endTime = System.nanoTime();
         sessionDurationHistogram.record(
                 (endTime - startTime) / 1_000_000.0,
-                Attributes.builder().put("session", session.toString()).build()
+                FaultToleranceTelemetry.metricAttributes(session, serviceName)
         );
 
         return result;

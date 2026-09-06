@@ -12,6 +12,7 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.api.common.AttributeKey;
 
 public class TelemetrySession {
 
@@ -70,9 +71,17 @@ public class TelemetrySession {
                 .spanBuilder("choreography session")
                 .setNoParent()
                 .setSpanKind(SpanKind.SERVER)
-                .setAttribute("choreography.session", session.toString())
+                .setAllAttributes(commonAttributes(session))
                 .startSpan();
         return new TelemetrySession(telemetry, session, rootSpan);
+    }
+
+    /** Trace/log attributes; session id is intentionally excluded from metric attributes. */
+    public static Attributes commonAttributes(Session session) {
+        var builder = Attributes.builder().put("choreography.name", session.choreographyName())
+                .put("choreography.session_id", session.sessionID());
+        if (session.benchmarkRunId() != null) builder.put("benchmark.run_id", session.benchmarkRunId());
+        return builder.build();
     }
 
     public Span makeChoreographySpan() {
@@ -83,7 +92,7 @@ public class TelemetrySession {
                 .setParent(choreographyContext)
                 .addLink(senderLinkContext == null ? SpanContext.getInvalid() : senderLinkContext)
                 .setSpanKind(SpanKind.SERVER)
-                .setAttribute("choreography.session", session.toString())
+                .setAllAttributes(commonAttributes(session))
                 .startSpan();
 
         return this.choreographySpan;
@@ -98,7 +107,7 @@ public class TelemetrySession {
     }
 
     public void log(Severity severity, String message, Attributes attributes) {
-        Attributes extraAttributes = Attributes.builder().put("session", session.toString()).putAll(attributes).build();
+        Attributes extraAttributes = Attributes.builder().put("session", session.toString()).putAll(commonAttributes(session)).putAll(attributes).build();
 
         System.out.println(message + ": " + attributesToString(extraAttributes));
         //choreographySpan.addEvent(message, extraAttributes);

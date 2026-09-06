@@ -18,6 +18,8 @@ build:
         project: warehouse
     - image: loadgenerator
       context: loadgenerator
+    - image: warehouse-monitor
+      context: monitor
 manifests:
   rawYaml:
     - warehouse/deployment.yaml
@@ -25,6 +27,7 @@ manifests:
     - payment/deployment.yaml
     - loadgenerator/deployment.yaml
     - observability/deployment.yaml
+    - monitor/deployment.yaml
 portForward:
   - resourceType: service
     resourceName: warehouse

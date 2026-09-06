@@ -10,13 +10,17 @@ import java.util.List;
  * Mainly used by {@link FaultTolerantServer}.
  */
 public interface FaultDataStore extends AutoCloseable {
-    void startSession(Session session) throws SQLException;
+    /** @return true only when this call starts a new local attempt. */
+    boolean startSession(Session session) throws SQLException;
 
-    void completeSession(int sessionID) throws SQLException;
+    /** @return true only when the durable state changed to completed. */
+    boolean completeSession(int sessionID) throws SQLException;
 
-    void failSession(Session session) throws SQLException;
+    /** @return true only when the durable state changed to failed. */
+    boolean failSession(Session session) throws SQLException;
 
-    void restartSession(int sessionID) throws SQLException;
+    /** @return true only when the durable state changed to restart. */
+    boolean restartSession(int sessionID) throws SQLException;
 
     boolean hasSessionCompleted(int sessionID) throws SQLException;
 
