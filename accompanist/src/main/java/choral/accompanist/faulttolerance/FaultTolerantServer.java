@@ -45,7 +45,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     protected void recoverStartedSessions() throws SQLException {
         var pendingSessions = this.dataStore.recoverStartedSessions();
         for (var session : pendingSessions) {
-            Thread.ofVirtual().start(() -> {
+            synchronized (this) {
+                if (!knownSessionIDs.add(session.sessionID())) continue;
                 Span span = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                         .spanBuilder("choreography session (recover)")
                         .setSpanKind(SpanKind.SERVER)
@@ -53,16 +54,18 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
                         .startSpan();
 
                 var telemetrySession = new TelemetrySession(telemetry, session, span);
-                faultToleranceTelemetry.attempt(session, "recovery");
-
-                try {
-                    startNewSession(telemetrySession);
-                } catch (Exception e) {
-                    telemetrySession.recordException("failed to run recovered session", e, true);
-                } finally {
-                    span.end();
-                }
-            });
+                telemetrySessionMap.put(session.sessionID(), telemetrySession);
+                Thread.ofVirtual().start(() -> {
+                    faultToleranceTelemetry.attempt(session, "recovery");
+                    try {
+                        startNewSession(telemetrySession);
+                    } catch (Exception e) {
+                        telemetrySession.recordException("failed to run recovered session", e, true);
+                    } finally {
+                        span.end();
+                    }
+                });
+            }
         }
     }
 
@@ -73,17 +76,15 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     }
 
     @Override
-    protected Object startNewSession(TelemetrySession telemetrySession) throws Exception {
-        try {
-            Object result = super.startNewSession(telemetrySession);
-            this.connectionManager().sessionCompleted(telemetrySession);
-            return result;
-        } catch (Exception e) {
-            if (dataStore.restartSession(telemetrySession.session.sessionID()))
-                faultToleranceTelemetry.restart(telemetrySession.session, "retry");
-            this.connectionManager().recoverableSessionFailure(telemetrySession);
-            throw e;
-        }
+    protected void sessionExecutionCompleted(TelemetrySession telemetrySession) throws Exception {
+        this.connectionManager().sessionCompleted(telemetrySession);
+    }
+
+    @Override
+    protected void sessionExecutionFailed(TelemetrySession telemetrySession, Exception error) throws Exception {
+        if (dataStore.restartSession(telemetrySession.session.sessionID()))
+            faultToleranceTelemetry.restart(telemetrySession.session, "retry");
+        this.connectionManager().recoverableSessionFailure(telemetrySession);
     }
 
     @Override
@@ -117,7 +118,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     }
 
     @Override
-    public void messageReceived(Message msg) {
+    public synchronized void messageReceived(Message msg) {
         try {
             if (dataStore.hasSessionCompleted(msg.session.sessionID())) {
                 logger.info("Received message with completed session: " + msg);
@@ -137,12 +138,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
 
     @Override
     public void messageDeliveryFailed(Message message) {
-        try {
-            if (dataStore.restartSession(message.session.sessionID()))
-                faultToleranceTelemetry.restart(message.session, "delivery_failure");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        // Delivery is tracked by the pending outbox row. A late transport callback
+        // must not invalidate an active execution or reopen a completed session.
     }
 
     @Override

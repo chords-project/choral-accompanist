@@ -60,7 +60,7 @@ var otelVersion = "1.47.0"
 dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation(libs.junit.jupiter)
-
+    testRuntimeOnly("org.postgresql:postgresql:42.7.5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // ## Choral ##

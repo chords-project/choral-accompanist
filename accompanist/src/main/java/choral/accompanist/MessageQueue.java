@@ -51,7 +51,11 @@ public class MessageQueue<T> {
     }
 
     public synchronized void cleanupSession(Session session) {
-        this.queue.remove(session);
+        this.queue.entrySet().removeIf(entry -> {
+            if (!entry.getKey().sessionID().equals(session.sessionID())) return false;
+            entry.getValue().recv.values().forEach(future -> future.cancel(false));
+            return true;
+        });
     }
 
     private class SessionQueue {

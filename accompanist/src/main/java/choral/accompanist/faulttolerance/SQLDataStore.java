@@ -92,54 +92,26 @@ public class SQLDataStore implements FaultDataStore {
     public boolean startSession(Session session) throws SQLException {
         logger.info("Marking session as started in database: {}", session);
 
-        try (var con = db.getConnection();
-             var selectStmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ?");
-             PreparedStatement insertStmt = con.prepareStatement("""
-                     INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count)
-                     VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1)
-                     ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
-                         attempt_count = session_states.attempt_count + 1;
-                     """)) {
-            con.setAutoCommit(false);
+        try (
+                var con = db.getConnection();
+                PreparedStatement stmt = con.prepareStatement("""
+                        INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count)
+                        VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1)
+                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
+                            attempt_count = session_states.attempt_count + 1
+                        WHERE session_states.choreography = EXCLUDED.choreography
+                          AND (session_states.session_state = 'restart'
+                            OR (session_states.session_state = 'started' AND session_states.attempt_count = 0))
+                        RETURNING session_id;
+                        """)
+        ) {
+            stmt.setInt(1, session.sessionID());
+            stmt.setString(2, session.choreographyName());
+            stmt.setString(3, session.benchmarkRunId());
 
-            boolean insertSession = true;
-
-            // Check if session already exists in database
-            selectStmt.setInt(1, session.sessionID());
-
-            var rs = selectStmt.executeQuery();
-            if (rs.next()) {
-                var choreography = rs.getString("choreography");
-                if (!Objects.equals(session.choreographyName(), choreography)) {
-                    throw new SQLException("choreography in session_states table did not match start session");
-                }
-
-                var state = rs.getString("session_state");
-
-                switch (state) {
-                    case "started":
-                        insertSession = false;
-                        break;
-                    case "restart":
-                        break;
-                    case "completed":
-                    case "failed":
-                        throw new SQLException("attempt to start session that has already been processed");
-                }
+            try (var result = stmt.executeQuery()) {
+                return result.next();
             }
-
-            if (insertSession) {
-                insertStmt.setInt(1, session.sessionID());
-                insertStmt.setString(2, session.choreographyName());
-                insertStmt.setString(3, session.benchmarkRunId());
-                int count = insertStmt.executeUpdate();
-                if (count == 0) {
-                    throw new SQLException("failed to mark session as started in database: " + session.sessionID());
-                }
-            }
-
-            con.commit();
-            return insertSession;
         }
     }
 
@@ -186,7 +158,7 @@ public class SQLDataStore implements FaultDataStore {
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', restart_count = restart_count + 1 WHERE session_id = ? AND session_state IN ('started', 'completed');")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', restart_count = restart_count + 1 WHERE session_id = ? AND session_state = 'started';")
         ) {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
@@ -215,23 +187,23 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean commitTransaction(int sessionID, Transaction tx) throws SQLException {
-        try (
-                var con = db.getConnection();
-        ) {
+        try (var con = db.getConnection()) {
             con.setAutoCommit(false);
 
-            // check that transaction has not already been commited
-            try (var stmt = con.prepareStatement(
-                    "SELECT * FROM transaction_states WHERE session_id = ? AND transaction_name = ?;"
-            )) {
+            // Claim the transaction before executing it. The unique key serializes
+            // concurrent callers, and a rollback also rolls back this claim.
+            try (var stmt = con.prepareStatement("""
+                    INSERT INTO transaction_states (session_id, transaction_name, transaction_state)
+                    VALUES (?, ?, 'completed')
+                    ON CONFLICT DO NOTHING
+                    RETURNING transaction_name;
+                    """)) {
                 stmt.setInt(1, sessionID);
                 stmt.setString(2, tx.transactionName());
 
                 try (var resultSet = stmt.executeQuery()) {
-                    var foundRow = resultSet.next();
-                    if (foundRow) {
-                        String state = resultSet.getString("transaction_state");
-                        logger.info("COMMIT IGNORED, transaction already committed: state={}", state);
+                    if (!resultSet.next()) {
+                        logger.info("COMMIT IGNORED, transaction already recorded: {}", tx.transactionName());
                         con.rollback();
                         return true; // duplicate commit is not a failure
                     }
@@ -243,29 +215,10 @@ public class SQLDataStore implements FaultDataStore {
                 logger.warn("COMMIT FAILED, transaction returned false");
                 con.rollback();
                 return false;
-            } else {
-                // mark transaction as completed
-                try (var stmt = con.prepareStatement("""
-                        
-                            INSERT INTO transaction_states (session_id, transaction_name, transaction_state)
-                        VALUES (?, ?, 'completed')
-                        ON CONFLICT DO NOTHING;
-                        
-                        """
-                )) {
-                    stmt.setInt(1, sessionID);
-                    stmt.setString(
-                            2, tx.
-
-                                    transactionName());
-                    stmt.execute();
-                }
-
-                con.commit();
-
-                // if we are here everything went well
-                return true;
             }
+
+            con.commit();
+            return true;
         }
     }
 
@@ -273,31 +226,51 @@ public class SQLDataStore implements FaultDataStore {
     public void compensateTransactions(int sessionID) throws SQLException {
         logger.info("Compensating transactions for session: {}", sessionID);
 
-        try (
-                var con = db.getConnection();
-                var stmt = con.prepareStatement("SELECT * FROM transaction_states WHERE transaction_state = 'completed' AND session_id = ?;");
-        ) {
-            stmt.setInt(1, sessionID);
-            try (
-                    var transResult = stmt.executeQuery();
-                    var compensateCon = db.getConnection();
-            ) {
-                compensateCon.setAutoCommit(false);
+        try (var con = db.getConnection()) {
+            con.setAutoCommit(false);
 
-                while (transResult.next()) {
-                    var txName = transResult.getString("transaction_name");
-                    var tx = transactions.get(txName);
-                    logger.info("- Compensating transaction: {}", txName);
-
-                    tx.compensate(sessionID, new SQLTransaction(compensateCon));
-
-                    try (var updateTransStmt = compensateCon.prepareStatement("UPDATE transaction_states SET transaction_state = 'compensated' WHERE session_id = ?;")) {
-                        updateTransStmt.setInt(1, sessionID);
-                        updateTransStmt.executeUpdate();
+            while (true) {
+                String txName;
+                try (var stmt = con.prepareStatement("""
+                        SELECT transaction_name
+                        FROM transaction_states
+                        WHERE session_id = ? AND transaction_state = 'completed'
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED;
+                        """)) {
+                    stmt.setInt(1, sessionID);
+                    try (var result = stmt.executeQuery()) {
+                        if (!result.next()) {
+                            con.rollback();
+                            return;
+                        }
+                        txName = result.getString("transaction_name");
                     }
-
-                    compensateCon.commit();
                 }
+
+                var tx = transactions.get(txName);
+                if (tx == null) {
+                    con.rollback();
+                    throw new SQLException("unknown transaction in transaction_states: " + txName);
+                }
+
+                logger.info("- Compensating transaction: {}", txName);
+                tx.compensate(sessionID, new SQLTransaction(con));
+
+                try (var stmt = con.prepareStatement("""
+                        UPDATE transaction_states
+                        SET transaction_state = 'compensated'
+                        WHERE session_id = ? AND transaction_name = ? AND transaction_state = 'completed';
+                        """)) {
+                    stmt.setInt(1, sessionID);
+                    stmt.setString(2, txName);
+                    if (stmt.executeUpdate() != 1) {
+                        con.rollback();
+                        throw new SQLException("failed to mark transaction as compensated: " + txName);
+                    }
+                }
+
+                con.commit();
             }
         }
     }

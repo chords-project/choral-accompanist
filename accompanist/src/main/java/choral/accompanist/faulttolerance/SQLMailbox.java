@@ -25,6 +25,7 @@ public class SQLMailbox {
                 var con = db.getConnection();
                 Statement stmt = con.createStatement();
         ) {
+            con.setAutoCommit(false);
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS outbox (
                       session_id INT NOT NULL,
@@ -32,8 +33,9 @@ public class SQLMailbox {
                       session_sender VARCHAR(255) NOT NULL,
                       message BYTEA NOT NULL,
                       sequence_num INT NOT NULL,
+                      destination VARCHAR(255) NOT NULL,
                       acknowledged BOOLEAN NOT NULL DEFAULT FALSE,
-                      PRIMARY KEY (session_id, sequence_num)
+                      PRIMARY KEY (session_id, session_sender, destination, sequence_num)
                     );
                     """);
 
@@ -44,9 +46,10 @@ public class SQLMailbox {
                       session_sender VARCHAR(255) NOT NULL,
                       message BYTEA NOT NULL,
                       sequence_num INT NOT NULL,
-                      PRIMARY KEY (session_id, sequence_num)
+                      PRIMARY KEY (session_id, session_sender, sequence_num)
                     );
                     """);
+            con.commit();
         }
     }
 
@@ -56,22 +59,23 @@ public class SQLMailbox {
      * @param message the message to be sent
      * @return true if the message has already been sent and acknowledged, in that case the message need not be sent again
      */
-    public boolean aboutToSendMessage(Message message) throws SQLException {
+    public boolean aboutToSendMessage(Message message, String destination) throws SQLException {
 
         try (
                 var con = db.getConnection();
                 PreparedStatement getStmt = con.prepareStatement("""
-                        SELECT * FROM outbox WHERE session_id = ? AND session_choreography = ? AND session_sender = ? and sequence_num = ? and acknowledged = TRUE;
+                        SELECT * FROM outbox WHERE session_id = ? AND session_choreography = ? AND session_sender = ? and sequence_num = ? and destination = ? and acknowledged = TRUE;
                         """);
                 PreparedStatement insertStmt = con.prepareStatement("""
-                        INSERT INTO outbox (session_id, session_choreography, session_sender, message, sequence_num, acknowledged)
-                        VALUES (?, ?, ?, ?, ?, FALSE) ON CONFLICT DO NOTHING;
+                        INSERT INTO outbox (session_id, session_choreography, session_sender, message, sequence_num, destination, acknowledged)
+                        VALUES (?, ?, ?, ?, ?, ?, FALSE) ON CONFLICT DO NOTHING;
                         """)
         ) {
             getStmt.setInt(1, message.session.sessionID());
             getStmt.setString(2, message.session.choreographyName());
             getStmt.setString(3, message.session.senderName());
             getStmt.setInt(4, message.sequenceNumber);
+            getStmt.setString(5, destination);
 
             var result = getStmt.executeQuery();
 
@@ -86,6 +90,7 @@ public class SQLMailbox {
             insertStmt.setString(3, message.session.senderName());
             insertStmt.setBytes(4, message.serialize());
             insertStmt.setInt(5, message.sequenceNumber);
+            insertStmt.setString(6, destination);
 
             insertStmt.execute();
         }
@@ -98,43 +103,22 @@ public class SQLMailbox {
      *
      * @param message the message that was successfully delivered.
      */
-    public void didDeliverMessage(Message message) throws SQLException {
+    public void didDeliverMessage(Message message, String destination) throws SQLException {
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
-                        UPDATE outbox SET acknowledged = TRUE WHERE session_id = ? AND session_choreography = ? AND sequence_num = ?;
+                        UPDATE outbox SET acknowledged = TRUE WHERE session_id = ? AND session_choreography = ? AND sequence_num = ? AND session_sender = ? AND destination = ?;
                         """);
         ) {
             stmt.setInt(1, message.session.sessionID());
             stmt.setString(2, message.session.choreographyName());
             stmt.setInt(3, message.sequenceNumber);
+            stmt.setString(4, message.session.senderName());
+            stmt.setString(5, destination);
 
             stmt.executeUpdate();
         }
     }
-
-    /*public Optional<Message> willReceiveMessage(Session session, int sequenceNum) throws SQLException, IOException, ClassNotFoundException {
-        try (
-                var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("""
-                        SELECT * FROM inbox WHERE session_id = ? AND session_choreography = ? AND session_sender = ? and sequence_num = ?;
-                        """);
-        ) {
-            stmt.setInt(1, session.sessionID());
-            stmt.setString(2, session.choreographyName());
-            stmt.setString(3, session.senderName());
-            stmt.setInt(4, sequenceNum);
-
-            var result = stmt.executeQuery();
-            var messageFound = result.next();
-            if (messageFound) {
-                var messageBytes = result.getBytes("message");
-                return Optional.of(Message.deserialize(messageBytes));
-            }
-        }
-
-        return Optional.empty();
-    }*/
 
     public void didReceiveMessage(Message message) throws SQLException {
         try (
@@ -144,6 +128,18 @@ public class SQLMailbox {
                         VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
                         """);
         ) {
+            con.setAutoCommit(false);
+            // The receive ACK must imply that both input and runnable work survive a crash.
+            try (var sessionStmt = con.prepareStatement("""
+                    INSERT INTO session_states (session_id, choreography, session_state, run_id, attempt_count)
+                    VALUES (?, ?, 'started', CAST(? AS UUID), 0)
+                    ON CONFLICT (session_id) DO NOTHING
+                    """)) {
+                sessionStmt.setInt(1, message.session.sessionID());
+                sessionStmt.setString(2, message.session.choreographyName());
+                sessionStmt.setString(3, message.session.benchmarkRunId());
+                sessionStmt.executeUpdate();
+            }
             stmt.setInt(1, message.session.sessionID());
             stmt.setString(2, message.session.choreographyName());
             stmt.setString(3, message.session.senderName());
@@ -151,6 +147,7 @@ public class SQLMailbox {
             stmt.setInt(5, message.sequenceNumber);
 
             stmt.execute();
+            con.commit();
         }
     }
 
@@ -188,17 +185,3 @@ public class SQLMailbox {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

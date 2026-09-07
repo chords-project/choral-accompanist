@@ -80,7 +80,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
         @Override
         public void sendMessage(Message msg) throws Exception {
 
-            boolean alreadySent = mailbox.aboutToSendMessage(msg);
+            boolean alreadySent = mailbox.aboutToSendMessage(msg, address);
             if (alreadySent) {
                 logger.info("Message already sent");
                 faultToleranceTelemetry.sendAttempt(msg.session, address, "already_acknowledged");
@@ -106,7 +106,7 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
 
                     // Mark message as acknowledged in database
                     events.messageDeliveryConfirmed(msg);
-                    mailbox.didDeliverMessage(msg);
+                    mailbox.didDeliverMessage(msg, address);
                     faultToleranceTelemetry.confirmation(msg.session);
 
                     double duration = (System.nanoTime() - startTime) / 1_000_000.0;

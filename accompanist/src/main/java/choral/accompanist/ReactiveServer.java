@@ -183,7 +183,9 @@ public class ReactiveServer
         logger.debug("Registering session " + session.sessionID);
 
         synchronized (this) {
-            knownSessionIDs.add(session.sessionID());
+            if (!knownSessionIDs.add(session.sessionID())) {
+                throw new IllegalStateException("Session is already running: " + session.sessionID());
+            }
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
 
@@ -205,44 +207,41 @@ public class ReactiveServer
     }
 
     @Override
-    public void messageReceived(Message msg) {
+    public synchronized void messageReceived(Message msg) {
+        boolean isNewSession = knownSessionIDs.add(msg.session.sessionID);
 
-        synchronized (this) {
-            boolean isNewSession = knownSessionIDs.add(msg.session.sessionID);
+        TelemetrySession telemetrySession;
+        if (isNewSession) {
+            telemetrySession = new TelemetrySession(telemetry, msg);
+            this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
+        } else {
+            if (!telemetrySessionMap.containsKey(msg.session.sessionID()))
+                throw new IllegalStateException(
+                        "Expected telemetrySessionMap to contain session: " + msg.session);
 
-            TelemetrySession telemetrySession;
-            if (isNewSession) {
-                telemetrySession = new TelemetrySession(telemetry, msg);
-                this.telemetrySessionMap.put(msg.session.sessionID(), telemetrySession);
-            } else {
-                if (!telemetrySessionMap.containsKey(msg.session.sessionID()))
-                    throw new IllegalStateException(
-                            "Expected telemetrySessionMap to contain session: " + msg.session);
+            telemetrySession = telemetrySessionMap.get(msg.session.sessionID());
+        }
 
-                telemetrySession = telemetrySessionMap.get(msg.session.sessionID());
-            }
+        telemetrySession.log(Severity.DEBUG, "Reactive Server message received, new session: " + isNewSession, Attributes.empty());
 
-            telemetrySession.log(Severity.DEBUG, "Reactive Server message received, new session: " + isNewSession, Attributes.empty());
+        msgQueue.addMessage(msg.session, msg.message, msg.sequenceNumber, telemetrySession);
 
-            msgQueue.addMessage(msg.session, msg.message, msg.sequenceNumber, telemetrySession);
-
-            if (isNewSession) {
-                // Handle new session in another thread
-                Thread.ofVirtual()
-                        .name("NEW_SESSION_HANDLER_" + msg.session)
-                        .start(() -> {
-                            try {
-                                startNewSession(telemetrySession);
-                            } catch (Exception e) {
-                                telemetrySession.recordException(
-                                        "ReactiveServer session exception",
-                                        e,
-                                        true,
-                                        Attributes.builder().put("service", serviceName)
-                                                .put("session", msg.session.toString()).build());
-                            }
-                        });
-            }
+        if (isNewSession) {
+            // Handle new session in another thread
+            Thread.ofVirtual()
+                    .name("NEW_SESSION_HANDLER_" + msg.session)
+                    .start(() -> {
+                        try {
+                            startNewSession(telemetrySession);
+                        } catch (Exception e) {
+                            telemetrySession.recordException(
+                                    "ReactiveServer session exception",
+                                    e,
+                                    true,
+                                    Attributes.builder().put("service", serviceName)
+                                            .put("session", msg.session.toString()).build());
+                        }
+                    });
         }
     }
 
@@ -251,7 +250,9 @@ public class ReactiveServer
 
         Long startTime = System.nanoTime();
         var session = telemetrySession.session;
-        this.telemetrySessionMap.put(session.sessionID(), telemetrySession);
+        synchronized (this) {
+            this.telemetrySessionMap.put(session.sessionID(), telemetrySession);
+        }
 
         telemetrySession.log(
                 "ReactiveServer handle new session",
@@ -261,11 +262,19 @@ public class ReactiveServer
 
         try (Scope scope = span.makeCurrent()) {
             result = runNewSessionEvent(telemetrySession);
+            sessionExecutionCompleted(telemetrySession);
+        } catch (Exception error) {
+            try {
+                sessionExecutionFailed(telemetrySession, error);
+            } catch (Exception recoveryError) {
+                error.addSuppressed(recoveryError);
+            }
+            throw error;
         } finally {
             span.end();
+            cleanupKey(session);
         }
 
-        cleanupKey(session);
         Long endTime = System.nanoTime();
         sessionDurationHistogram.record(
                 (endTime - startTime) / 1_000_000.0,
@@ -273,6 +282,15 @@ public class ReactiveServer
         );
 
         return result;
+    }
+
+    /**
+     * Lifecycle hooks run before registration is released to another attempt.
+     */
+    protected void sessionExecutionCompleted(TelemetrySession telemetrySession) throws Exception {
+    }
+
+    protected void sessionExecutionFailed(TelemetrySession telemetrySession, Exception error) throws Exception {
     }
 
     protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
@@ -283,14 +301,12 @@ public class ReactiveServer
         return result;
     }
 
-    protected void cleanupKey(Session session) {
+    protected synchronized void cleanupKey(Session session) {
         logger.debug("Cleaning up session " + session.sessionID);
 
-        synchronized (this) {
-            this.msgQueue.cleanupSession(session);
-            this.telemetrySessionMap.remove(session.sessionID());
-            this.knownSessionIDs.remove(session.sessionID());
-        }
+        this.msgQueue.cleanupSession(session);
+        this.telemetrySessionMap.remove(session.sessionID());
+        this.knownSessionIDs.remove(session.sessionID());
     }
 
     @Override
