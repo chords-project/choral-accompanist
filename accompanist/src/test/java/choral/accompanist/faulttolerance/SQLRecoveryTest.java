@@ -149,7 +149,7 @@ class SQLRecoveryTest {
         // Construct fresh components without ever calling startSession on the originals.
         var recoveredStore = new SQLDataStore(db, Set.of());
         var recoveredMailbox = new SQLMailbox(db);
-        assertEquals(2, recoveredStore.recoverStartedSessions().getFirst().sessionID());
+        assertEquals(2, recoveredStore.recoverableSessions(10).getFirst().session().sessionID());
         assertEquals(input.message, recoveredMailbox.recoverReceivedMessages().getFirst().message);
         assertTrue(recoveredStore.startSession(input.session));
         assertEquals(1, count("SELECT attempt_count FROM session_states WHERE session_id = 2"));

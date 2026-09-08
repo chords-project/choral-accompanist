@@ -288,26 +288,6 @@ public class SQLDataStore implements FaultDataStore {
     }
 
     @Override
-    public List<Session> recoverStartedSessions() throws SQLException {
-        var result = new ArrayList<Session>();
-        try (
-                var con = db.getConnection();
-                var stmt = con.createStatement();
-        ) {
-            var rs = stmt.executeQuery("SELECT * FROM session_states WHERE session_state IN ('started', 'restart');");
-            while (rs.next()) {
-                var sessionID = rs.getInt("session_id");
-                var choreography = rs.getString("choreography");
-                result.add(new Session(choreography, "", sessionID, rs.getString("run_id")));
-            }
-        }
-
-        logger.info("Found {} pending sessions to restart", result.size());
-
-        return result;
-    }
-
-    @Override
     public List<RecoverableSession> recoverableSessions(int limit) throws SQLException {
         var sessions = new ArrayList<RecoverableSession>();
         try (var con = db.getConnection(); var stmt = con.prepareStatement("""

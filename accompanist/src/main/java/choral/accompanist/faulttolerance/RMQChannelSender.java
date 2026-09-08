@@ -22,7 +22,10 @@ public class RMQChannelSender implements FaultClientConnectionManager {
     }
 
     public static FaultClientConnectionManager.Factory factory(com.rabbitmq.client.Connection connection) {
-        return (address, events, telemetry) -> new RMQChannelSender(connection, address, events);
+        return (address, events, telemetry) -> {
+            throw new UnsupportedOperationException(
+                    "RabbitMQ fault-tolerant recovery is not implemented yet; use the SQL mailbox transport");
+        };
     }
 
     @Override

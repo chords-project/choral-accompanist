@@ -25,7 +25,10 @@ public class RMQChannelReceiver implements FaultServerConnectionManager {
     }
 
     public static FaultServerConnectionManager.Factory factory() {
-        return (serviceName, events, telemetry) -> new RMQChannelReceiver(serviceName, events);
+        return (serviceName, events, telemetry) -> {
+            throw new UnsupportedOperationException(
+                    "RabbitMQ fault-tolerant recovery is not implemented yet; use the SQL mailbox transport");
+        };
     }
 
     @Override

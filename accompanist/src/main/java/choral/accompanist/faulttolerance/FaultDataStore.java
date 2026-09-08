@@ -46,12 +46,7 @@ public interface FaultDataStore extends AutoCloseable {
 
     void compensateTransactions(int sessionID) throws SQLException;
 
-    List<Session> recoverStartedSessions() throws SQLException;
-
-    default List<RecoverableSession> recoverableSessions(int limit) throws SQLException {
-        return recoverStartedSessions().stream().limit(limit)
-                .map(s -> new RecoverableSession(s, "started", null, null)).toList();
-    }
+    List<RecoverableSession> recoverableSessions(int limit) throws SQLException;
 
     record RecoverableSession(Session session, String state, String waitingSender, Integer waitingSequence) {
     }

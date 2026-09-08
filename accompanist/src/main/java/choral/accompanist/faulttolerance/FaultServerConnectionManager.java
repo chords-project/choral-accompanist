@@ -14,12 +14,18 @@ public interface FaultServerConnectionManager extends ServerConnectionManager {
     void sessionCompleted(TelemetrySession telemetrySession) throws Exception;
 
     static FaultServerConnectionManager.Factory defaultFactory() {
-        return (serviceName, events, telemetry) -> new RMQChannelReceiver(serviceName, events);
+        return (serviceName, events, telemetry) -> {
+            throw new UnsupportedOperationException(
+                    "RabbitMQ fault-tolerant recovery is not fully implemented; use the SQL mailbox transport");
+        };
     }
 
     interface Factory {
         FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry);
-        default MailboxRecoveryCoordinator recoveryCoordinator() { return null; }
+
+        default MailboxRecoveryCoordinator recoveryCoordinator() {
+            return null;
+        }
     }
 
     interface ServerEvents extends ServerConnectionManager.ServerEvents {

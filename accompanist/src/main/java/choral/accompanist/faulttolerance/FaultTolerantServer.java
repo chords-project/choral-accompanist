@@ -13,6 +13,7 @@ import io.opentelemetry.api.trace.SpanKind;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents, FaultClientConnectionManager.ClientEvents {
@@ -29,13 +30,15 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         this.newFaultSessionEvent = newSessionEvent;
         this.dataStore = dataStore;
         this.faultToleranceTelemetry = new FaultToleranceTelemetry(telemetry, serviceName);
-        var clientCoordinator = clientCon.recoveryCoordinator();
-        var serverCoordinator = serverCon.recoveryCoordinator();
-        this.recoveryCoordinator = clientCoordinator != null ? clientCoordinator : serverCoordinator;
-        if (clientCoordinator != null && serverCoordinator != null && clientCoordinator != serverCoordinator)
+        var clientCoordinator = Objects.requireNonNull(clientCon.recoveryCoordinator(),
+                "FaultTolerantServer requires the client transport to have a recovery coordinator");
+        var serverCoordinator = Objects.requireNonNull(serverCon.recoveryCoordinator(),
+                "FaultTolerantServer requires the server transport to have a recovery coordinator");
+        if (clientCoordinator != serverCoordinator)
             throw new IllegalArgumentException("Mailbox client and server must share one recovery coordinator");
-        if (recoveryCoordinator != null) recoveryCoordinator.setReplayHandler(this::reconcileExecutions);
-        this.recoveryLaunches = new Semaphore(recoveryCoordinator == null ? 8 : recoveryCoordinator.config().maxConcurrentReplays());
+        this.recoveryCoordinator = clientCoordinator;
+        recoveryCoordinator.setReplayHandler(this::reconcileExecutions);
+        this.recoveryLaunches = new Semaphore(recoveryCoordinator.config().maxConcurrentReplays());
     }
 
     public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {
@@ -46,36 +49,14 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         return (FaultServerConnectionManager) this.connectionManager;
     }
 
-    @Override
-    public void listen(String address) throws Exception {
-        // Mailbox recovery starts after its listener is established. Other transports retain
-        // their existing startup replay behavior.
-        if (recoveryCoordinator == null) this.recoverStartedSessions();
-        super.listen(address);
-    }
-
-    protected void recoverStartedSessions() throws SQLException {
-        try {
-            reconcileExecutions();
-        } catch (SQLException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SQLException("failed to recover sessions", e);
-        }
-    }
-
     /**
      * Replays failed (but recoverable) choreography sessions from the database.
      */
     void reconcileExecutions() throws Exception {
-        int limit = recoveryCoordinator == null ? 128 : recoveryCoordinator.config().scanBatchSize();
-        var candidates = dataStore.recoverableSessions(limit);
-        // Compatibility with dynamic/mock implementations that predate this default API.
-        if (candidates == null) candidates = dataStore.recoverStartedSessions().stream()
-                .map(s -> new FaultDataStore.RecoverableSession(s, "started", null, null)).toList();
+        var candidates = dataStore.recoverableSessions(recoveryCoordinator.config().scanBatchSize());
         for (var candidate : candidates) {
-            if (candidate.waitingSender() != null && (recoveryCoordinator == null ||
-                    !recoveryCoordinator.mailbox().hasReceived(candidate.session().sessionID(), candidate.waitingSender(), candidate.waitingSequence())))
+            if (candidate.waitingSender() != null &&
+                    !recoveryCoordinator.mailbox().hasReceived(candidate.session().sessionID(), candidate.waitingSender(), candidate.waitingSequence()))
                 continue;
             launchRecovered(candidate.session());
         }
@@ -97,10 +78,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
         try {
-            if (recoveryCoordinator != null) {
-                for (var message : recoveryCoordinator.mailbox().receivedMessages(session.sessionID()))
-                    msgQueue.addMessage(message.session, message.message, message.sequenceNumber, telemetrySession);
-            }
+            for (var message : recoveryCoordinator.mailbox().receivedMessages(session.sessionID()))
+                msgQueue.addMessage(message.session, message.message, message.sequenceNumber, telemetrySession);
         } catch (Exception e) {
             cleanupKey(session);
             span.end();
@@ -123,7 +102,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     @Override
     public void close() throws Exception {
         super.close();
-        if (recoveryCoordinator != null) recoveryCoordinator.close();
+        recoveryCoordinator.close();
         dataStore.close();
     }
 
@@ -188,7 +167,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         synchronized (this) {
             active = knownSessionIDs.contains(msg.session.sessionID());
         }
-        if (recoveryCoordinator != null && !active) {
+        if (!active) {
             // Receipt is already durable. Let the common eligibility/claim/hydration path
             // decide whether this exact input unblocks the parked session.
             try {
@@ -210,7 +189,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
 
     @Override
     public void messageDeliveryConfirmed(Message message) {
-        if (recoveryCoordinator != null) recoveryCoordinator.wake();
+        recoveryCoordinator.wake();
     }
 
     @Override
@@ -224,7 +203,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         try {
             return super.startNewSession(telemetrySession);
         } finally {
-            if (recoveryCoordinator != null) recoveryCoordinator.wake();
+            recoveryCoordinator.wake();
         }
     }
 
