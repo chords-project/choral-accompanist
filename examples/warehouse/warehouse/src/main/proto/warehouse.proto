@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package dev.chords.warehouse.proto;
+package choral.accompanist.examples.warehouse.proto;
 
 service Warehouse {
   rpc CommitCheckItemInStockAndReserveForOrder (Product) returns (Empty) {}

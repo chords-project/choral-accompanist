@@ -1,4 +1,4 @@
-package dev.chords.warehouse.choreograhpy;
+package choral.accompanist.examples.warehouse.choreograhpy;
 
 import choral.accompanist.faulttolerance.Transaction;
 

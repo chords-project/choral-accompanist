@@ -52,7 +52,7 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation(project(":reactive-middleware"))
+    implementation(project(":accompanist"))
 
     // ## gRPC ##
     runtimeOnly("io.grpc:grpc-netty-shaded:${grpcVersion}")

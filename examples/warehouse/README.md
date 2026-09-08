@@ -2,14 +2,16 @@
 
 ## Run using docker compose
 
-To run this example, first build the docker images by running `gradle jibDockerBuild`.
-This will build and install the docker containers `accompanist-warehouse`, `accompanist-payment`, and
+To run this example, first build the docker images by running `./gradlew jibDockerBuild`.
+This will build and install the docker images `accompanist-warehouse`, `accompanist-payment`, and
 `accompanist-loyalty`.
 
 Now run the docker compose file by running `docker compose -f compose.accompanist.yml up`.
 This starts all containers with their databases and the pinned LGTM backend.
 Open Grafana at <http://localhost:3000>.
 OTLP is exposed at `http://localhost:4317` (gRPC) and `http://localhost:4318` (HTTP).
+
+To trigger the choreography, run `curl localhost:5000/orderFulfillment`.
 
 ## Fault-tolerance evaluation on Kubernetes
 

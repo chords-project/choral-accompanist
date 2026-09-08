@@ -16,7 +16,7 @@ plugins {
 jib {
     //from.image = "eclipse-temurin:23"
     to.image = "accompanist-warehouse"
-    container.mainClass = "dev.chords.warehouse.warehouse.Main"
+    container.mainClass = "choral.accompanist.examples.warehouse.warehouse.Main"
 }
 
 repositories {
@@ -72,7 +72,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "dev.chords.warehouse.warehouse.Main"
+    mainClass = "choral.accompanist.examples.warehouse.warehouse.Main"
 }
 
 tasks.named<Test>("test") {

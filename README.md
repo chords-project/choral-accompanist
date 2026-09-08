@@ -11,7 +11,7 @@ This repository contains three subprojects:
 
 ## Installation
 
-To build Accompanist:
+This project requires JDK 23 and Choral 0.1.12 ([Link to Install](https://www.choral-lang.org/install.html)). To build Accompanist:
 
 ```bash
 cd accompanist && ./gradlew build
