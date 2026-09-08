@@ -1,5 +1,6 @@
 .venv/
 pyrightconfig.json
+__pycache__
 
 .idea/
 *.iml

@@ -28,19 +28,23 @@ def url(service): return os.getenv("POSTGRES_%s_URL" % service.upper(), "postgre
 def rows(service):
     with psycopg.connect(url(service), connect_timeout=2, options="-c statement_timeout=2000") as db:
         with db.cursor() as cur:
+            # Session rows outlive mailbox cleanup, so they define the run IDs for which
+            # mailbox gauges must continue to report an explicit zero.
+            cur.execute("SELECT DISTINCT run_id::text FROM session_states")
+            run_ids = {run_id for run_id, in cur.fetchall()}
             cur.execute("""
                 SELECT ss.run_id::text, COUNT(*) FILTER (WHERE NOT o.acknowledged), COUNT(*)
                 FROM outbox o LEFT JOIN session_states ss ON o.session_id = ss.session_id
                 GROUP BY ss.run_id
             """)
-            outbox_rows = cur.fetchall()
+            outbox_rows = {run_id: (pending, total) for run_id, pending, total in cur.fetchall()}
             cur.execute("""
                 SELECT ss.run_id::text, COUNT(*) FROM inbox i
                 LEFT JOIN session_states ss ON i.session_id = ss.session_id GROUP BY ss.run_id
             """)
             inbox_rows = dict(cur.fetchall())
             cur.execute("SELECT run_id::text, session_state::text, COUNT(*) FROM session_states WHERE session_state IN ('started','restart') GROUP BY run_id, session_state")
-            return outbox_rows, inbox_rows, cur.fetchall()
+            return run_ids | outbox_rows.keys() | inbox_rows.keys(), outbox_rows, inbox_rows, cur.fetchall()
 
 SAMPLES.parent.mkdir(parents=True, exist_ok=True)
 new = not SAMPLES.exists()
@@ -52,10 +56,12 @@ with SAMPLES.open("a", newline="") as output:
         for service in SERVICES:
             attrs = {"database.owner": service}
             try:
-                outbox_rows, inbox_rows, state_rows = rows(service)
-                # These are authoritative point observations. Missing observations are never emitted as zero.
-                if not outbox_rows: outbox_rows = [(None, 0, 0)]
-                for run_id, p, t in outbox_rows:
+                run_ids, outbox_rows, inbox_rows, state_rows = rows(service)
+                # A successful database observation is authoritative. Keep reporting every
+                # known run after mailbox cleanup so Prometheus receives a terminal zero.
+                if not run_ids: run_ids = {None}
+                for run_id in run_ids:
+                    p, t = outbox_rows.get(run_id, (0, 0))
                     a = attrs | ({"benchmark.run_id": run_id} if run_id else {})
                     i = inbox_rows.get(run_id, 0)
                     latest["pending"].append((p, a)); latest["total"].append((t, a)); latest["inbox"].append((i, a))

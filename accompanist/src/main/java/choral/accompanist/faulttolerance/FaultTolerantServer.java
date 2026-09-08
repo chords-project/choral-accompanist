@@ -17,6 +17,8 @@ import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 public class FaultTolerantServer extends ReactiveServer implements FaultServerConnectionManager.ServerEvents, FaultClientConnectionManager.ClientEvents {
+    public static final Duration DEFAULT_RECEIVE_TIMEOUT = Duration.ofSeconds(10);
+
     protected final FaultSessionEvent newFaultSessionEvent;
     protected final FaultDataStore dataStore;
     protected final FaultToleranceTelemetry faultToleranceTelemetry;
@@ -24,7 +26,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     private final Semaphore recoveryLaunches;
 
     public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, OpenTelemetry telemetry, FaultSessionEvent newSessionEvent) {
-        super(serviceName, null, null, telemetry, Duration.ofMinutes(10), null);
+        super(serviceName, null, null, telemetry, receiveTimeout(System.getenv("ACCOMPANIST_RECEIVE_TIMEOUT_SECONDS")), null);
         this.connectionManager = serverCon.makeConnectionManager(serviceName, this, telemetry);
         this.clientConnectionsStore = new ClientConnectionsStore(clientCon.toNonFaultyFactory(this), telemetry);
         this.newFaultSessionEvent = newSessionEvent;
@@ -39,6 +41,16 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         this.recoveryCoordinator = clientCoordinator;
         recoveryCoordinator.setReplayHandler(this::reconcileExecutions);
         this.recoveryLaunches = new Semaphore(recoveryCoordinator.config().maxConcurrentReplays());
+    }
+
+    static Duration receiveTimeout(String configuredSeconds) {
+        if (configuredSeconds == null || configuredSeconds.isBlank()) return DEFAULT_RECEIVE_TIMEOUT;
+        try {
+            long seconds = Long.parseLong(configuredSeconds);
+            return seconds > 0 ? Duration.ofSeconds(seconds) : DEFAULT_RECEIVE_TIMEOUT;
+        } catch (NumberFormatException ignored) {
+            return DEFAULT_RECEIVE_TIMEOUT;
+        }
     }
 
     public FaultTolerantServer(FaultDataStore dataStore, FaultClientConnectionManager.Factory clientCon, FaultServerConnectionManager.Factory serverCon, String serviceName, FaultSessionEvent newSessionEvent) {

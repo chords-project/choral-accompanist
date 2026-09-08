@@ -37,7 +37,6 @@ public class MessageQueue<T> {
     public synchronized void addMessage(Session session, T message, int sequenceNumber, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
             queue.put(session, new SessionQueue(session.senderName(), telemetrySession));
-            queueSizeGauge.add(1);
         }
 
         queue.get(session).addMessage(message, sequenceNumber);
@@ -45,7 +44,6 @@ public class MessageQueue<T> {
 
     public synchronized Future<T> retrieveMessage(Session session, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
-            queueSizeGauge.add(-1);
             queue.put(session, new SessionQueue(session.senderName(), telemetrySession));
         }
 
@@ -53,11 +51,16 @@ public class MessageQueue<T> {
     }
 
     public synchronized void cleanupSession(Session session) {
-        this.queue.entrySet().removeIf(entry -> {
-            if (!entry.getKey().sessionID().equals(session.sessionID())) return false;
+        long discardedMessages = 0;
+        var iterator = this.queue.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            if (!entry.getKey().sessionID().equals(session.sessionID())) continue;
             entry.getValue().recv.values().forEach(future -> future.cancel(false));
-            return true;
-        });
+            discardedMessages += entry.getValue().send.size();
+            iterator.remove();
+        }
+        if (discardedMessages > 0) queueSizeGauge.add(-discardedMessages);
     }
 
     private class SessionQueue {
@@ -80,12 +83,15 @@ public class MessageQueue<T> {
         }
 
         public void addMessage(T message, int sequenceNumber) {
-            if (recv.containsKey(sequenceNumber)) {
+            var receiver = recv.remove(sequenceNumber);
+            if (receiver != null && receiver.complete(message)) {
                 telemetrySession.log("ReactiveServer message received: complete receive future");
-                recv.get(sequenceNumber).complete(message);
             } else {
                 telemetrySession.log("ReactiveServer message received: existing session, enqueue send");
-                send.put(sequenceNumber, message);
+                if (!send.containsKey(sequenceNumber)) {
+                    send.put(sequenceNumber, message);
+                    queueSizeGauge.add(1);
+                }
             }
         }
 
@@ -101,7 +107,8 @@ public class MessageQueue<T> {
 
             if (send.containsKey(nextReceiveSequenceNumber)) {
                 telemetrySession.log("ReactiveServer receive, message already arrived");
-                T result = send.get(nextReceiveSequenceNumber);
+                T result = send.remove(nextReceiveSequenceNumber);
+                queueSizeGauge.add(-1);
                 future.complete(result);
             } else {
                 telemetrySession.log("ReactiveServer receive, waiting for message to arrive");

@@ -18,7 +18,6 @@ def parse_timestamp(value):
 
 BUCKET_SECONDS = 10
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("bundle")
 args = parser.parse_args()
@@ -115,8 +114,8 @@ labels = [handle.get_label() for handle in handles]
 if unavailable and ready:
     handles.insert(0, plt.Rectangle((0, 0), 1, 1, color="0.55", alpha=0.18))
     labels.insert(0, "payment unavailable")
-left.legend(handles, labels, loc="upper left")
+fig.legend(handles, labels, loc="lower center", ncol=len(handles))
 left.set_title(f"Fault-tolerance benchmark ({run_id})")
 fig.autofmt_xdate()
-fig.tight_layout()
+fig.tight_layout(rect=(0, 0.1, 1, 1))
 fig.savefig(bundle / "fault-tolerance.png", dpi=200)
