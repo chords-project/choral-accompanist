@@ -10,17 +10,35 @@ import java.util.List;
  * Mainly used by {@link FaultTolerantServer}.
  */
 public interface FaultDataStore extends AutoCloseable {
-    /** @return true only when this call starts a new local attempt. */
+    /**
+     * @return true only when this call starts a new local attempt.
+     */
     boolean startSession(Session session) throws SQLException;
 
-    /** @return true only when the durable state changed to completed. */
+    /**
+     * @return true only when the durable state changed to completed.
+     */
     boolean completeSession(int sessionID) throws SQLException;
 
-    /** @return true only when the durable state changed to failed. */
+    /**
+     * @return true only when the durable state changed to failed.
+     */
     boolean failSession(Session session) throws SQLException;
 
-    /** @return true only when the durable state changed to restart. */
+    /**
+     * @return true only when the durable state changed to restart.
+     */
     boolean restartSession(int sessionID) throws SQLException;
+
+    /**
+     * Marks the session for restart in the durable store.
+     * if session failure was caused by a receive timeout, the `waitingSender` and `waitingSequence` marks
+     * which sender and message sequence number to wait for before retrying.
+     * If null, retry will be attempted periodically.
+     */
+    default boolean restartSession(int sessionID, String waitingSender, Integer waitingSequence) throws SQLException {
+        return restartSession(sessionID);
+    }
 
     boolean hasSessionCompleted(int sessionID) throws SQLException;
 
@@ -29,4 +47,12 @@ public interface FaultDataStore extends AutoCloseable {
     void compensateTransactions(int sessionID) throws SQLException;
 
     List<Session> recoverStartedSessions() throws SQLException;
+
+    default List<RecoverableSession> recoverableSessions(int limit) throws SQLException {
+        return recoverStartedSessions().stream().limit(limit)
+                .map(s -> new RecoverableSession(s, "started", null, null)).toList();
+    }
+
+    record RecoverableSession(Session session, String state, String waitingSender, Integer waitingSequence) {
+    }
 }

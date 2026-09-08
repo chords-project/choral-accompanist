@@ -64,7 +64,11 @@ public class SQLDataStore implements FaultDataStore {
                       completed_at TIMESTAMPTZ,
                       failed_at TIMESTAMPTZ,
                       attempt_count INTEGER NOT NULL DEFAULT 0,
-                      restart_count INTEGER NOT NULL DEFAULT 0
+                      restart_count INTEGER NOT NULL DEFAULT 0,
+                      waiting_sender VARCHAR(255),
+                      waiting_sequence INTEGER,
+                      CONSTRAINT session_waiting_pair CHECK
+                        ((waiting_sender IS NULL) = (waiting_sequence IS NULL))
                     );
                     """);
 
@@ -98,6 +102,7 @@ public class SQLDataStore implements FaultDataStore {
                         INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count)
                         VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1)
                         ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
+                            waiting_sender = NULL, waiting_sequence = NULL,
                             attempt_count = session_states.attempt_count + 1
                         WHERE session_states.choreography = EXCLUDED.choreography
                           AND (session_states.session_state = 'restart'
@@ -121,7 +126,7 @@ public class SQLDataStore implements FaultDataStore {
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed', completed_at = NOW() WHERE session_id = ? AND session_state = 'started';")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed', completed_at = NOW(), waiting_sender = NULL, waiting_sequence = NULL WHERE session_id = ? AND session_state = 'started';")
         ) {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
@@ -154,13 +159,20 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean restartSession(int sessionID) throws SQLException {
+        return restartSession(sessionID, null, null);
+    }
+
+    @Override
+    public boolean restartSession(int sessionID, String waitingSender, Integer waitingSequence) throws SQLException {
         logger.info("Marking session to be restarted in database: {}", sessionID);
 
         try (
                 var con = db.getConnection();
-                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', restart_count = restart_count + 1 WHERE session_id = ? AND session_state = 'started';")
+                PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', waiting_sender = ?, waiting_sequence = ?, restart_count = restart_count + 1 WHERE session_id = ? AND session_state = 'started';")
         ) {
-            stmt.setInt(1, sessionID);
+            stmt.setString(1, waitingSender);
+            if (waitingSequence == null) stmt.setNull(2, java.sql.Types.INTEGER); else stmt.setInt(2, waitingSequence);
+            stmt.setInt(3, sessionID);
             int count = stmt.executeUpdate();
             if (count == 0) {
                 logger.warn("- Failed to mark session to restart in database: {}", sessionID);
@@ -293,6 +305,26 @@ public class SQLDataStore implements FaultDataStore {
         logger.info("Found {} pending sessions to restart", result.size());
 
         return result;
+    }
+
+    @Override
+    public List<RecoverableSession> recoverableSessions(int limit) throws SQLException {
+        var sessions = new ArrayList<RecoverableSession>();
+        try (var con = db.getConnection(); var stmt = con.prepareStatement("""
+                SELECT session_id, choreography, run_id, session_state::text, waiting_sender, waiting_sequence
+                FROM session_states WHERE session_state IN ('started','restart') ORDER BY session_id LIMIT ?
+                """)) {
+            stmt.setInt(1, limit);
+            try (var rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Integer seq = (Integer) rs.getObject("waiting_sequence");
+                    sessions.add(new RecoverableSession(
+                            new Session(rs.getString("choreography"), "", rs.getInt("session_id"), rs.getString("run_id")),
+                            rs.getString("session_state"), rs.getString("waiting_sender"), seq));
+                }
+            }
+        }
+        return sessions;
     }
 
     @Override

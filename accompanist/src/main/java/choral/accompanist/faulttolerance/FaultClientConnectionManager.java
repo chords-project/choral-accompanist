@@ -13,6 +13,8 @@ public interface FaultClientConnectionManager extends ClientConnectionManager {
         default ClientConnectionManager.Factory toNonFaultyFactory(ClientEvents events) {
             return (String address, OpenTelemetry telemetry) -> makeConnectionManager(address, events, telemetry);
         }
+
+        default MailboxRecoveryCoordinator recoveryCoordinator() { return null; }
     }
 
     interface ClientEvents {

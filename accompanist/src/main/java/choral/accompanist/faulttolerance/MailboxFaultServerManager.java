@@ -29,6 +29,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
     private Server server;
     private final Logger logger;
     private final OpenTelemetry telemetry;
+    private final MailboxRecoveryCoordinator coordinator;
 
     public MailboxFaultServerManager(SQLMailbox mailbox, String serviceName, FaultServerConnectionManager.ServerEvents serverEvents, OpenTelemetry telemetry, String[] broadcastClients) {
         this.broadcastClients = broadcastClients;
@@ -36,18 +37,22 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
         this.serverEvents = serverEvents;
         this.logger = new Logger(telemetry, MailboxFaultServerManager.class.getName());
         this.telemetry = telemetry;
+        this.coordinator = MailboxRecoveryCoordinator.shared(mailbox);
     }
 
     public static FaultServerConnectionManager.Factory factory(DataSource db, String[] broadcastClients) throws SQLException {
         SQLMailbox mailbox = new SQLMailbox(db);
-        return (String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) ->
-                new MailboxFaultServerManager(mailbox, serviceName, events, telemetry, broadcastClients);
+        var coordinator = MailboxRecoveryCoordinator.shared(mailbox);
+        return new FaultServerConnectionManager.Factory() {
+            @Override public FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) {
+                return new MailboxFaultServerManager(mailbox, serviceName, events, telemetry, broadcastClients);
+            }
+            @Override public MailboxRecoveryCoordinator recoveryCoordinator() { return coordinator; }
+        };
     }
 
     @Override
     public void listen(String address) throws Exception {
-        this.recoverReceivedMessages();
-
         logger.info("Starting gRPC server on " + address);
 
         URI uri = new URI(null, address, null, null, null).parseServerAuthority();
@@ -60,6 +65,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
                 .addService(health.getHealthService());
 
         server = serverBuilder.build().start();
+        coordinator.start();
 
         try {
             server.awaitTermination();
@@ -134,6 +140,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
                 } else {
                     mailbox.didReceiveMessage(message);
                     serverEvents.messageReceived(message);
+                    coordinator.wake();
                 }
             } catch (Exception e) {
                 responseObserver.onError(e);

@@ -112,6 +112,37 @@ class SQLRecoveryTest {
         assertEquals(2, mailbox.pendingOutboxCount());
     }
 
+    @Test void outputPreparationReturnsCanonicalPersistedPayload() throws Exception {
+        var first = message(10, "sender");
+        var changed = new Message(first.session, "different replay payload", 1);
+        assertEquals(first.message, mailbox.prepareOutput(first, "peer").message().message);
+        assertEquals(first.message, mailbox.prepareOutput(changed, "peer").message().message);
+        mailbox.didDeliverMessage(first, "peer");
+        assertTrue(mailbox.prepareOutput(changed, "peer").acknowledged());
+    }
+
+    @Test void receiveDependencyAndCleanupRulesAreDurable() throws Exception {
+        var input = message(11, "sender");
+        mailbox.didReceiveMessage(input);
+        assertTrue(store.startSession(input.session));
+        assertTrue(store.restartSession(11, "sender", 2));
+        var waiting = store.recoverableSessions(10).getFirst();
+        assertEquals("sender", waiting.waitingSender());
+        assertEquals(2, waiting.waitingSequence());
+        assertFalse(mailbox.hasReceived(11, "sender", 2));
+        assertTrue(store.startSession(input.session));
+        assertNull(store.recoverableSessions(10).getFirst().waitingSender());
+        assertFalse(mailbox.aboutToSendMessage(input, "peer"));
+        assertTrue(store.completeSession(11));
+        mailbox.cleanupRegularMessages(100);
+        assertEquals(0, mailbox.inboxCount());
+        assertEquals(1, mailbox.pendingOutboxCount(), "completed sessions retain pending output");
+        mailbox.didDeliverMessage(input, "peer");
+        mailbox.cleanupRegularMessages(100);
+        assertEquals(0, mailbox.totalOutboxCount());
+        assertEquals(1, count("SELECT COUNT(*) FROM session_states WHERE session_id=11 AND session_state='completed'"));
+    }
+
     @Test void receiptSurvivesCrashBeforeExecutionStarts() throws Exception {
         var input = message(2, "sender");
         mailbox.didReceiveMessage(input);

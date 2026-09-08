@@ -11,6 +11,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import choral.accompanist.faulttolerance.ReceiveTimeoutException;
+
 public class MessageQueue<T> {
     /**
      * Maps a sessionID and a sender name to a queue of messages.
@@ -34,7 +36,7 @@ public class MessageQueue<T> {
 
     public synchronized void addMessage(Session session, T message, int sequenceNumber, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
-            queue.put(session, new SessionQueue(telemetrySession));
+            queue.put(session, new SessionQueue(session.senderName(), telemetrySession));
             queueSizeGauge.add(1);
         }
 
@@ -44,7 +46,7 @@ public class MessageQueue<T> {
     public synchronized Future<T> retrieveMessage(Session session, TelemetrySession telemetrySession) {
         if (!queue.containsKey(session)) {
             queueSizeGauge.add(-1);
-            queue.put(session, new SessionQueue(telemetrySession));
+            queue.put(session, new SessionQueue(session.senderName(), telemetrySession));
         }
 
         return queue.get(session).retrieveNextMessage();
@@ -70,8 +72,10 @@ public class MessageQueue<T> {
         private final HashMap<Integer, CompletableFuture<T>> recv = new HashMap<>();
         private int nextReceiveSequenceNumber = 1;
         private final TelemetrySession telemetrySession;
+        private final String sender;
 
-        private SessionQueue(TelemetrySession telemetrySession) {
+        private SessionQueue(String sender, TelemetrySession telemetrySession) {
+            this.sender = sender;
             this.telemetrySession = telemetrySession;
         }
 
@@ -86,8 +90,14 @@ public class MessageQueue<T> {
         }
 
         public Future<T> retrieveNextMessage() {
+            int sequence = nextReceiveSequenceNumber;
             CompletableFuture<T> future = new CompletableFuture<T>()
-                    .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS);
+                    .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+                    .exceptionally(error -> {
+                        if (error instanceof java.util.concurrent.TimeoutException)
+                            throw new ReceiveTimeoutException(sender, sequence, error);
+                        throw new java.util.concurrent.CompletionException(error);
+                    });
 
             if (send.containsKey(nextReceiveSequenceNumber)) {
                 telemetrySession.log("ReactiveServer receive, message already arrived");

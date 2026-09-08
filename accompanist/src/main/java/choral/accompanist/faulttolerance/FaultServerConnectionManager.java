@@ -19,6 +19,7 @@ public interface FaultServerConnectionManager extends ServerConnectionManager {
 
     interface Factory {
         FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry);
+        default MailboxRecoveryCoordinator recoveryCoordinator() { return null; }
     }
 
     interface ServerEvents extends ServerConnectionManager.ServerEvents {
