@@ -11,8 +11,10 @@ import io.opentelemetry.api.metrics.LongCounter;
 public final class FaultToleranceTelemetry {
     private final String service;
     private final LongCounter attempts, completions, failures, restartRequests, sendAttempts, sendFailures, confirmations;
+    private final OpenTelemetry telemetry;
 
     public FaultToleranceTelemetry(OpenTelemetry telemetry, String service) {
+        this.telemetry = telemetry;
         this.service = service.toLowerCase();
         var meter = telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         attempts = meter.counterBuilder("accompanist.choreography.attempts").setUnit("{attempt}").build();
@@ -22,6 +24,10 @@ public final class FaultToleranceTelemetry {
         sendAttempts = meter.counterBuilder("accompanist.message.send_attempts").setUnit("{send}").build();
         sendFailures = meter.counterBuilder("accompanist.message.send_failures").setUnit("{failure}").build();
         confirmations = meter.counterBuilder("accompanist.message.delivery_confirmations").setUnit("{confirmation}").build();
+    }
+
+    public OpenTelemetry getTelemetry() {
+        return telemetry;
     }
 
     private Attributes attrs(Session session, String extraKey, String extraValue) {

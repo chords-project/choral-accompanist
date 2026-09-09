@@ -2,6 +2,7 @@ package choral.accompanist.tracing;
 
 import choral.accompanist.Session;
 import choral.accompanist.connection.Message;
+import choral_reactive.ChannelOuterClass;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.logs.Logger;
@@ -12,8 +13,11 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapGetter;
 
-public class TelemetrySession {
+import java.util.Map;
+
+public class TelemetrySession implements AutoCloseable {
 
     public enum AttemptKind {
         NEW("new"), RECOVERY("recovery");
@@ -39,6 +43,7 @@ public class TelemetrySession {
     private final boolean rootSpan;
 
     private Span choreographySpan = null;
+    private boolean closed;
 
     private Context choreographyContext;
     private SpanContext senderLinkContext;
@@ -107,6 +112,34 @@ public class TelemetrySession {
     }
 
     /**
+     * Creates a session from the transport envelope without deserializing its payload.
+     * Used to correlate failures that happen while decoding the payload itself.
+     */
+    public static TelemetrySession fromGrpcEnvelope(OpenTelemetry telemetry, ChannelOuterClass.Message message) {
+        var session = new Session(
+                message.getChoreography(), message.getSender(), message.getSessionId(),
+                message.getBenchmarkRunId().isBlank() ? null : message.getBenchmarkRunId());
+        Context parentContext = telemetry.getPropagators().getTextMapPropagator().extract(
+                Context.root(), message.getHeadersMap(), MapTextMapGetter.INSTANCE);
+        var senderContext = SpanContext.getInvalid();
+        try {
+            senderContext = new Message.SerializedSpanContext(message.getSpanContext()).toSpanContext();
+        } catch (RuntimeException ignored) {
+            // A malformed sender context must not hide the payload decoding failure.
+        }
+
+        var spanBuilder = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .spanBuilder("incoming mailbox message")
+                .setSpanKind(SpanKind.SERVER)
+                .setAllAttributes(commonAttributes(session));
+        boolean hasParent = Span.fromContext(parentContext).getSpanContext().isValid();
+        if (hasParent) spanBuilder.setParent(parentContext);
+        else spanBuilder.setNoParent();
+        if (senderContext.isValid()) spanBuilder.addLink(senderContext);
+        return new TelemetrySession(telemetry, session, spanBuilder.startSpan(), AttemptKind.NEW, !hasParent);
+    }
+
+    /**
      * Trace/log attributes; session id is intentionally excluded from metric attributes.
      */
     public static Attributes commonAttributes(Session session) {
@@ -116,9 +149,10 @@ public class TelemetrySession {
         return builder.build();
     }
 
-    public Span makeChoreographySpan() {
+    public synchronized Span getChoreographySpan() {
         if (this.choreographySpan != null)
             return this.choreographySpan;
+        if (closed) return Span.getInvalid();
 
         this.choreographySpan = tracer.spanBuilder("choreography session")
                 .setParent(choreographyContext)
@@ -141,10 +175,8 @@ public class TelemetrySession {
     public void log(Severity severity, String message, Attributes attributes) {
         Attributes extraAttributes = Attributes.builder().put("session", session.toString()).putAll(commonAttributes(session)).putAll(attributes).build();
 
-        System.out.println(message + ": " + attributesToString(extraAttributes));
-        //choreographySpan.addEvent(message, extraAttributes);
-
         logger.logRecordBuilder()
+                .setContext(Context.root().with(getChoreographySpan()))
                 .setAllAttributes(extraAttributes)
                 .setBody(message)
                 .setSeverity(severity)
@@ -152,12 +184,13 @@ public class TelemetrySession {
     }
 
     public void recordException(String message, Exception e, boolean error, Attributes attributes) {
+        Span span = getChoreographySpan();
         Attributes extraAttributes = Attributes.builder()
                 .put("session", session.toString()).put("message", message).putAll(attributes).build();
 
         if (error)
-            choreographySpan.setAttribute("error", true);
-        choreographySpan.recordException(e, extraAttributes);
+            span.setAttribute("error", true);
+        span.recordException(e, extraAttributes);
 
         log(
                 Severity.ERROR,
@@ -173,32 +206,49 @@ public class TelemetrySession {
     }
 
     public void injectSessionContext(Message msg) {
-        Context outgoingContext = Context.root().with(choreographySpan);
+        Span span = getChoreographySpan();
+        Context outgoingContext = Context.root().with(span);
         telemetry.getPropagators()
                 .getTextMapPropagator()
                 .inject(outgoingContext, msg, new HeaderTextMapSetter());
 
-        msg.senderSpanContext = new Message.SerializedSpanContext(choreographySpan.getSpanContext());
+        msg.senderSpanContext = new Message.SerializedSpanContext(span.getSpanContext());
     }
 
     public SpanContext spanContext() {
-        return choreographySpan.getSpanContext();
+        return getChoreographySpan().getSpanContext();
     }
 
     public AttemptKind attemptKind() {
         return attemptKind;
     }
 
-    /** Whether the choreography span is the root of its distributed trace. */
+    /**
+     * Whether the choreography span is the root of its distributed trace.
+     */
     public boolean isRootSpan() {
         return rootSpan;
     }
 
-    private String attributesToString(Attributes attributes) {
-        return String.join(", ",
-                attributes.asMap().entrySet()
-                        .stream()
-                        .map(entry -> entry.getKey().toString() + "=" + entry.getValue().toString())
-                        .toList());
+    /** Ends this session's choreography span, if it has been created. */
+    @Override
+    public synchronized void close() {
+        if (closed) return;
+        closed = true;
+        if (choreographySpan != null) choreographySpan.end();
+    }
+
+    private enum MapTextMapGetter implements TextMapGetter<Map<String, String>> {
+        INSTANCE;
+
+        @Override
+        public Iterable<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
+        }
+
+        @Override
+        public String get(Map<String, String> carrier, String key) {
+            return carrier.get(key);
+        }
     }
 }

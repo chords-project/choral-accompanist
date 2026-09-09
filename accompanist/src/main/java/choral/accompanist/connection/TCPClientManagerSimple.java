@@ -69,8 +69,6 @@ public class TCPClientManagerSimple implements ClientConnectionManager {
                     .putInt(objectBuffer.size())
                     .put(objectBuffer.toByteArray());
 
-            logger.info("Sending object of size: " + objectBuffer.size());
-
             this.connection.getOutputStream().write(sendBuffer.array());
         }
 

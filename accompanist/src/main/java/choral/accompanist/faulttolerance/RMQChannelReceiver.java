@@ -124,8 +124,12 @@ public class RMQChannelReceiver implements FaultServerConnectionManager {
             int sessionID = Integer.parseInt(body[0]);
             var choreography = body[1];
             var ack = new MessageAck(message.getEnvelope().getDeliveryTag(), sessionID);
-            try {
-                events.sessionFailed(new Session(choreography, "UNKNOWN_SENDER", sessionID));
+            try (var telemetrySession = new TelemetrySession(
+                    new Session(choreography, "UNKNOWN_SENDER", sessionID))) {
+                var span = telemetrySession.getChoreographySpan();
+                try (var ignored = span.makeCurrent()) {
+                    events.sessionFailed(telemetrySession);
+                }
             } catch (Exception e) {
                 ack.nack();
                 throw new RuntimeException(e);

@@ -244,7 +244,6 @@ public class TCPServerManagerNio implements ServerConnectionManager {
 
                     try {
                         Message message = (Message) objectInputStream.readObject();
-                        logger.debug("TCPServerManagerNio received message: " + message.toString());
                         serverEvents.messageReceived(message);
                     } catch (ClassNotFoundException e) {
                         connectionSpan.setAttribute("error", true);

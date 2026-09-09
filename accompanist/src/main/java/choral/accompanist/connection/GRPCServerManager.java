@@ -70,8 +70,6 @@ public class GRPCServerManager implements ServerConnectionManager {
 
         @Override
         public void sendMessage(Message request, StreamObserver<Empty> responseObserver) {
-            logger.debug("Received message on gRPC server");
-
             try {
                 var message = new choral.accompanist.connection.Message(request);
                 serverEvents.messageReceived(message);

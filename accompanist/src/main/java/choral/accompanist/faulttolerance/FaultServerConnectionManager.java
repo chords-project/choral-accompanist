@@ -29,6 +29,6 @@ public interface FaultServerConnectionManager extends ServerConnectionManager {
     }
 
     interface ServerEvents extends ServerConnectionManager.ServerEvents {
-        void sessionFailed(Session sessionID) throws Exception;
+        void sessionFailed(TelemetrySession telemetrySession) throws Exception;
     }
 }

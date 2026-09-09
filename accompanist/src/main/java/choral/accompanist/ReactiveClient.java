@@ -54,6 +54,7 @@ public class ReactiveClient implements ReactiveSender<Serializable>, AutoCloseab
             telemetrySession.injectSessionContext(message);
 
             connection.sendMessage(message);
+            telemetrySession.log("Sent message", attributes);
 
             sendCounter.add(1, Attributes.builder().put("success", true).build());
         } catch (Exception e) {

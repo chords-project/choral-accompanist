@@ -67,9 +67,6 @@ public class TCPServerManagerSimple implements ServerConnectionManager {
                         try {
                             Message msg = (Message) stream.readObject();
 
-                            logger.debug("TCPReactiveServer received message: address="
-                                    + connection.getInetAddress() + " message=" + msg.toString());
-
                             events.messageReceived(msg);
                         } catch (StreamCorruptedException | ClassNotFoundException e) {
                             logger.exception("TCPReactiveServer failed to deserialize class: address="

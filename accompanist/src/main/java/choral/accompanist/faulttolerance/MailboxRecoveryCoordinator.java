@@ -2,11 +2,21 @@ package choral.accompanist.faulttolerance;
 
 import choral.accompanist.connection.Message;
 import choral.accompanist.tracing.FaultToleranceTelemetry;
+import choral.accompanist.tracing.AccompanistTelemetry;
+import choral.accompanist.tracing.HeaderTextMapGetter;
+import choral.accompanist.tracing.TelemetrySession;
 import choral_reactive.ChannelGrpc;
 import io.grpc.StatusRuntimeException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 
 import javax.sql.DataSource;
 import java.net.InetSocketAddress;
@@ -77,9 +87,13 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         return mailbox;
     }
 
-    /** Configure the process-local metrics used by initial deliveries and background retries. */
+    /**
+     * Configure the process-local metrics used by initial deliveries and background retries.
+     */
     public synchronized void configureTelemetry(OpenTelemetry openTelemetry, String serviceName) {
-        if (telemetry == null) telemetry = new FaultToleranceTelemetry(openTelemetry, serviceName);
+        if (telemetry == null) {
+            telemetry = new FaultToleranceTelemetry(openTelemetry, serviceName);
+        }
     }
 
     public void start() {
@@ -150,26 +164,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         try {
             workers.submit(() -> {
                 try {
-                    if (telemetry != null)
-                        telemetry.sendAttempt(output.message().session, output.destination());
-                    ManagedChannel channel = channels.computeIfAbsent(output.destination(), this::newChannel);
-                    var call = ChannelGrpc.newFutureStub(channel)
-                            .withDeadlineAfter(config.deadline().toMillis(), TimeUnit.MILLISECONDS)
-                            .sendMessage(output.message().toGrpcMessage());
-                    call.get();
-                    // Receipt is only announced after the ACK is durable locally.
-                    mailbox.didDeliverMessage(output.message(), output.destination());
-                    destinations.get(output.destination()).success();
-                    if (telemetry != null) telemetry.confirmation(output.message().session);
-                    if (events != null) events.messageDeliveryConfirmed(output.message());
-                    wake();
-                } catch (Exception error) {
-                    if (telemetry != null)
-                        telemetry.sendFailure(output.message().session, failureCategory(error));
-                    // A local ACK-persistence failure is not evidence that the peer is down.
-                    if (!(rootCause(error) instanceof java.sql.SQLException))
-                        destinations.get(output.destination()).failure(config);
-                    if (events != null) events.messageDeliveryFailed(output.message());
+                    dispatchMessage(output, events);
                 } finally {
                     inFlight.remove(output.key(), reservation);
                     deliveries.release();
@@ -180,6 +175,74 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             deliveries.release();
             throw rejected;
         }
+    }
+
+    /**
+     * Performs and traces one physical delivery attempt, including acknowledgement persistence.
+     */
+    private void dispatchMessage(SQLMailbox.PreparedOutput output,
+                                 FaultClientConnectionManager.ClientEvents events) {
+        FaultToleranceTelemetry configuredTelemetry = telemetry;
+        Span span = createDeliveryAttemptSpan(configuredTelemetry, output);
+
+        try (Scope ignored = span.makeCurrent()) {
+            try {
+                if (configuredTelemetry != null)
+                    configuredTelemetry.sendAttempt(output.message().session, output.destination());
+                ManagedChannel channel = channels.computeIfAbsent(output.destination(), this::newChannel);
+                var call = ChannelGrpc.newFutureStub(channel)
+                        .withDeadlineAfter(config.deadline().toMillis(), TimeUnit.MILLISECONDS)
+                        .sendMessage(output.message().toGrpcMessage());
+                call.get();
+                // Receipt is only announced after the ACK is durable locally.
+                mailbox.didDeliverMessage(output.message(), output.destination());
+                destinations.get(output.destination()).success();
+                if (configuredTelemetry != null) configuredTelemetry.confirmation(output.message().session);
+                if (events != null) events.messageDeliveryConfirmed(output.message());
+                wake();
+            } catch (Exception error) {
+                span.setStatus(StatusCode.ERROR, "Failed to deliver durable message");
+                span.recordException(error, deliveryAttributes(output));
+                if (configuredTelemetry != null)
+                    configuredTelemetry.sendFailure(output.message().session, failureCategory(error));
+
+                // A local ACK-persistence failure is not evidence that the peer is down.
+                if (!(rootCause(error) instanceof java.sql.SQLException))
+                    destinations.get(output.destination()).failure(config);
+                if (events != null) events.messageDeliveryFailed(output.message());
+            }
+        } finally {
+            span.end();
+        }
+    }
+
+    private Span createDeliveryAttemptSpan(FaultToleranceTelemetry configuredTelemetry,
+                                           SQLMailbox.PreparedOutput output) {
+        if (configuredTelemetry == null) return Span.getInvalid();
+
+        Message message = output.message();
+        OpenTelemetry openTelemetry = configuredTelemetry.getTelemetry();
+        Context parent = openTelemetry.getPropagators().getTextMapPropagator()
+                .extract(Context.root(), message, new HeaderTextMapGetter());
+        var builder = openTelemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                .spanBuilder("mailbox message delivery")
+                .setParent(parent)
+                .setSpanKind(SpanKind.PRODUCER)
+                .setAllAttributes(TelemetrySession.commonAttributes(message.session))
+                .setAllAttributes(deliveryAttributes(output));
+
+        SpanContext senderContext = message.senderSpanContext == null
+                ? SpanContext.getInvalid()
+                : message.senderSpanContext.toSpanContext();
+        if (senderContext.isValid()) builder.addLink(senderContext);
+        return builder.startSpan();
+    }
+
+    private static Attributes deliveryAttributes(SQLMailbox.PreparedOutput output) {
+        return Attributes.builder()
+                .put("messaging.destination", output.destination())
+                .put("messaging.sequence_number", output.message().sequenceNumber)
+                .build();
     }
 
     private static Throwable rootCause(Throwable error) {

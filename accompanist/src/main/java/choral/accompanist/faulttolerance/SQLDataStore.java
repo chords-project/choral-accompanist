@@ -113,8 +113,6 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean startSession(Session session, SpanContext traceContext) throws SQLException {
-        logger.info("Marking session as started in database: {}", session);
-
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
@@ -147,25 +145,18 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean completeSession(int sessionID) throws SQLException {
-        logger.info("Marking session as completed in database: {}", sessionID);
-
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'completed', completed_at = NOW(), waiting_sender = NULL, waiting_sequence = NULL WHERE session_id = ? AND session_state = 'started';")
         ) {
             stmt.setInt(1, sessionID);
             int count = stmt.executeUpdate();
-            if (count == 0) {
-                logger.warn("- Failed to complete session in database: " + sessionID);
-            }
             return count == 1;
         }
     }
 
     @Override
     public boolean failSession(Session session) throws SQLException {
-        logger.warn("Marking session as failed in database: " + session.sessionID());
-
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
@@ -189,8 +180,6 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean restartSession(int sessionID, String waitingSender, Integer waitingSequence) throws SQLException {
-        logger.info("Marking session to be restarted in database: {}", sessionID);
-
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("UPDATE session_states SET session_state = 'restart', waiting_sender = ?, waiting_sequence = ?, restart_count = restart_count + 1 WHERE session_id = ? AND session_state = 'started';")
@@ -199,17 +188,12 @@ public class SQLDataStore implements FaultDataStore {
             if (waitingSequence == null) stmt.setNull(2, java.sql.Types.INTEGER); else stmt.setInt(2, waitingSequence);
             stmt.setInt(3, sessionID);
             int count = stmt.executeUpdate();
-            if (count == 0) {
-                logger.warn("- Failed to mark session to restart in database: {}", sessionID);
-            }
             return count == 1;
         }
     }
 
     @Override
     public boolean hasSessionCompleted(int sessionID) throws SQLException {
-        logger.info("Lookup session in database: {}", sessionID);
-
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("SELECT * FROM session_states WHERE session_id = ? AND session_state IN ('completed', 'failed');")
@@ -240,7 +224,6 @@ public class SQLDataStore implements FaultDataStore {
 
                 try (var resultSet = stmt.executeQuery()) {
                     if (!resultSet.next()) {
-                        logger.info("COMMIT IGNORED, transaction already recorded: {}", tx.transactionName());
                         con.rollback();
                         return true; // duplicate commit is not a failure
                     }
@@ -249,7 +232,6 @@ public class SQLDataStore implements FaultDataStore {
 
             boolean success = tx.commit(sessionID, new SQLTransaction(con));
             if (!success) {
-                logger.warn("COMMIT FAILED, transaction returned false");
                 con.rollback();
                 return false;
             }
@@ -261,8 +243,6 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public void compensateTransactions(int sessionID) throws SQLException {
-        logger.info("Compensating transactions for session: {}", sessionID);
-
         try (var con = db.getConnection()) {
             con.setAutoCommit(false);
 
@@ -291,7 +271,6 @@ public class SQLDataStore implements FaultDataStore {
                     throw new SQLException("unknown transaction in transaction_states: " + txName);
                 }
 
-                logger.info("- Compensating transaction: {}", txName);
                 tx.compensate(sessionID, new SQLTransaction(con));
 
                 try (var stmt = con.prepareStatement("""

@@ -181,7 +181,7 @@ public class ReactiveServer
      */
     public Object invokeManualSession(TelemetrySession telemetrySession) throws Exception {
         var session = telemetrySession.session;
-        logger.debug("Registering session " + session.sessionID);
+        telemetrySession.log(Severity.DEBUG, "Registering session", Attributes.empty());
 
         synchronized (this) {
             if (!knownSessionIDs.add(session.sessionID())) {
@@ -231,23 +231,23 @@ public class ReactiveServer
             // Handle new session in another thread
             Thread.ofVirtual()
                     .name("NEW_SESSION_HANDLER_" + msg.session)
-                    .start(() -> {
-                        try {
-                            startNewSession(telemetrySession);
-                        } catch (Exception e) {
-                            telemetrySession.recordException(
-                                    "ReactiveServer session exception",
-                                    e,
-                                    true,
-                                    Attributes.builder().put("service", serviceName)
-                                            .put("session", msg.session.toString()).build());
-                        }
-                    });
+                    .start(() -> runSessionAsync(telemetrySession));
+        }
+    }
+
+    /**
+     * Runs a session whose exception cannot be returned to a caller.
+     */
+    protected void runSessionAsync(TelemetrySession telemetrySession) {
+        try {
+            startNewSession(telemetrySession);
+        } catch (Exception alreadyLogged) {
+            // startNewSession records the exception before rethrowing it.
         }
     }
 
     protected Object startNewSession(TelemetrySession telemetrySession) throws Exception {
-        final Span span = telemetrySession.makeChoreographySpan();
+        final Span span = telemetrySession.getChoreographySpan();
 
         Long startTime = System.nanoTime();
         var session = telemetrySession.session;
@@ -270,6 +270,11 @@ public class ReactiveServer
             } catch (Exception recoveryError) {
                 error.addSuppressed(recoveryError);
             }
+            telemetrySession.recordException(
+                    "Choreography session execution failed",
+                    error,
+                    true,
+                    Attributes.builder().put("service", serviceName).build());
             throw error;
         } finally {
             double durationMilliseconds = (System.nanoTime() - startTime) / 1_000_000.0;
@@ -278,8 +283,8 @@ public class ReactiveServer
                 sessionDurationHistogram.record(durationMilliseconds, metricAttributes, Context.root().with(span));
             else
                 sessionDurationHistogram.record(durationMilliseconds, metricAttributes);
-            span.end();
-            cleanupKey(session);
+            cleanupKey(telemetrySession);
+            telemetrySession.close();
         }
 
         return result;
@@ -302,12 +307,11 @@ public class ReactiveServer
         return result;
     }
 
-    protected synchronized void cleanupKey(Session session) {
-        logger.debug("Cleaning up session " + session.sessionID);
-
-        this.msgQueue.cleanupSession(session);
-        this.telemetrySessionMap.remove(session.sessionID());
-        this.knownSessionIDs.remove(session.sessionID());
+    protected synchronized void cleanupKey(TelemetrySession telemetrySession) {
+        telemetrySession.log(Severity.DEBUG, "Cleaning up session", Attributes.empty());
+        this.msgQueue.cleanupSession(telemetrySession.session);
+        this.telemetrySessionMap.remove(telemetrySession.session.sessionID());
+        this.knownSessionIDs.remove(telemetrySession.session.sessionID());
     }
 
     @Override

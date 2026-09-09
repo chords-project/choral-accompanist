@@ -76,7 +76,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         }
     }
 
-    private void launchReconciled(FaultDataStore.RecoverableSession candidate) throws Exception {
+    private void launchReconciled(FaultDataStore.RecoverableSession candidate) {
         Session session = candidate.session();
         if (!recoveryLaunches.tryAcquire()) return;
         Span span;
@@ -104,18 +104,16 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             for (var message : recoveryCoordinator.mailbox().receivedMessages(session.sessionID()))
                 msgQueue.addMessage(message.session, message.message, message.sequenceNumber, telemetrySession);
         } catch (Exception e) {
-            cleanupKey(session);
-            span.end();
+            telemetrySession.recordException("Failed to hydrate recovered session", e, true);
+            cleanupKey(telemetrySession);
+            telemetrySession.close();
             recoveryLaunches.release();
-            throw e;
+            return;
         }
         Thread.ofVirtual().name("RECOVER_SESSION_" + session.sessionID()).start(() -> {
             try {
-                startNewSession(telemetrySession);
-            } catch (Exception e) {
-                telemetrySession.recordException("failed to run recovered session", e, true);
+                runSessionAsync(telemetrySession);
             } finally {
-                span.end();
                 recoveryLaunches.release();
             }
         });
@@ -139,37 +137,47 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         boolean changed = timeout == null
                 ? dataStore.restartSession(telemetrySession.session.sessionID())
                 : dataStore.restartSession(telemetrySession.session.sessionID(), timeout.sender(), timeout.sequenceNumber());
-        if (changed)
+        if (changed) {
             faultToleranceTelemetry.restart(telemetrySession.session, "retry");
+            telemetrySession.log("Marked session for recovery");
+        }
         this.connectionManager().recoverableSessionFailure(telemetrySession);
     }
 
     @Override
     protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
         var sessionID = telemetrySession.session.sessionID();
-        if (dataStore.startSession(telemetrySession.session, telemetrySession.spanContext()))
+        if (dataStore.startSession(telemetrySession.session, telemetrySession.spanContext())) {
             faultToleranceTelemetry.attempt(telemetrySession.session, telemetrySession.attemptKind().metricValue());
+            telemetrySession.log("Started session attempt");
+        }
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             Object result = newFaultSessionEvent.onNewSession(sessionCtx);
-            if (dataStore.completeSession(sessionID)) faultToleranceTelemetry.completion(telemetrySession.session);
+            if (dataStore.completeSession(sessionID)) {
+                faultToleranceTelemetry.completion(telemetrySession.session);
+                telemetrySession.log("Completed session");
+            }
             return result;
         } catch (ChoreographyInterruptedException e) {
             telemetrySession.log("Choreography interrupted: " + e.getMessage());
             if (dataStore.failSession(telemetrySession.session))
                 faultToleranceTelemetry.failure(telemetrySession.session, "interrupted");
             dataStore.compensateTransactions(sessionID);
+            telemetrySession.log("Compensated session transactions");
             return e;
         }
     }
 
     @Override
-    public void sessionFailed(Session session) throws Exception {
-        logger.info("Received session failed event for sessionID: " + session);
+    public void sessionFailed(TelemetrySession telemetrySession) throws Exception {
+        Session session = telemetrySession.session;
+        telemetrySession.log("Received remote session failure");
         try {
             if (dataStore.failSession(session)) faultToleranceTelemetry.failure(session, "remote");
             dataStore.compensateTransactions(session.sessionID());
+            telemetrySession.log("Compensated session transactions");
         } catch (SQLException e) {
-            logger.error("Session failed event caused SQL exception: " + e);
+            telemetrySession.recordException("Session failure handling caused SQL exception", e, true);
             throw e;
         }
     }
@@ -178,10 +186,13 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     public void messageReceived(Message msg) {
         try {
             if (dataStore.hasSessionCompleted(msg.session.sessionID())) {
-                logger.info("Received message with completed session: " + msg);
+                try (var completedSession = new TelemetrySession(telemetry, msg)) {
+                    completedSession.log("Ignored message for completed session");
+                }
                 return;
             }
         } catch (SQLException e) {
+            recordIncomingException(msg, "Failed to look up session state", e);
             throw new RuntimeException(e);
         }
 
@@ -195,11 +206,18 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             try {
                 reconcileExecutions();
             } catch (Exception e) {
+                recordIncomingException(msg, "Failed to reconcile session execution", e);
                 throw new RuntimeException(e);
             }
             return;
         }
         super.messageReceived(msg);
+    }
+
+    private void recordIncomingException(Message message, String description, Exception error) {
+        try (var incomingSession = new TelemetrySession(telemetry, message)) {
+            incomingSession.recordException(description, error, true);
+        }
     }
 
     @Override

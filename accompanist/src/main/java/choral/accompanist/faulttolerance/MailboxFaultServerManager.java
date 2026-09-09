@@ -12,6 +12,7 @@ import io.grpc.Server;
 import io.grpc.protobuf.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -44,10 +45,15 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
         SQLMailbox mailbox = new SQLMailbox(db);
         var coordinator = MailboxRecoveryCoordinator.shared(mailbox);
         return new FaultServerConnectionManager.Factory() {
-            @Override public FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) {
+            @Override
+            public FaultServerConnectionManager makeConnectionManager(String serviceName, FaultServerConnectionManager.ServerEvents events, OpenTelemetry telemetry) {
                 return new MailboxFaultServerManager(mailbox, serviceName, events, telemetry, broadcastClients);
             }
-            @Override public MailboxRecoveryCoordinator recoveryCoordinator() { return coordinator; }
+
+            @Override
+            public MailboxRecoveryCoordinator recoveryCoordinator() {
+                return coordinator;
+            }
         };
     }
 
@@ -130,25 +136,47 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
         @Override
         public void sendMessage(ChannelOuterClass.Message request, StreamObserver<Empty> responseObserver) {
-            logger.debug("Received message on gRPC server");
-
+            Message message = null;
+            String failureDescription = "Failed to deserialize incoming mailbox message";
             try {
-                var message = new Message(request);
-
+                message = new Message(request);
                 if (message.message instanceof FailureMarker) {
-                    serverEvents.sessionFailed(message.session);
+                    failureDescription = "Failed to handle incoming session failure";
+                    handleSessionFailure(message);
                 } else {
+                    failureDescription = "Failed to persist incoming mailbox message";
                     mailbox.didReceiveMessage(message);
+                    failureDescription = "Failed to process incoming mailbox message";
                     serverEvents.messageReceived(message);
                     coordinator.wake();
                 }
             } catch (Exception e) {
-                responseObserver.onError(e);
-                throw new RuntimeException(e);
+                TelemetrySession failureSession = message == null
+                        ? TelemetrySession.fromGrpcEnvelope(telemetry, request)
+                        : new TelemetrySession(telemetry, message);
+                try (failureSession) {
+                    failureSession.recordException(failureDescription, e, true,
+                            Attributes.builder().put("messaging.sequence_number", request.getSequenceNumber()).build());
+                    fail(responseObserver, e);
+                }
+                return;
             }
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
+        }
+
+        private void handleSessionFailure(Message message) throws Exception {
+            try (var telemetrySession = new TelemetrySession(telemetry, message)) {
+                var span = telemetrySession.getChoreographySpan();
+                try (var ignored = span.makeCurrent()) {
+                    serverEvents.sessionFailed(telemetrySession);
+                }
+            }
+        }
+
+        private void fail(StreamObserver<Empty> responseObserver, Exception error) {
+            responseObserver.onError(error);
         }
     }
 
