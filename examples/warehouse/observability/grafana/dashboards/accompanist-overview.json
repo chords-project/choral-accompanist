@@ -1,0 +1,176 @@
+{
+  "annotations": {"list":[]},
+  "description":"Operational health, choreography outcomes, fault-tolerant messaging, and latency for Accompanist.",
+  "editable":true,
+  "fiscalYearStartMonth":0,
+  "graphTooltip":1,
+  "id":null,
+  "links":[],
+  "panels":[
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Percentage of newly started choreographies that completed during the selected range. Recovery attempts are excluded from the denominator.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"decimals":1,"max":100,"min":0,"noValue":"No attempts","thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"yellow","value":95},{"color":"green","value":99}]},"unit":"percent"},"overrides":[]},
+      "gridPos":{"h":5,"w":6,"x":0,"y":0},"id":1,
+      "options":{"colorMode":"background","graphMode":"area","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"auto","wideLayout":true},
+      "targets":[{"editorMode":"code","expr":"100 * sum(increase(accompanist_choreography_completions_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range])) / clamp_min(sum(increase(accompanist_choreography_attempts_total{cause=\"new\",service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range])), 1)","instant":true,"legendFormat":"Completion ratio","range":false,"refId":"A"}],
+      "title":"Choreography completion ratio","type":"stat"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Percentage of physical fault-tolerant send attempts that failed during the selected range. Retries count as additional attempts.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"decimals":2,"max":100,"min":0,"noValue":"No sends","thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":1},{"color":"red","value":5}]},"unit":"percent"},"overrides":[]},
+      "gridPos":{"h":5,"w":6,"x":6,"y":0},"id":2,
+      "options":{"colorMode":"background","graphMode":"area","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"auto","wideLayout":true},
+      "targets":[{"editorMode":"code","expr":"100 * (sum(increase(accompanist_message_send_failures_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range])) or vector(0)) / clamp_min(sum(increase(accompanist_message_send_attempts_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range])), 1)","instant":true,"legendFormat":"Failed sends","range":false,"refId":"A"}],
+      "title":"Physical send failure ratio","type":"stat"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Durable outbox records not yet acknowledged. A persistent non-zero value means delivery is delayed or blocked.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"noValue":"No monitor data","thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":1},{"color":"red","value":10}]},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":5,"w":6,"x":12,"y":0},"id":3,
+      "options":{"colorMode":"background","graphMode":"area","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"auto","wideLayout":true},
+      "targets":[{"editorMode":"code","expr":"sum(max by (database_owner, benchmark_run_id) (accompanist_mailbox_outbox_pending{database_owner=~\"$service\",benchmark_run_id=~\"$benchmark_run_id\"}))","instant":true,"range":false,"refId":"A"}],
+      "title":"Unacknowledged outbox","type":"stat"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Persisted sessions waiting in the restart state. Zero means no choreography currently requires recovery.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"noValue":"No monitor data","thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"red","value":1}]},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":5,"w":6,"x":18,"y":0},"id":4,
+      "options":{"colorMode":"background","graphMode":"area","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"auto","wideLayout":true},
+      "targets":[{"editorMode":"code","expr":"sum(max by (database_owner, benchmark_run_id) (accompanist_sessions_pending{state=\"restart\",database_owner=~\"$service\",benchmark_run_id=~\"$benchmark_run_id\"})) or vector(0)","instant":true,"range":false,"refId":"A"}],
+      "title":"Sessions awaiting restart","type":"stat"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"New starts, successful completions, recorded failures, and restart requests per second. Compare the lines to spot retries and incomplete work.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":12,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":false,"stacking":{"group":"A","mode":"none"}},"unit":"ops"},"overrides":[]},
+      "gridPos":{"h":8,"w":14,"x":0,"y":5},"id":5,
+      "options":{"legend":{"calcs":["lastNotNull"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"sum by (service) (rate(accompanist_choreography_attempts_total{cause=\"new\",service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} started","range":true,"refId":"A"},
+        {"editorMode":"code","expr":"sum by (service) (rate(accompanist_choreography_completions_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} completed","range":true,"refId":"B"},
+        {"editorMode":"code","expr":"sum by (service) (rate(accompanist_choreography_failures_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} failed","range":true,"refId":"C"},
+        {"editorMode":"code","expr":"sum by (service) (rate(accompanist_choreography_restart_requests_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} restart requested","range":true,"refId":"D"}
+      ],
+      "title":"Choreography lifecycle rate","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Completed, failed, and restart-requested events accumulated over the selected range, grouped by service.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"fillOpacity":75,"lineWidth":1,"stacking":{"group":"A","mode":"normal"}},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":8,"w":10,"x":14,"y":5},"id":6,
+      "options":{"legend":{"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"sum by (service) (increase(accompanist_choreography_completions_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range]))","instant":true,"legendFormat":"{{service}} completed","range":false,"refId":"A"},
+        {"editorMode":"code","expr":"sum by (service) (increase(accompanist_choreography_failures_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range]))","instant":true,"legendFormat":"{{service}} failed","range":false,"refId":"B"},
+        {"editorMode":"code","expr":"sum by (service) (increase(accompanist_choreography_restart_requests_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range]))","instant":true,"legendFormat":"{{service}} restart","range":false,"refId":"C"}
+      ],
+      "title":"Choreography outcomes in range","type":"barchart"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Physical delivery attempts and durable acknowledgements per second. A persistent gap alongside a growing outbox is unhealthy.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":12,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":false,"stacking":{"group":"A","mode":"none"}},"unit":"ops"},"overrides":[]},
+      "gridPos":{"h":8,"w":14,"x":0,"y":13},"id":7,
+      "options":{"legend":{"calcs":["lastNotNull"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"sum by (service, destination) (rate(accompanist_message_send_attempts_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} → {{destination}} attempts","range":true,"refId":"A"},
+        {"editorMode":"code","expr":"sum by (service) (rate(accompanist_message_delivery_confirmations_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval]))","legendFormat":"{{service}} confirmed","range":true,"refId":"B"}
+      ],
+      "title":"Fault-tolerant message flow","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Physical send failures accumulated over the selected range. The exception or gRPC status category points to the likely cause.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"custom":{"align":"auto","cellOptions":{"type":"color-background"}},"thresholds":{"mode":"absolute","steps":[{"color":"transparent","value":null},{"color":"yellow","value":1},{"color":"red","value":5}]},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":8,"w":10,"x":14,"y":13},"id":8,
+      "options":{"cellHeight":"sm","showHeader":true},
+      "targets":[{"editorMode":"code","expr":"sum by (service, error_category) (increase(accompanist_message_send_failures_total{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__range]))","format":"table","instant":true,"range":false,"refId":"A"}],
+      "title":"Send failures by cause","transformations":[{"id":"organize","options":{"excludeByName":{"Time":true},"renameByName":{"Value":"Failures","error_category":"Cause","service":"Service"}}}],"type":"table"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Median and tail time from starting a server-side choreography handler through completion, failure handling, and cleanup.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":0,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":false,"stacking":{"group":"A","mode":"none"}},"unit":"ms"},"overrides":[
+        {"matcher":{"id":"byRegexp","options":"/loyalty/"},"properties":[{"id":"color","value":{"fixedColor":"green","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/payment/"},"properties":[{"id":"color","value":{"fixedColor":"yellow","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/warehouse/"},"properties":[{"id":"color","value":{"fixedColor":"blue","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p50$/"},"properties":[{"id":"custom.lineWidth","value":1},{"id":"custom.lineStyle","value":{"dash":[3,3],"fill":"dash"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p95$/"},"properties":[{"id":"custom.lineWidth","value":2},{"id":"custom.lineStyle","value":{"dash":[10,5],"fill":"dash"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p99$/"},"properties":[{"id":"custom.lineWidth","value":3},{"id":"custom.lineStyle","value":{"fill":"solid"}}]}
+      ]},
+      "gridPos":{"h":8,"w":12,"x":0,"y":21},"id":9,
+      "options":{"legend":{"calcs":["lastNotNull"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"histogram_quantile(0.50, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p50","range":true,"refId":"A"},
+        {"editorMode":"code","expr":"histogram_quantile(0.95, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p95","range":true,"refId":"B"},
+        {"editorMode":"code","expr":"histogram_quantile(0.99, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p99","range":true,"refId":"C"}
+      ],
+      "title":"Session duration percentiles","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Median and tail time spent waiting in recv() for the requested application message to become available.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":0,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":false,"stacking":{"group":"A","mode":"none"}},"unit":"ms"},"overrides":[
+        {"matcher":{"id":"byRegexp","options":"/loyalty/"},"properties":[{"id":"color","value":{"fixedColor":"green","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/payment/"},"properties":[{"id":"color","value":{"fixedColor":"yellow","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/warehouse/"},"properties":[{"id":"color","value":{"fixedColor":"blue","mode":"fixed"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p50$/"},"properties":[{"id":"custom.lineWidth","value":1},{"id":"custom.lineStyle","value":{"dash":[3,3],"fill":"dash"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p95$/"},"properties":[{"id":"custom.lineWidth","value":2},{"id":"custom.lineStyle","value":{"dash":[10,5],"fill":"dash"}}]},
+        {"matcher":{"id":"byRegexp","options":"/p99$/"},"properties":[{"id":"custom.lineWidth","value":3},{"id":"custom.lineStyle","value":{"fill":"solid"}}]}
+      ]},
+      "gridPos":{"h":8,"w":12,"x":12,"y":21},"id":10,
+      "options":{"legend":{"calcs":["lastNotNull"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"histogram_quantile(0.50, sum by (le, service_name) (rate(accompanist_server_receive_time_milliseconds_bucket{service_name=~\"$service\"}[$__rate_interval])))","legendFormat":"{{service_name}} · p50","range":true,"refId":"A"},
+        {"editorMode":"code","expr":"histogram_quantile(0.95, sum by (le, service_name) (rate(accompanist_server_receive_time_milliseconds_bucket{service_name=~\"$service\"}[$__rate_interval])))","legendFormat":"{{service_name}} · p95","range":true,"refId":"B"},
+        {"editorMode":"code","expr":"histogram_quantile(0.99, sum by (le, service_name) (rate(accompanist_server_receive_time_milliseconds_bucket{service_name=~\"$service\"}[$__rate_interval])))","legendFormat":"{{service_name}} · p99","range":true,"refId":"C"}
+      ],
+      "title":"Receive wait-time percentiles","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Durable mailbox records by owning service. Pending outbox is actionable backlog; total outbox and inbox show retained records awaiting cleanup.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":14,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":true,"stacking":{"group":"A","mode":"none"}},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":8,"w":14,"x":0,"y":29},"id":11,
+      "options":{"legend":{"calcs":["lastNotNull","max"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[
+        {"editorMode":"code","expr":"max by (database_owner) (accompanist_mailbox_outbox_pending{database_owner=~\"$service\",benchmark_run_id=~\"$benchmark_run_id\"})","legendFormat":"{{database_owner}} pending","range":true,"refId":"A"},
+        {"editorMode":"code","expr":"max by (database_owner) (accompanist_mailbox_outbox_total{database_owner=~\"$service\",benchmark_run_id=~\"$benchmark_run_id\"})","legendFormat":"{{database_owner}} outbox total","range":true,"refId":"B"},
+        {"editorMode":"code","expr":"max by (database_owner) (accompanist_mailbox_inbox_total{database_owner=~\"$service\",benchmark_run_id=~\"$benchmark_run_id\"})","legendFormat":"{{database_owner}} inbox","range":true,"refId":"C"}
+      ],
+      "title":"Durable mailbox depth","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Application messages held in memory because they arrived before a matching receive operation. This excludes durable outbox records.",
+      "fieldConfig":{"defaults":{"color":{"mode":"palette-classic"},"custom":{"drawStyle":"line","fillOpacity":20,"lineWidth":2,"pointSize":4,"showPoints":"never","spanNulls":true,"stacking":{"group":"A","mode":"none"}},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":8,"w":10,"x":14,"y":29},"id":12,
+      "options":{"legend":{"calcs":["lastNotNull","max"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
+      "targets":[{"editorMode":"code","expr":"sum by (service_name) (accompanist_message_queue_size_messages{service_name=~\"$service\"})","legendFormat":"{{service_name}}","range":true,"refId":"A"}],
+      "title":"In-memory receive queue","type":"timeseries"
+    },
+    {
+      "datasource":{"type":"prometheus","uid":"prometheus"},
+      "description":"Database-observation failures accumulated over the selected range. Any row means mailbox health data may be incomplete.",
+      "fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"custom":{"align":"auto","cellOptions":{"type":"color-background"}},"thresholds":{"mode":"absolute","steps":[{"color":"transparent","value":null},{"color":"red","value":1}]},"unit":"short"},"overrides":[]},
+      "gridPos":{"h":6,"w":24,"x":0,"y":37},"id":13,
+      "options":{"cellHeight":"sm","showHeader":true},
+      "targets":[{"editorMode":"code","expr":"sum by (database_owner, error_category) (increase(accompanist_monitor_observation_errors_total{database_owner=~\"$service\"}[$__range]))","format":"table","instant":true,"range":false,"refId":"A"}],
+      "title":"Mailbox monitor errors","transformations":[{"id":"organize","options":{"excludeByName":{"Time":true},"renameByName":{"Value":"Errors","database_owner":"Service","error_category":"Cause"}}}],"type":"table"
+    }
+  ],
+  "refresh":"5s",
+  "schemaVersion":42,
+  "tags":["accompanist","warehouse"],
+  "templating":{"list":[
+    {"allValue":".*","current":{"text":"All","value":"$__all"},"datasource":{"type":"prometheus","uid":"prometheus"},"definition":"label_values(accompanist_choreography_attempts_total, service)","includeAll":true,"label":"Service","multi":true,"name":"service","options":[],"query":{"query":"label_values(accompanist_choreography_attempts_total, service)","refId":"PrometheusVariableQueryEditor-VariableQuery"},"refresh":1,"regex":"","sort":1,"type":"query"},
+    {"allValue":".*","current":{"text":"All","value":"$__all"},"datasource":{"type":"prometheus","uid":"prometheus"},"definition":"label_values(accompanist_choreography_attempts_total{service=~\"$service\"}, choreography)","includeAll":true,"label":"Choreography","multi":true,"name":"choreography","options":[],"query":{"query":"label_values(accompanist_choreography_attempts_total{service=~\"$service\"}, choreography)","refId":"PrometheusVariableQueryEditor-VariableQuery"},"refresh":1,"regex":"","sort":1,"type":"query"},
+    {"allValue":".*","current":{"text":"All","value":"$__all"},"datasource":{"type":"prometheus","uid":"prometheus"},"definition":"label_values(accompanist_choreography_attempts_total, benchmark_run_id)","includeAll":true,"label":"Benchmark run","multi":true,"name":"benchmark_run_id","options":[],"query":{"query":"label_values(accompanist_choreography_attempts_total, benchmark_run_id)","refId":"PrometheusVariableQueryEditor-VariableQuery"},"refresh":1,"regex":"","sort":1,"type":"query"}
+  ]},
+  "time":{"from":"now-30m","to":"now"},
+  "timepicker":{},"timezone":"browser","title":"Accompanist Overview","uid":"accompanist-overview","version":1,"weekStart":""
+}

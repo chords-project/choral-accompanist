@@ -36,3 +36,21 @@ The Kubernetes LGTM Deployment deliberately uses named `emptyDir` volumes.
 Its data disappears when the Pod is replaced.
 
 Docker Compose uses the named `lgtm-data` volume.
+
+## Grafana dashboards
+
+The Kubernetes deployment provisions dashboards from
+`observability/grafana/dashboards` into the **Accompanist** Grafana folder. Kustomize packages the
+dashboard and provider configuration as ConfigMaps, so the same manifests work in a local cluster
+and when deployed to Kubernetes on AWS.
+
+For live dashboard development, update the JSON and upload it to the running Grafana instance
+without restarting the cluster:
+
+```shell
+./observability/grafana/upload-dashboard.sh
+```
+
+The script defaults to `http://localhost:3000` and the Accompanist overview dashboard. Pass another
+dashboard file as its first argument or set `GRAFANA_URL`. For authenticated Grafana instances, set
+either `GRAFANA_TOKEN` or `GRAFANA_USER` and `GRAFANA_PASSWORD`.

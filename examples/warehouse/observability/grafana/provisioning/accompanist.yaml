@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: Accompanist
+    orgId: 1
+    folder: Accompanist
+    folderUid: accompanist
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /otel-lgtm/accompanist-dashboards
+      foldersFromFilesStructure: false

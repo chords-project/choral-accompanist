@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - warehouse/deployment.yaml
+  - loyalty/deployment.yaml
+  - payment/deployment.yaml
+  - loadgenerator/deployment.yaml
+  - observability/deployment.yaml
+  - monitor/deployment.yaml
+
+configMapGenerator:
+  - name: grafana-accompanist-provisioning
+    files:
+      - accompanist.yaml=observability/grafana/provisioning/accompanist.yaml
+  - name: grafana-accompanist-dashboards
+    files:
+      - accompanist-overview.json=observability/grafana/dashboards/accompanist-overview.json

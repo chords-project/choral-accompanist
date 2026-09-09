@@ -63,6 +63,13 @@ spec:
               cpu: "2"
               memory: 3Gi
           volumeMounts:
+            - name: accompanist-dashboard-provisioning
+              mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/accompanist.yaml
+              subPath: accompanist.yaml
+              readOnly: true
+            - name: accompanist-dashboards
+              mountPath: /otel-lgtm/accompanist-dashboards
+              readOnly: true
             - name: grafana-data
               mountPath: /data/grafana
             - name: prometheus-data
@@ -74,6 +81,12 @@ spec:
             - name: pyroscope-data
               mountPath: /data/pyroscope
       volumes:
+        - name: accompanist-dashboard-provisioning
+          configMap:
+            name: grafana-accompanist-provisioning
+        - name: accompanist-dashboards
+          configMap:
+            name: grafana-accompanist-dashboards
         - name: grafana-data
           emptyDir: {}
         - name: prometheus-data

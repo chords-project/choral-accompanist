@@ -21,13 +21,9 @@ build:
     - image: warehouse-monitor
       context: monitor
 manifests:
-  rawYaml:
-    - warehouse/deployment.yaml
-    - loyalty/deployment.yaml
-    - payment/deployment.yaml
-    - loadgenerator/deployment.yaml
-    - observability/deployment.yaml
-    - monitor/deployment.yaml
+  kustomize:
+    paths:
+      - .
 portForward:
   - resourceType: service
     resourceName: warehouse
