@@ -148,13 +148,16 @@ public class SQLMailbox {
 
             // The receive ACK must imply that both input and runnable work survive a crash.
             try (var sessionStmt = con.prepareStatement("""
-                    INSERT INTO session_states (session_id, choreography, session_state, run_id, attempt_count)
-                    VALUES (?, ?, 'started', CAST(? AS UUID), 0)
+                    INSERT INTO session_states (session_id, choreography, session_state, run_id, attempt_count,
+                                                trace_id, trace_parent_span_id, trace_flags, trace_state)
+                    VALUES (?, ?, 'started', CAST(? AS UUID), 0, ?, ?, ?, ?)
                     ON CONFLICT (session_id) DO NOTHING
                     """)) {
                 sessionStmt.setInt(1, message.session.sessionID());
                 sessionStmt.setString(2, message.session.choreographyName());
                 sessionStmt.setString(3, message.session.benchmarkRunId());
+                SQLDataStore.setTraceContext(sessionStmt, 4,
+                        message.senderSpanContext == null ? null : message.senderSpanContext.toSpanContext());
                 sessionStmt.executeUpdate();
             }
             stmt.setInt(1, message.session.sessionID());

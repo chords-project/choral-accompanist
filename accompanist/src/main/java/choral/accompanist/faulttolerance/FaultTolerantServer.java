@@ -10,6 +10,7 @@ import choral.accompanist.tracing.FaultToleranceTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Context;
 
 import java.sql.SQLException;
 import java.time.Duration;
@@ -71,11 +72,12 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             if (candidate.waitingSender() != null &&
                     !recoveryCoordinator.mailbox().hasReceived(candidate.session().sessionID(), candidate.waitingSender(), candidate.waitingSequence()))
                 continue;
-            launchRecovered(candidate.session());
+            launchReconciled(candidate);
         }
     }
 
-    private void launchRecovered(Session session) throws Exception {
+    private void launchReconciled(FaultDataStore.RecoverableSession candidate) throws Exception {
+        Session session = candidate.session();
         if (!recoveryLaunches.tryAcquire()) return;
         Span span;
         TelemetrySession telemetrySession;
@@ -84,10 +86,16 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
                 recoveryLaunches.release();
                 return;
             }
-            span = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
-                    .spanBuilder("choreography session (recover)").setSpanKind(SpanKind.SERVER)
-                    .setAllAttributes(TelemetrySession.commonAttributes(session)).startSpan();
-            telemetrySession = new TelemetrySession(telemetry, session, span);
+            var spanBuilder = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
+                    .spanBuilder(candidate.isRestart() ? "choreography session (recover)" : "choreography session")
+                    .setSpanKind(SpanKind.SERVER).setAllAttributes(TelemetrySession.commonAttributes(session));
+            if (candidate.traceContext() != null && candidate.traceContext().isValid())
+                spanBuilder.setParent(Context.root().with(Span.wrap(candidate.traceContext())));
+            else
+                spanBuilder.setNoParent();
+            span = spanBuilder.startSpan();
+            telemetrySession = new TelemetrySession(telemetry, session, span,
+                    candidate.isRestart() ? TelemetrySession.AttemptKind.RECOVERY : TelemetrySession.AttemptKind.NEW);
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
         try {
@@ -100,7 +108,6 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             throw e;
         }
         Thread.ofVirtual().name("RECOVER_SESSION_" + session.sessionID()).start(() -> {
-            faultToleranceTelemetry.attempt(session, "recovery");
             try {
                 startNewSession(telemetrySession);
             } catch (Exception e) {
@@ -138,8 +145,8 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
     @Override
     protected Object runNewSessionEvent(TelemetrySession telemetrySession) throws Exception {
         var sessionID = telemetrySession.session.sessionID();
-        if (dataStore.startSession(telemetrySession.session))
-            faultToleranceTelemetry.attempt(telemetrySession.session, "new");
+        if (dataStore.startSession(telemetrySession.session, telemetrySession.spanContext()))
+            faultToleranceTelemetry.attempt(telemetrySession.session, telemetrySession.attemptKind().metricValue());
         try (FaultSessionContext sessionCtx = new FaultSessionContext(this, telemetrySession)) {
             Object result = newFaultSessionEvent.onNewSession(sessionCtx);
             if (dataStore.completeSession(sessionID)) faultToleranceTelemetry.completion(telemetrySession.session);

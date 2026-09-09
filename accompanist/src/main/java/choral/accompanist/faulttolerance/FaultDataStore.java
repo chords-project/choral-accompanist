@@ -1,6 +1,7 @@
 package choral.accompanist.faulttolerance;
 
 import choral.accompanist.Session;
+import io.opentelemetry.api.trace.SpanContext;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -14,6 +15,11 @@ public interface FaultDataStore extends AutoCloseable {
      * @return true only when this call starts a new local attempt.
      */
     boolean startSession(Session session) throws SQLException;
+
+    /** Starts an attempt and durably records its original distributed-trace context. */
+    default boolean startSession(Session session, SpanContext traceContext) throws SQLException {
+        return startSession(session);
+    }
 
     /**
      * @return true only when the durable state changed to completed.
@@ -48,6 +54,8 @@ public interface FaultDataStore extends AutoCloseable {
 
     List<RecoverableSession> recoverableSessions(int limit) throws SQLException;
 
-    record RecoverableSession(Session session, String state, String waitingSender, Integer waitingSequence) {
+    record RecoverableSession(Session session, String state, String waitingSender, Integer waitingSequence,
+                              int restartCount, SpanContext traceContext) {
+        public boolean isRestart() { return restartCount > 0; }
     }
 }

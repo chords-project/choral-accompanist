@@ -11,6 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
 
 /**
  * A Postgres implementation of the {@link FaultDataStore} interface
@@ -67,6 +70,10 @@ public class SQLDataStore implements FaultDataStore {
                       restart_count INTEGER NOT NULL DEFAULT 0,
                       waiting_sender VARCHAR(255),
                       waiting_sequence INTEGER,
+                      trace_id VARCHAR(32),
+                      trace_parent_span_id VARCHAR(16),
+                      trace_flags SMALLINT,
+                      trace_state TEXT,
                       CONSTRAINT session_waiting_pair CHECK
                         ((waiting_sender IS NULL) = (waiting_sequence IS NULL))
                     );
@@ -87,6 +94,13 @@ public class SQLDataStore implements FaultDataStore {
                       PRIMARY KEY (session_id, transaction_name)
                     );
                     """);
+
+            stmt.execute("""
+                    ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_id VARCHAR(32);
+                    ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_parent_span_id VARCHAR(16);
+                    ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_flags SMALLINT;
+                    ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_state TEXT;
+                    """);
         }
 
         logger.info("Successfully created tables in database");
@@ -94,15 +108,25 @@ public class SQLDataStore implements FaultDataStore {
 
     @Override
     public boolean startSession(Session session) throws SQLException {
+        return startSession(session, SpanContext.getInvalid());
+    }
+
+    @Override
+    public boolean startSession(Session session, SpanContext traceContext) throws SQLException {
         logger.info("Marking session as started in database: {}", session);
 
         try (
                 var con = db.getConnection();
                 PreparedStatement stmt = con.prepareStatement("""
-                        INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count)
-                        VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1)
+                        INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count,
+                                                    trace_id, trace_parent_span_id, trace_flags, trace_state)
+                        VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1, ?, ?, ?, ?)
                         ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
                             waiting_sender = NULL, waiting_sequence = NULL,
+                            trace_id = COALESCE(session_states.trace_id, EXCLUDED.trace_id),
+                            trace_parent_span_id = COALESCE(session_states.trace_parent_span_id, EXCLUDED.trace_parent_span_id),
+                            trace_flags = COALESCE(session_states.trace_flags, EXCLUDED.trace_flags),
+                            trace_state = COALESCE(session_states.trace_state, EXCLUDED.trace_state),
                             attempt_count = session_states.attempt_count + 1
                         WHERE session_states.choreography = EXCLUDED.choreography
                           AND (session_states.session_state = 'restart'
@@ -113,6 +137,7 @@ public class SQLDataStore implements FaultDataStore {
             stmt.setInt(1, session.sessionID());
             stmt.setString(2, session.choreographyName());
             stmt.setString(3, session.benchmarkRunId());
+            setTraceContext(stmt, 4, traceContext);
 
             try (var result = stmt.executeQuery()) {
                 return result.next();
@@ -291,7 +316,8 @@ public class SQLDataStore implements FaultDataStore {
     public List<RecoverableSession> recoverableSessions(int limit) throws SQLException {
         var sessions = new ArrayList<RecoverableSession>();
         try (var con = db.getConnection(); var stmt = con.prepareStatement("""
-                SELECT session_id, choreography, run_id, session_state::text, waiting_sender, waiting_sequence
+                SELECT session_id, choreography, run_id, session_state::text, waiting_sender, waiting_sequence,
+                       restart_count, trace_id, trace_parent_span_id, trace_flags, trace_state
                 FROM session_states WHERE session_state IN ('started','restart') ORDER BY session_id LIMIT ?
                 """)) {
             stmt.setInt(1, limit);
@@ -300,11 +326,46 @@ public class SQLDataStore implements FaultDataStore {
                     Integer seq = (Integer) rs.getObject("waiting_sequence");
                     sessions.add(new RecoverableSession(
                             new Session(rs.getString("choreography"), "", rs.getInt("session_id"), rs.getString("run_id")),
-                            rs.getString("session_state"), rs.getString("waiting_sender"), seq));
+                            rs.getString("session_state"), rs.getString("waiting_sender"), seq,
+                            rs.getInt("restart_count"), readTraceContext(rs)));
                 }
             }
         }
         return sessions;
+    }
+
+    static void setTraceContext(PreparedStatement stmt, int firstIndex, SpanContext context) throws SQLException {
+        if (context == null || !context.isValid()) {
+            stmt.setNull(firstIndex, java.sql.Types.VARCHAR);
+            stmt.setNull(firstIndex + 1, java.sql.Types.VARCHAR);
+            stmt.setNull(firstIndex + 2, java.sql.Types.SMALLINT);
+            stmt.setNull(firstIndex + 3, java.sql.Types.VARCHAR);
+            return;
+        }
+        stmt.setString(firstIndex, context.getTraceId());
+        stmt.setString(firstIndex + 1, context.getSpanId());
+        stmt.setInt(firstIndex + 2, Byte.toUnsignedInt(context.getTraceFlags().asByte()));
+        stmt.setString(firstIndex + 3, encodeTraceState(context.getTraceState()));
+    }
+
+    private static SpanContext readTraceContext(java.sql.ResultSet rs) throws SQLException {
+        String traceId = rs.getString("trace_id");
+        String spanId = rs.getString("trace_parent_span_id");
+        if (traceId == null || spanId == null) return SpanContext.getInvalid();
+        var state = TraceState.builder();
+        String encodedState = rs.getString("trace_state");
+        if (encodedState != null && !encodedState.isBlank())
+            for (String entry : encodedState.split(",")) {
+                int separator = entry.indexOf('=');
+                if (separator > 0) state.put(entry.substring(0, separator), entry.substring(separator + 1));
+            }
+        return SpanContext.createFromRemoteParent(traceId, spanId,
+                TraceFlags.fromByte((byte) rs.getInt("trace_flags")), state.build());
+    }
+
+    static String encodeTraceState(TraceState state) {
+        return String.join(",", state.asMap().entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue()).toList());
     }
 
     @Override

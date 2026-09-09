@@ -3,6 +3,9 @@ package choral.accompanist.faulttolerance;
 import choral.accompanist.Session;
 import choral.accompanist.connection.Message;
 import com.zaxxer.hikari.HikariDataSource;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -145,14 +148,37 @@ class SQLRecoveryTest {
 
     @Test void receiptSurvivesCrashBeforeExecutionStarts() throws Exception {
         var input = message(2, "sender");
+        var parent = SpanContext.createFromRemoteParent(
+                "0123456789abcdef0123456789abcdef", "0123456789abcdef",
+                TraceFlags.getSampled(), TraceState.builder().put("vendor", "value").build());
+        input.senderSpanContext = new Message.SerializedSpanContext(parent);
         mailbox.didReceiveMessage(input);
         // Construct fresh components without ever calling startSession on the originals.
         var recoveredStore = new SQLDataStore(db, Set.of());
         var recoveredMailbox = new SQLMailbox(db);
-        assertEquals(2, recoveredStore.recoverableSessions(10).getFirst().session().sessionID());
+        var candidate = recoveredStore.recoverableSessions(10).getFirst();
+        assertEquals(2, candidate.session().sessionID());
+        assertFalse(candidate.isRestart());
+        assertEquals(parent.getTraceId(), candidate.traceContext().getTraceId());
+        assertEquals(parent.getSpanId(), candidate.traceContext().getSpanId());
+        assertEquals("value", candidate.traceContext().getTraceState().get("vendor"));
         assertEquals(input.message, recoveredMailbox.recoverReceivedMessages().getFirst().message);
         assertTrue(recoveredStore.startSession(input.session));
         assertEquals(1, count("SELECT attempt_count FROM session_states WHERE session_id = 2"));
+    }
+
+    @Test void recoveryClassificationRequiresARecordedRestart() throws Exception {
+        var session = message(12, "sender").session;
+        var parent = SpanContext.createFromRemoteParent(
+                "fedcba9876543210fedcba9876543210", "fedcba9876543210",
+                TraceFlags.getDefault(), TraceState.getDefault());
+        assertTrue(store.startSession(session, parent));
+        assertFalse(store.recoverableSessions(10).getFirst().isRestart());
+        assertTrue(store.restartSession(session.sessionID()));
+        var restarted = store.recoverableSessions(10).getFirst();
+        assertTrue(restarted.isRestart());
+        assertEquals(parent.getTraceId(), restarted.traceContext().getTraceId());
+        assertEquals(parent.getSpanId(), restarted.traceContext().getSpanId());
     }
 
     @Test void concurrentStartsAreAcquiredOnlyOnce() throws Exception {

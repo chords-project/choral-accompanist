@@ -12,9 +12,22 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.api.common.AttributeKey;
 
 public class TelemetrySession {
+
+    public enum AttemptKind {
+        NEW("new"), RECOVERY("recovery");
+
+        private final String metricValue;
+
+        AttemptKind(String metricValue) {
+            this.metricValue = metricValue;
+        }
+
+        public String metricValue() {
+            return metricValue;
+        }
+    }
 
     private final OpenTelemetry telemetry;
     public final Tracer tracer;
@@ -22,6 +35,7 @@ public class TelemetrySession {
     public final Logger logger;
 
     public final Session session;
+    private final AttemptKind attemptKind;
 
     private Span choreographySpan = null;
 
@@ -35,6 +49,7 @@ public class TelemetrySession {
     public TelemetrySession(OpenTelemetry telemetry, Message msg) {
         this.telemetry = telemetry;
         this.session = msg.session;
+        this.attemptKind = AttemptKind.NEW;
 
         this.tracer = this.telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.meter = this.telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
@@ -48,8 +63,13 @@ public class TelemetrySession {
 
     // Configure initial telemetry session
     public TelemetrySession(OpenTelemetry telemetry, Session session, Span span) {
+        this(telemetry, session, span, AttemptKind.NEW);
+    }
+
+    public TelemetrySession(OpenTelemetry telemetry, Session session, Span span, AttemptKind attemptKind) {
         this.telemetry = telemetry;
         this.session = session;
+        this.attemptKind = attemptKind;
 
         this.senderLinkContext = null;
         this.choreographyContext = Context.root().with(span);
@@ -65,7 +85,9 @@ public class TelemetrySession {
         this(OpenTelemetry.noop(), session, Span.getInvalid());
     }
 
-    /** Creates a telemetry-backed session with a valid root span for a manual invocation. */
+    /**
+     * Creates a telemetry-backed session with a valid root span for a manual invocation.
+     */
     public static TelemetrySession createRoot(OpenTelemetry telemetry, Session session) {
         Span rootSpan = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("choreography session")
@@ -76,7 +98,9 @@ public class TelemetrySession {
         return new TelemetrySession(telemetry, session, rootSpan);
     }
 
-    /** Trace/log attributes; session id is intentionally excluded from metric attributes. */
+    /**
+     * Trace/log attributes; session id is intentionally excluded from metric attributes.
+     */
     public static Attributes commonAttributes(Session session) {
         var builder = Attributes.builder().put("choreography.name", session.choreographyName())
                 .put("choreography.session_id", session.sessionID());
@@ -141,11 +165,20 @@ public class TelemetrySession {
     }
 
     public void injectSessionContext(Message msg) {
+        Context outgoingContext = Context.root().with(choreographySpan);
         telemetry.getPropagators()
                 .getTextMapPropagator()
-                .inject(choreographyContext, msg, new HeaderTextMapSetter());
+                .inject(outgoingContext, msg, new HeaderTextMapSetter());
 
         msg.senderSpanContext = new Message.SerializedSpanContext(choreographySpan.getSpanContext());
+    }
+
+    public SpanContext spanContext() {
+        return choreographySpan.getSpanContext();
+    }
+
+    public AttemptKind attemptKind() {
+        return attemptKind;
     }
 
     private String attributesToString(Attributes attributes) {
