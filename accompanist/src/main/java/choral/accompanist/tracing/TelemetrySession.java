@@ -36,6 +36,7 @@ public class TelemetrySession {
 
     public final Session session;
     private final AttemptKind attemptKind;
+    private final boolean rootSpan;
 
     private Span choreographySpan = null;
 
@@ -59,6 +60,7 @@ public class TelemetrySession {
         this.choreographyContext = telemetry.getPropagators()
                 .getTextMapPropagator()
                 .extract(Context.root(), msg, new HeaderTextMapGetter());
+        this.rootSpan = !Span.fromContext(choreographyContext).getSpanContext().isValid();
     }
 
     // Configure initial telemetry session
@@ -67,9 +69,15 @@ public class TelemetrySession {
     }
 
     public TelemetrySession(OpenTelemetry telemetry, Session session, Span span, AttemptKind attemptKind) {
+        this(telemetry, session, span, attemptKind, true);
+    }
+
+    public TelemetrySession(OpenTelemetry telemetry, Session session, Span span, AttemptKind attemptKind,
+                            boolean rootSpan) {
         this.telemetry = telemetry;
         this.session = session;
         this.attemptKind = attemptKind;
+        this.rootSpan = rootSpan;
 
         this.senderLinkContext = null;
         this.choreographyContext = Context.root().with(span);
@@ -179,6 +187,11 @@ public class TelemetrySession {
 
     public AttemptKind attemptKind() {
         return attemptKind;
+    }
+
+    /** Whether the choreography span is the root of its distributed trace. */
+    public boolean isRootSpan() {
+        return rootSpan;
     }
 
     private String attributesToString(Attributes attributes) {

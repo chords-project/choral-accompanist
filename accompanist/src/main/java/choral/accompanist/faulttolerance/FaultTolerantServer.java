@@ -89,13 +89,15 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
             var spanBuilder = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                     .spanBuilder(candidate.isRestart() ? "choreography session (recover)" : "choreography session")
                     .setSpanKind(SpanKind.SERVER).setAllAttributes(TelemetrySession.commonAttributes(session));
-            if (candidate.traceContext() != null && candidate.traceContext().isValid())
+            boolean hasParent = candidate.traceContext() != null && candidate.traceContext().isValid();
+            if (hasParent)
                 spanBuilder.setParent(Context.root().with(Span.wrap(candidate.traceContext())));
             else
                 spanBuilder.setNoParent();
             span = spanBuilder.startSpan();
             telemetrySession = new TelemetrySession(telemetry, session, span,
-                    candidate.isRestart() ? TelemetrySession.AttemptKind.RECOVERY : TelemetrySession.AttemptKind.NEW);
+                    candidate.isRestart() ? TelemetrySession.AttemptKind.RECOVERY : TelemetrySession.AttemptKind.NEW,
+                    !hasParent);
             telemetrySessionMap.put(session.sessionID(), telemetrySession);
         }
         try {

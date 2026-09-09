@@ -14,6 +14,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
 import java.io.Serializable;
@@ -271,15 +272,15 @@ public class ReactiveServer
             }
             throw error;
         } finally {
+            double durationMilliseconds = (System.nanoTime() - startTime) / 1_000_000.0;
+            Attributes metricAttributes = FaultToleranceTelemetry.metricAttributes(session, serviceName);
+            if (telemetrySession.isRootSpan())
+                sessionDurationHistogram.record(durationMilliseconds, metricAttributes, Context.root().with(span));
+            else
+                sessionDurationHistogram.record(durationMilliseconds, metricAttributes);
             span.end();
             cleanupKey(session);
         }
-
-        Long endTime = System.nanoTime();
-        sessionDurationHistogram.record(
-                (endTime - startTime) / 1_000_000.0,
-                FaultToleranceTelemetry.metricAttributes(session, serviceName)
-        );
 
         return result;
     }

@@ -5,7 +5,20 @@
   "fiscalYearStartMonth":0,
   "graphTooltip":1,
   "id":null,
-  "links":[],
+  "links":[
+    {
+      "asDropdown":false,
+      "icon":"external link",
+      "includeVars":false,
+      "keepTime":true,
+      "tags":[],
+      "targetBlank":true,
+      "title":"Explore correlated traces",
+      "tooltip":"Open Tempo Traces Drilldown for the dashboard time range.",
+      "type":"link",
+      "url":"/a/grafana-exploretraces-app/explore?var-ds=tempo&var-primarySignal=nestedSetParent%3C0&var-filters=resource.service.name%7C%3D~%7C${service:percentencode}%2Cspan.choreography.name%7C%3D~%7C${choreography:percentencode}&var-metric=rate&var-groupBy=All&actionView=traceList"
+    }
+  ],
   "panels":[
     {
       "datasource":{"type":"prometheus","uid":"prometheus"},
@@ -105,9 +118,9 @@
       "gridPos":{"h":8,"w":12,"x":0,"y":21},"id":9,
       "options":{"legend":{"calcs":["lastNotNull"],"displayMode":"table","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}},
       "targets":[
-        {"editorMode":"code","expr":"histogram_quantile(0.50, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p50","range":true,"refId":"A"},
-        {"editorMode":"code","expr":"histogram_quantile(0.95, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p95","range":true,"refId":"B"},
-        {"editorMode":"code","expr":"histogram_quantile(0.99, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p99","range":true,"refId":"C"}
+        {"editorMode":"code","exemplar":true,"expr":"histogram_quantile(0.50, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p50","range":true,"refId":"A"},
+        {"editorMode":"code","exemplar":true,"expr":"histogram_quantile(0.95, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p95","range":true,"refId":"B"},
+        {"editorMode":"code","exemplar":true,"expr":"histogram_quantile(0.99, sum by (le, service) (rate(accompanist_server_session_duration_milliseconds_bucket{service=~\"$service\",choreography=~\"$choreography\",benchmark_run_id=~\"$benchmark_run_id\"}[$__rate_interval])))","legendFormat":"{{service}} · p99","range":true,"refId":"C"}
       ],
       "title":"Session duration percentiles","type":"timeseries"
     },
@@ -161,6 +174,25 @@
       "options":{"cellHeight":"sm","showHeader":true},
       "targets":[{"editorMode":"code","expr":"sum by (database_owner, error_category) (increase(accompanist_monitor_observation_errors_total{database_owner=~\"$service\"}[$__range]))","format":"table","instant":true,"range":false,"refId":"A"}],
       "title":"Mailbox monitor errors","transformations":[{"id":"organize","options":{"excludeByName":{"Time":true},"renameByName":{"Value":"Errors","database_owner":"Service","error_category":"Cause"}}}],"type":"table"
+    },
+    {
+      "datasource":{"type":"tempo","uid":"tempo"},
+      "description":"Distributed choreography traces in the selected time range. Each row is one trace spanning every participating service; select its trace ID to inspect spans, logs, and the service graph.",
+      "fieldConfig":{"defaults":{},"overrides":[]},
+      "gridPos":{"h":10,"w":24,"x":0,"y":43},"id":14,
+      "options":{"cellHeight":"sm","showHeader":true},
+      "targets":[
+        {
+          "datasource":{"type":"tempo","uid":"tempo"},
+          "limit":50,
+          "query":"{ resource.service.name =~ \"${service:regex}\" && span.choreography.name =~ \"${choreography:regex}\" }",
+          "queryType":"traceql",
+          "refId":"A",
+          "tableType":"traces"
+        }
+      ],
+      "title":"Recent choreography traces",
+      "type":"table"
     }
   ],
   "refresh":"5s",
