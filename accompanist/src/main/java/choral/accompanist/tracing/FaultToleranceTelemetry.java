@@ -40,30 +40,51 @@ public final class FaultToleranceTelemetry {
         return builder.build();
     }
 
+    /**
+     * Records the start of a choreography execution, labeled by its initiating cause.
+     */
     public void attempt(Session s, String cause) {
         attempts.add(1, attrs(s, "cause", cause));
     }
 
+    /**
+     * Records that a choreography execution completed successfully.
+     */
     public void completion(Session s) {
         completions.add(1, attrs(s, null, null));
     }
 
+    /**
+     * Records that a choreography execution failed, labeled by the failure cause.
+     */
     public void failure(Session s, String cause) {
         failures.add(1, attrs(s, "cause", cause));
     }
 
+    /**
+     * Records a request to restart a choreography, labeled by the restart cause.
+     */
     public void restart(Session s, String cause) {
         restartRequests.add(1, attrs(s, "cause", cause));
     }
 
-    public void sendAttempt(Session s, String destination, String classification) {
-        sendAttempts.add(1, attrs(s, "destination", destination + ":" + classification));
+    /**
+     * Records an actual message transport attempt, labeled by its destination address.
+     */
+    public void sendAttempt(Session s, String destination) {
+        sendAttempts.add(1, attrs(s, "destination", destination));
     }
 
+    /**
+     * Records a failed message-send attempt, labeled by its normalized error category.
+     */
     public void sendFailure(Session s, String category) {
         sendFailures.add(1, attrs(s, "error.category", category));
     }
 
+    /**
+     * Records a message delivery confirmed only after its acknowledgement is durable locally.
+     */
     public void confirmation(Session s) {
         confirmations.add(1, attrs(s, null, null));
     }

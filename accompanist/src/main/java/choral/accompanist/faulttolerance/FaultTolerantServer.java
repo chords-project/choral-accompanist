@@ -39,6 +39,7 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
         if (clientCoordinator != serverCoordinator)
             throw new IllegalArgumentException("Mailbox client and server must share one recovery coordinator");
         this.recoveryCoordinator = clientCoordinator;
+        recoveryCoordinator.configureTelemetry(telemetry, serviceName);
         recoveryCoordinator.setReplayHandler(this::reconcileExecutions);
         this.recoveryLaunches = new Semaphore(recoveryCoordinator.config().maxConcurrentReplays());
     }

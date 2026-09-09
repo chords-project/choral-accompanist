@@ -3,7 +3,6 @@ package choral.accompanist.faulttolerance;
 import choral.accompanist.connection.Message;
 import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
-import choral.accompanist.tracing.FaultToleranceTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 
@@ -17,7 +16,6 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
     private final Logger logger;
     private final String address;
     private final ClientEvents events;
-    private final FaultToleranceTelemetry faultToleranceTelemetry;
     private final MailboxRecoveryCoordinator coordinator;
 
     public MailboxFaultClientManager(SQLMailbox mailbox, String address, ClientEvents events, OpenTelemetry telemetry) throws URISyntaxException, SQLException {
@@ -25,7 +23,6 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
         this.telemetry = telemetry;
         this.logger = new Logger(telemetry, MailboxFaultClientManager.class.getName());
         this.events = events;
-        this.faultToleranceTelemetry = new FaultToleranceTelemetry(telemetry, "client");
         this.coordinator = MailboxRecoveryCoordinator.shared(mailbox);
     }
 
@@ -64,8 +61,6 @@ public class MailboxFaultClientManager implements FaultClientConnectionManager {
 
         @Override
         public void sendMessage(Message msg) throws Exception {
-
-            faultToleranceTelemetry.sendAttempt(msg.session, address, "physical");
             coordinator.send(msg, address, events);
         }
 

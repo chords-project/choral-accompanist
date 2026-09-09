@@ -1,9 +1,12 @@
 package choral.accompanist.faulttolerance;
 
 import choral.accompanist.connection.Message;
+import choral.accompanist.tracing.FaultToleranceTelemetry;
 import choral_reactive.ChannelGrpc;
+import io.grpc.StatusRuntimeException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.opentelemetry.api.OpenTelemetry;
 
 import javax.sql.DataSource;
 import java.net.InetSocketAddress;
@@ -54,6 +57,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     private final AtomicBoolean started = new AtomicBoolean();
     private volatile boolean closed;
     private volatile ReplayHandler replayHandler;
+    private volatile FaultToleranceTelemetry telemetry;
 
     MailboxRecoveryCoordinator(SQLMailbox mailbox, Config config) {
         this.mailbox = mailbox;
@@ -71,6 +75,11 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
 
     public SQLMailbox mailbox() {
         return mailbox;
+    }
+
+    /** Configure the process-local metrics used by initial deliveries and background retries. */
+    public synchronized void configureTelemetry(OpenTelemetry openTelemetry, String serviceName) {
+        if (telemetry == null) telemetry = new FaultToleranceTelemetry(openTelemetry, serviceName);
     }
 
     public void start() {
@@ -141,6 +150,8 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         try {
             workers.submit(() -> {
                 try {
+                    if (telemetry != null)
+                        telemetry.sendAttempt(output.message().session, output.destination());
                     ManagedChannel channel = channels.computeIfAbsent(output.destination(), this::newChannel);
                     var call = ChannelGrpc.newFutureStub(channel)
                             .withDeadlineAfter(config.deadline().toMillis(), TimeUnit.MILLISECONDS)
@@ -149,9 +160,12 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
                     // Receipt is only announced after the ACK is durable locally.
                     mailbox.didDeliverMessage(output.message(), output.destination());
                     destinations.get(output.destination()).success();
+                    if (telemetry != null) telemetry.confirmation(output.message().session);
                     if (events != null) events.messageDeliveryConfirmed(output.message());
                     wake();
                 } catch (Exception error) {
+                    if (telemetry != null)
+                        telemetry.sendFailure(output.message().session, failureCategory(error));
                     // A local ACK-persistence failure is not evidence that the peer is down.
                     if (!(rootCause(error) instanceof java.sql.SQLException))
                         destinations.get(output.destination()).failure(config);
@@ -173,6 +187,14 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         // walk the parent cause until the root is located
         while (current.getCause() != null && current.getCause() != current) current = current.getCause();
         return current;
+    }
+
+    static String failureCategory(Throwable error) {
+        Throwable cause = rootCause(error);
+        if (cause instanceof StatusRuntimeException statusError)
+            return "grpc." + statusError.getStatus().getCode().name().toLowerCase();
+        if (cause instanceof java.sql.SQLException) return "persistence";
+        return cause.getClass().getSimpleName();
     }
 
     private ManagedChannel newChannel(String address) {
