@@ -12,7 +12,7 @@ from pathlib import Path
 
 import gevent
 import requests
-from locust import FastHttpUser, constant, events, task
+from locust import FastHttpUser, between, events, task
 
 LOG = logging.getLogger(__name__)
 TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
@@ -33,6 +33,24 @@ def initialise_run_identity(environment, **kwargs):
 
 def setting(name, default):
     return os.getenv(name, str(default))
+
+
+@events.init_command_line_parser.add_listener
+def add_fault_timing_arguments(parser):
+    parser.add_argument(
+        "--fault-after-seconds",
+        type=float,
+        default=float(setting("FAULT_AFTER_SECONDS", 120)),
+        help="Seconds from test start before the deployment is scaled down",
+        include_in_web_ui=True,
+    )
+    parser.add_argument(
+        "--fault-duration-seconds",
+        type=float,
+        default=float(setting("FAULT_DURATION_SECONDS", 60)),
+        help="Seconds to keep the deployment scaled down before restoring it",
+        include_in_web_ui=True,
+    )
 
 
 def record_event(phase, replicas="", detail=""):
@@ -74,11 +92,11 @@ def scale_deployment(replicas):
 
 def inject_fault(environment):
     try:
-        gevent.sleep(float(setting("FAULT_AFTER_SECONDS", 120)))
+        gevent.sleep(environment.parsed_options.fault_after_seconds)
         record_event("scale-down-api-request", 0)
         scale_deployment(0)
         wait_for_ready_replicas(0, "target-unavailable")
-        gevent.sleep(float(setting("FAULT_DURATION_SECONDS", 60)))
+        gevent.sleep(environment.parsed_options.fault_duration_seconds)
         replicas = int(setting("FAULT_RESTORE_REPLICAS", 1))
         record_event("scale-up-api-request", replicas)
         scale_deployment(replicas)
@@ -133,7 +151,7 @@ def stop_fault_controller(environment, **kwargs):
 
 class FaultToleranceWarehouseUser(FastHttpUser):
     # Keep the offered load stable across baseline, outage, and recovery.
-    wait_time = constant(float(setting("REQUEST_PERIOD_SECONDS", 3)))
+    wait_time = between(1, 5)
 
     def on_start(self):
         # Tying activation to this class guarantees that choosing the ordinary
@@ -153,7 +171,8 @@ def wait_for_ready_replicas(expected, phase):
     url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/deployments/{deployment}"
     deadline = time.monotonic() + float(setting("FAULT_READY_TIMEOUT_SECONDS", 120))
     while time.monotonic() < deadline:
-        response = requests.get(url, headers={"Authorization": f"Bearer {TOKEN_PATH.read_text().strip()}"}, verify=CA_PATH, timeout=15)
+        response = requests.get(url, headers={"Authorization": f"Bearer {TOKEN_PATH.read_text().strip()}"},
+                                verify=CA_PATH, timeout=15)
         response.raise_for_status()
         ready = response.json().get("status", {}).get("readyReplicas", 0)
         if ready == expected:
