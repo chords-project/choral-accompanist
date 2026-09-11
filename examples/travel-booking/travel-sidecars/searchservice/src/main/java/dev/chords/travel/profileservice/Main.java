@@ -30,14 +30,15 @@ public class Main {
         int rpcPort = Integer.parseInt(System.getenv().getOrDefault("SERVICE_PORT", "8083"));
         searchService = new SearchService(new InetSocketAddress(rpcHost, rpcPort), telemetry);
 
-        reservationConn = ClientConnectionManager.makeConnectionManager(ServiceResources.shared.reservation, telemetry);
+        reservationConn = ClientConnectionManager.defaultFactory()
+                .makeConnectionManager(ServiceResources.shared.reservation, telemetry);
 
         ReactiveServer server = new ReactiveServer(Service.SEARCH.name(), telemetry, Main::handleNewSession);
 
         server.listen(ServiceResources.shared.search);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static Object handleNewSession(SessionContext ctx) throws Exception {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -57,5 +58,6 @@ public class Main {
                 ctx.log("Invalid choreography " + ctx.session.choreographyName());
                 break;
         }
+        return null;
     }
 }

@@ -1,7 +1,7 @@
 package dev.chords.travel.clientservice;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.Coordinate;
 import geo.GeoGrpc;
@@ -25,7 +25,7 @@ public class GeoService implements dev.chords.travel.choreographies.GeoService {
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = GeoGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, GeoService.class.getName());
     }
 

@@ -30,7 +30,7 @@ public class Main {
         server.listen(ServiceResources.shared.reservation);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static Object handleNewSession(SessionContext ctx) throws Exception {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -59,5 +59,6 @@ public class Main {
 
                 break;
         }
+        return null;
     }
 }

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import dev.chords.choreographies.Cart;
 import dev.chords.choreographies.Money;
 import dev.chords.choreographies.OrderItem;
@@ -36,7 +36,7 @@ public class ProductCatalogService implements dev.chords.choreographies.ProductC
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = ProductCatalogServiceGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
     }
 
     @Override

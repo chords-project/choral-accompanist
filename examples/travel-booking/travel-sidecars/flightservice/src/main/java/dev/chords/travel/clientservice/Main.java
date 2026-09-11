@@ -32,7 +32,7 @@ public class Main {
         server.listen(ServiceResources.shared.flight);
     }
 
-    private static void handleNewSession(SessionContext ctx) throws Exception {
+    private static Object handleNewSession(SessionContext ctx) throws Exception {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -52,5 +52,6 @@ public class Main {
                 ctx.log("Invalid choreography " + ctx.session.choreographyName());
                 break;
         }
+        return null;
     }
 }
