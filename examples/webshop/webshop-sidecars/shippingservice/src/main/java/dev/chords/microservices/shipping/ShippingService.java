@@ -4,7 +4,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import dev.chords.choreographies.Address;
 import dev.chords.choreographies.Cart;
 import dev.chords.choreographies.CartItem;
@@ -32,7 +32,7 @@ public class ShippingService implements dev.chords.choreographies.ShippingServic
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         connection = ShippingServiceGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
     }
 
     @Override

@@ -30,7 +30,7 @@ public class Main {
         server.listen(ServiceResources.shared.profile);
     }
 
-    private static void handleNewSession(SessionContext ctx) {
+    private static Object handleNewSession(SessionContext ctx) {
         TravelSession session = new TravelSession(ctx.session);
 
         switch (session.choreography) {
@@ -50,5 +50,6 @@ public class Main {
                 ctx.log("Invalid choreography " + ctx.session.choreographyName());
                 break;
         }
+        return null;
     }
 }

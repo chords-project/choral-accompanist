@@ -12,8 +12,8 @@ plugins {
 
 rootProject.name = "travel-sidecars"
 
-include("reactive-middleware")
-project(":reactive-middleware").projectDir = file("../../../reactive-middleware")
+include("accompanist")
+project(":accompanist").projectDir = file("../../../accompanist")
 
 include(
     "travel-choreographies",

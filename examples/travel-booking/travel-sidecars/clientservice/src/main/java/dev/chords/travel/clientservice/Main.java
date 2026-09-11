@@ -2,7 +2,7 @@ package dev.chords.travel.clientservice;
 
 import choral.accompanist.ReactiveServer;
 import choral.accompanist.SessionContext;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
 import choreography.ChoreographyGrpc;
@@ -48,6 +48,7 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
         server = new ReactiveServer(Service.CLIENT.name(), telemetry, ctx -> {
             logger.warn("client server received new session from " + ctx.session.senderName() + ", this should never happen and is ignored.");
+            return null;
         });
 
         grpcServer = new GrpcServer(
@@ -75,7 +76,7 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
 
         try {
             server.listen(ServiceResources.shared.client);
-        } catch (URISyntaxException | IOException e) {
+        } catch (Exception e) {
             logger.exception("choral reactive server failed", e);
             throw new RuntimeException(e);
         }
@@ -85,18 +86,16 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         TravelSession session = TravelSession.makeSession(Choreography.SEARCH_HOTELS, Service.CLIENT);
 
         Span span = telemetry
-                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("SearchHotels")
                 .setSpanKind(SpanKind.CLIENT)
                 .setAttribute("choreography.session", session.toString())
                 .startSpan();
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
-        server.registerSession(session, telemetrySession);
-
         try (
                 Scope scope = span.makeCurrent();
-                SessionContext ctx = new SessionContext(server, session, telemetrySession);
+                SessionContext ctx = new SessionContext(server, telemetrySession);
         ) {
             telemetrySession.log("Initializing SEARCH_HOTELS choreography");
 
@@ -119,18 +118,16 @@ public class Main extends ChoreographyGrpc.ChoreographyImplBase {
         TravelSession session = TravelSession.makeSession(Choreography.BOOK_TRAVEL, Service.CLIENT);
 
         Span span = telemetry
-                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("BookTravel")
                 .setSpanKind(SpanKind.CLIENT)
                 .setAttribute("choreography.session", session.toString())
                 .startSpan();
 
         TelemetrySession telemetrySession = new TelemetrySession(telemetry, session, span);
-        server.registerSession(session, telemetrySession);
-
         try (
                 Scope scope = span.makeCurrent();
-                SessionContext ctx = new SessionContext(server, session, telemetrySession);
+                SessionContext ctx = new SessionContext(server, telemetrySession);
         ) {
             telemetrySession.log("Initializing BOOK_TRAVEL choreography");
 

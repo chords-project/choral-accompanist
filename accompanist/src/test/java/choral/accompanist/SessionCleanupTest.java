@@ -31,6 +31,6 @@ class SessionCleanupTest {
         assertTrue(waiting.isCancelled());
         server.msgQueue.addMessage(b, "new", 1, telemetry);
         assertEquals("new", server.msgQueue.retrieveMessage(b, telemetry).get());
-        server.cleanupKey(session);
+        server.cleanupKey(telemetry);
     }
 }

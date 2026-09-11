@@ -5,7 +5,7 @@ import choral.accompanist.SessionContext;
 import choral.accompanist.connection.ClientConnectionManager;
 import choral.accompanist.ReactiveClient;
 import choral.accompanist.ReactiveServer;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
 import dev.chords.choreographies.*;
@@ -45,7 +45,7 @@ public class FrontendController {
         this.telemetry = Tracing.initTracing("Frontend");
         this.logger = new Logger(telemetry, FrontendController.class.getName());
 
-        this.checkoutDurationHistogram = telemetry.getMeter(JaegerConfiguration.TRACER_NAME)
+        this.checkoutDurationHistogram = telemetry.getMeter(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .histogramBuilder("choral.frontend.checkout-duration")
                 .setUnit("ms")
                 .setDescription("Time it takes to perform a checkout")
@@ -120,7 +120,7 @@ public class FrontendController {
                 );
 
                 // TODO: Allow payload to be passed with invokeManualSession()
-                OrderResult result = placeOrderChor.placeOrder(request);
+                OrderResult result = placeOrderChor.placeOrder(new ReqPlaceOrder());
 
                 ctx.log("[PAYMENT] PLACE_ORDER choreography completed");
 
@@ -145,7 +145,7 @@ public class FrontendController {
                 Service.FRONTEND);
 
         Span span = telemetry
-                .getTracer(JaegerConfiguration.TRACER_NAME)
+                .getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME)
                 .spanBuilder("Frontend: Checkout request")
                 .setSpanKind(SpanKind.CLIENT)
                 .setAttribute("choreography.session", session.toString())

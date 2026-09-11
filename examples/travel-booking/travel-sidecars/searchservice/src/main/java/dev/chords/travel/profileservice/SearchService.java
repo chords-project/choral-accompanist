@@ -1,7 +1,7 @@
 package dev.chords.travel.profileservice;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.SerializableList;
 import io.grpc.ManagedChannel;
@@ -25,7 +25,7 @@ public class SearchService implements dev.chords.travel.choreographies.SearchSer
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = SearchGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, SearchService.class.getName());
     }
 

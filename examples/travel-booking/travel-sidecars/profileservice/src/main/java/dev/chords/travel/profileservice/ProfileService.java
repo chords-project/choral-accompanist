@@ -1,7 +1,7 @@
 package dev.chords.travel.profileservice;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.Address;
 import dev.chords.travel.choreographies.Hotel;
@@ -28,7 +28,7 @@ public class ProfileService implements dev.chords.travel.choreographies.ProfileS
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = ProfileGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, ProfileService.class.getName());
     }
 

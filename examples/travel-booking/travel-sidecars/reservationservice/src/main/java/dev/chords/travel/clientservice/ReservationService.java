@@ -1,7 +1,7 @@
 package dev.chords.travel.clientservice;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import dev.chords.travel.choreographies.SerializableList;
 import io.grpc.ManagedChannel;
@@ -27,7 +27,7 @@ public class ReservationService implements dev.chords.travel.choreographies.Rese
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = ReservationGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, ReservationService.class.getName());
     }
 

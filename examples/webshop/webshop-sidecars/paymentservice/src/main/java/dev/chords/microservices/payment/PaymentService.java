@@ -18,7 +18,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 
 public class PaymentService implements dev.chords.choreographies.PaymentService {
 
@@ -31,7 +31,7 @@ public class PaymentService implements dev.chords.choreographies.PaymentService 
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = PaymentServiceGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, PaymentService.class.getName());
     }
 

@@ -1,7 +1,7 @@
 package dev.chords.microservices.emailservice;
 
 import choral.accompanist.ChannelConfigurator;
-import choral.accompanist.tracing.JaegerConfiguration;
+import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.Logger;
 import dev.chords.choreographies.OrderResult;
 import hipstershop.Demo;
@@ -27,7 +27,7 @@ public class EmailService implements dev.chords.choreographies.EmailService, Aut
         channel = ChannelConfigurator.makeChannel(address, telemetry);
 
         this.connection = EmailServiceGrpc.newFutureStub(channel);
-        this.tracer = telemetry.getTracer(JaegerConfiguration.TRACER_NAME);
+        this.tracer = telemetry.getTracer(AccompanistTelemetry.INSTRUMENTATION_SCOPE_NAME);
         this.logger = new Logger(telemetry, EmailService.class.getName());
     }
 
