@@ -4,8 +4,10 @@ import choral.accompanist.connection.Message;
 import choral.accompanist.tracing.FaultToleranceTelemetry;
 import choral.accompanist.tracing.AccompanistTelemetry;
 import choral.accompanist.tracing.HeaderTextMapGetter;
+import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
 import choral_reactive.ChannelGrpc;
+import choral_reactive.ChannelOuterClass;
 import io.grpc.StatusRuntimeException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -40,10 +42,10 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             Duration reconciliationInterval,
             Duration initialBackoff,
             Duration maxBackoff, int scanBatchSize, int maxConcurrentDeliveries,
-            int maxConcurrentReplays, int cleanupBatchSize) {
+            int maxConcurrentDeliveriesPerDestination, int maxConcurrentReplays, int cleanupBatchSize) {
         public static Config defaults() {
             return new Config(Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofMillis(250),
-                    Duration.ofSeconds(30), 128, 32, 8, 128);
+                    Duration.ofSeconds(30), 128, 32, 8, 8, 128);
         }
     }
 
@@ -68,6 +70,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     private volatile boolean closed;
     private volatile ReplayHandler replayHandler;
     private volatile FaultToleranceTelemetry telemetry;
+    private volatile Logger logger;
 
     MailboxRecoveryCoordinator(SQLMailbox mailbox, Config config) {
         this.mailbox = mailbox;
@@ -93,6 +96,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     public synchronized void configureTelemetry(OpenTelemetry openTelemetry, String serviceName) {
         if (telemetry == null) {
             telemetry = new FaultToleranceTelemetry(openTelemetry, serviceName);
+            logger = new Logger(openTelemetry, MailboxRecoveryCoordinator.class.getName());
         }
     }
 
@@ -114,9 +118,13 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             var output = mailbox.prepareOutput(proposed, destination);
             if (output.acknowledged()) return;
             var state = destinations.computeIfAbsent(destination, ignored -> new DestinationState());
-            if (System.nanoTime() < state.nextAttemptNanos) return;
             if (!deliveries.tryAcquire()) return;
-            dispatch(output, events, reservation);
+            var permit = state.tryAcquire(config, System.nanoTime());
+            if (permit == null) {
+                deliveries.release();
+                return;
+            }
+            dispatch(output, events, reservation, state, permit);
             reservation = null; // callback owns it
         } finally {
             if (reservation != null) inFlight.remove(proposedKey, reservation);
@@ -127,23 +135,77 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         if (!closed) scheduler.execute(this::reconcileSafely);
     }
 
+    /**
+     * Announces that this process is accepting mailbox messages. Notifications use the same
+     * cached gRPC channels as durable message delivery, but are deliberately not mailbox rows.
+     */
+    public void announceReady(String serviceName, String address, String[] peers) {
+        if (peers == null) return;
+        var notification = ChannelOuterClass.ReadyNotification.newBuilder()
+                .setServiceName(serviceName)
+                .setAddress(address)
+                .build();
+        for (String peer : peers) {
+            if (peer == null || peer.isBlank() || peer.equals(address)) continue;
+            try {
+                workers.submit(() -> {
+                    try {
+                        ChannelGrpc.newFutureStub(channel(peer))
+                                .withDeadlineAfter(config.deadline().toMillis(), TimeUnit.MILLISECONDS)
+                                .notifyReady(notification)
+                                .get();
+                    } catch (Exception error) {
+                        logReadinessFailure("Failed to notify peer that this service is ready", peer, error);
+                        // Periodic reconciliation remains the fallback when a peer is unavailable.
+                    }
+                });
+            } catch (RuntimeException error) {
+                logReadinessFailure("Failed to schedule peer readiness notification", peer, error);
+                // Shutdown can race with a best-effort readiness announcement.
+            }
+        }
+    }
+
+    private void logReadinessFailure(String message, String peer, Throwable error) {
+        Logger configuredLogger = logger;
+        if (configuredLogger == null) return;
+        configuredLogger.warn(message, Attributes.builder()
+                .put("peer.address", peer)
+                .putAll(Logger.exceptionAttributes(error))
+                .build());
+    }
+
+    /**
+     * A peer has proven that it is currently reachable by delivering a readiness RPC.
+     */
+    public void destinationReady(String destination) {
+        if (destination == null || destination.isBlank()) return;
+        destinations.computeIfAbsent(destination, ignored -> new DestinationState()).ready();
+        ManagedChannel channel = channels.get(destination);
+        if (channel != null) channel.resetConnectBackoff();
+        wake();
+    }
+
     private void reconcileSafely() {
         if (closed) return;
         try {
             for (var output : mailbox.pendingOutputs(config.scanBatchSize())) {
-                if (!deliveries.tryAcquire()) break;
                 Object reservation = new Object();
                 if (inFlight.putIfAbsent(output.key(), reservation) != null) {
-                    deliveries.release();
                     continue;
                 }
                 var state = destinations.computeIfAbsent(output.destination(), ignored -> new DestinationState());
-                if (System.nanoTime() < state.nextAttemptNanos) {
+                if (!deliveries.tryAcquire()) {
+                    inFlight.remove(output.key(), reservation);
+                    break;
+                }
+                var permit = state.tryAcquire(config, System.nanoTime());
+                if (permit == null) {
                     inFlight.remove(output.key(), reservation);
                     deliveries.release();
                     continue;
                 }
-                dispatch(output, null, reservation);
+                dispatch(output, null, reservation, state, permit);
             }
             ReplayHandler handler = replayHandler;
             if (handler != null) handler.reconcileExecutions();
@@ -160,18 +222,22 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
      * @param events      where to send callback events
      * @param reservation the inFlight reservation token
      */
-    private void dispatch(SQLMailbox.PreparedOutput output, FaultClientConnectionManager.ClientEvents events, Object reservation) {
+    private void dispatch(SQLMailbox.PreparedOutput output, FaultClientConnectionManager.ClientEvents events,
+                          Object reservation, DestinationState destinationState,
+                          DestinationState.AttemptPermit permit) {
         try {
             workers.submit(() -> {
                 try {
-                    dispatchMessage(output, events);
+                    dispatchMessage(output, events, destinationState, permit);
                 } finally {
                     inFlight.remove(output.key(), reservation);
+                    destinationState.release(permit);
                     deliveries.release();
                 }
             });
         } catch (RuntimeException rejected) {
             inFlight.remove(output.key(), reservation);
+            destinationState.release(permit);
             deliveries.release();
             throw rejected;
         }
@@ -181,7 +247,9 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
      * Performs and traces one physical delivery attempt, including acknowledgement persistence.
      */
     private void dispatchMessage(SQLMailbox.PreparedOutput output,
-                                 FaultClientConnectionManager.ClientEvents events) {
+                                 FaultClientConnectionManager.ClientEvents events,
+                                 DestinationState destinationState,
+                                 DestinationState.AttemptPermit permit) {
         FaultToleranceTelemetry configuredTelemetry = telemetry;
         Span span = createDeliveryAttemptSpan(configuredTelemetry, output);
 
@@ -189,14 +257,14 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             try {
                 if (configuredTelemetry != null)
                     configuredTelemetry.sendAttempt(output.message().session, output.destination());
-                ManagedChannel channel = channels.computeIfAbsent(output.destination(), this::newChannel);
+                ManagedChannel channel = channel(output.destination());
                 var call = ChannelGrpc.newFutureStub(channel)
                         .withDeadlineAfter(config.deadline().toMillis(), TimeUnit.MILLISECONDS)
                         .sendMessage(output.message().toGrpcMessage());
                 call.get();
                 // Receipt is only announced after the ACK is durable locally.
                 mailbox.didDeliverMessage(output.message(), output.destination());
-                destinations.get(output.destination()).success();
+                destinationState.success(permit);
                 if (configuredTelemetry != null) configuredTelemetry.confirmation(output.message().session);
                 if (events != null) events.messageDeliveryConfirmed(output.message());
                 wake();
@@ -208,7 +276,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
 
                 // A local ACK-persistence failure is not evidence that the peer is down.
                 if (!(rootCause(error) instanceof java.sql.SQLException))
-                    destinations.get(output.destination()).failure(config);
+                    destinationState.failure(permit, config);
                 if (events != null) events.messageDeliveryFailed(output.message());
             }
         } finally {
@@ -270,6 +338,10 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         }
     }
 
+    private ManagedChannel channel(String address) {
+        return channels.computeIfAbsent(address, this::newChannel);
+    }
+
     @Override
     public void close() {
         closed = true;
@@ -286,28 +358,64 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     /**
      * State keeping track of when a message should attempt to be delivered again.
      */
-    private static final class DestinationState {
+    static final class DestinationState {
         private int failures;
-        private volatile long nextAttemptNanos;
+        private long nextAttemptNanos;
+        private int activeDeliveries;
+        private boolean probeInFlight;
+        private long generation;
+
+        record AttemptPermit(long generation, boolean probe) {}
+
+        synchronized AttemptPermit tryAcquire(Config config, long now) {
+            if (failures > 0) {
+                if (now < nextAttemptNanos || probeInFlight) return null;
+                probeInFlight = true;
+                activeDeliveries++;
+                return new AttemptPermit(generation, true);
+            }
+            if (activeDeliveries >= config.maxConcurrentDeliveriesPerDestination()) return null;
+            activeDeliveries++;
+            return new AttemptPermit(generation, false);
+        }
 
         /**
          * Marks the state as succeeded
          */
-        synchronized void success() {
+        synchronized void success(AttemptPermit permit) {
+            // A completed RPC is newer evidence than any failure that completed before it,
+            // including a failure from another request in the same healthy batch.
             failures = 0;
             nextAttemptNanos = 0;
+            probeInFlight = false;
+            generation++;
         }
 
         /**
          * Marks the state as failed
          */
-        synchronized void failure(Config config) {
+        synchronized void failure(AttemptPermit permit, Config config) {
+            if (permit.generation() != generation) return;
             failures = Math.min(failures + 1, 30);
             long base = config.initialBackoff().toNanos();
             long cap = config.maxBackoff().toNanos();
             long delay = Math.min(cap, base * (1L << Math.min(failures - 1, 20)));
             long jitter = ThreadLocalRandom.current().nextLong(Math.max(1, delay / 4));
             nextAttemptNanos = System.nanoTime() + delay - delay / 8 + jitter;
+            probeInFlight = false;
+            generation++;
+        }
+
+        synchronized void release(AttemptPermit permit) {
+            activeDeliveries--;
+            if (permit.probe() && permit.generation() == generation) probeInFlight = false;
+        }
+
+        synchronized void ready() {
+            failures = 1;
+            nextAttemptNanos = 0;
+            probeInFlight = false;
+            generation++;
         }
     }
 }

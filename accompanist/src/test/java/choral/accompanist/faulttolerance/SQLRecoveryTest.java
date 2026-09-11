@@ -171,7 +171,7 @@ class SQLRecoveryTest {
         assertEquals(parent.getTraceId(), candidate.traceContext().getTraceId());
         assertEquals(parent.getSpanId(), candidate.traceContext().getSpanId());
         assertEquals("value", candidate.traceContext().getTraceState().get("vendor"));
-        assertEquals(input.message, recoveredMailbox.recoverReceivedMessages().getFirst().message);
+        assertEquals(input.message, recoveredMailbox.receivedMessages(input.session.sessionID()).getFirst().message);
         assertTrue(recoveredStore.startSession(input.session));
         assertEquals(1, count("SELECT attempt_count FROM session_states WHERE session_id = 2"));
     }

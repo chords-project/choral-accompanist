@@ -7,6 +7,7 @@ import io.opentelemetry.api.logs.Severity;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Objects;
 
 public class Logger implements io.opentelemetry.api.logs.Logger {
     private final io.opentelemetry.api.logs.Logger logger;
@@ -91,7 +92,7 @@ public class Logger implements io.opentelemetry.api.logs.Logger {
         String stackTrace = sw.toString();
 
         return Attributes.builder()
-                .put("exception.message", exception.getMessage())
+                .put("exception.message", Objects.toString(exception.getMessage(), ""))
                 .put("exception.stacktrace", stackTrace)
                 .put("exception.type", exception.getClass().getSimpleName())
                 .build();

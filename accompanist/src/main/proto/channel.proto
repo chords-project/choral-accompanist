@@ -6,6 +6,7 @@ package choral_reactive;
 
 service Channel {
   rpc SendMessage (Message) returns (google.protobuf.Empty);
+  rpc NotifyReady (ReadyNotification) returns (google.protobuf.Empty);
 }
 
 service StreamingChannel {
@@ -21,6 +22,11 @@ message Message {
   map<string, string> headers = 6;
   SpanContext span_context = 7;
   string benchmark_run_id = 8;
+}
+
+message ReadyNotification {
+  string service_name = 1;
+  string address = 2;
 }
 
 message SpanContext {

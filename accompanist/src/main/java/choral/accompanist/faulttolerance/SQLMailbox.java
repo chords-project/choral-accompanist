@@ -171,29 +171,6 @@ public class SQLMailbox {
         }
     }
 
-    public List<Message> recoverReceivedMessages() throws SQLException, IOException, ClassNotFoundException {
-        try (
-                var con = db.getConnection();
-                var stmt = con.createStatement()
-        ) {
-            var resultSet = stmt.executeQuery("""
-                    SELECT inbox.* FROM inbox
-                        JOIN session_states ON inbox.session_id = session_states.session_id
-                        WHERE session_states.session_state IN ('started', 'restart');
-                    """);
-
-            var messages = new ArrayList<Message>();
-            while (resultSet.next()) {
-                var msgBytes = resultSet.getBytes("message");
-                messages.add(Message.deserialize(msgBytes));
-            }
-
-            System.out.println("Recovered " + messages.size() + " messages");
-
-            return messages;
-        }
-    }
-
     public List<Message> receivedMessages(int sessionId) throws SQLException, IOException {
         var messages = new ArrayList<Message>();
         try (var con = db.getConnection(); var stmt = con.prepareStatement(

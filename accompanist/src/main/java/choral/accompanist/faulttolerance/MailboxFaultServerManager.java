@@ -26,6 +26,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
     private final FaultServerConnectionManager.ServerEvents serverEvents;
     private final SQLMailbox mailbox;
+    private final String serviceName;
     private final String[] broadcastClients;
     private Server server;
     private final Logger logger;
@@ -35,6 +36,7 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
     public MailboxFaultServerManager(SQLMailbox mailbox, String serviceName, FaultServerConnectionManager.ServerEvents serverEvents, OpenTelemetry telemetry, String[] broadcastClients) {
         this.broadcastClients = broadcastClients;
         this.mailbox = mailbox;
+        this.serviceName = serviceName;
         this.serverEvents = serverEvents;
         this.logger = new Logger(telemetry, MailboxFaultServerManager.class.getName());
         this.telemetry = telemetry;
@@ -72,19 +74,12 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
 
         server = serverBuilder.build().start();
         coordinator.start();
+        coordinator.announceReady(serviceName, address, broadcastClients);
 
         try {
             server.awaitTermination();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
-    }
-
-    protected void recoverReceivedMessages() throws Exception {
-        var msgs = this.mailbox.recoverReceivedMessages();
-        logger.info("Recovered " + msgs.size() + " messages");
-        for (var msg : msgs) {
-            this.serverEvents.messageReceived(msg);
         }
     }
 
@@ -133,6 +128,20 @@ public class MailboxFaultServerManager implements FaultServerConnectionManager {
     }
 
     private class ChannelGrpcImpl extends ChannelGrpc.ChannelImplBase {
+
+        @Override
+        public void notifyReady(ChannelOuterClass.ReadyNotification request, StreamObserver<Empty> responseObserver) {
+            if (request.getAddress().isBlank()) {
+                responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT
+                        .withDescription("ready notification address must not be empty")
+                        .asRuntimeException());
+                return;
+            }
+            logger.info("Peer ready: " + request.getServiceName() + " at " + request.getAddress());
+            coordinator.destinationReady(request.getAddress());
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        }
 
         @Override
         public void sendMessage(ChannelOuterClass.Message request, StreamObserver<Empty> responseObserver) {
