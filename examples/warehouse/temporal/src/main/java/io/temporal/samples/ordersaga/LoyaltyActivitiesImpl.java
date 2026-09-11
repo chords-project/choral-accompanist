@@ -8,8 +8,11 @@ public class LoyaltyActivitiesImpl implements LoyaltyActivities {
     HikariDataSource db;
     public static final int userID = 100;
 
-    public LoyaltyActivitiesImpl(HikariDataSource db) {
+    public LoyaltyActivitiesImpl(HikariDataSource db) throws java.sql.SQLException {
         this.db = db;
+        try (var con = db.getConnection(); var stmt = con.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS loyalty_points (user_id INT PRIMARY KEY, points INT NOT NULL DEFAULT 0)");
+        }
     }
 
     @Override

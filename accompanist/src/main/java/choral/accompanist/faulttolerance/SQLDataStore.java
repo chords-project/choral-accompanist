@@ -119,7 +119,7 @@ public class SQLDataStore implements FaultDataStore {
                         INSERT INTO session_states (session_id, choreography, session_state, run_id, started_at, attempt_count,
                                                     trace_id, trace_parent_span_id, trace_flags, trace_state)
                         VALUES (?, ?, 'started', CAST(? AS UUID), NOW(), 1, ?, ?, ?, ?)
-                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = NOW(),
+                        ON CONFLICT (session_id) DO UPDATE SET session_state = 'started', started_at = COALESCE(session_states.started_at, EXCLUDED.started_at),
                             waiting_sender = NULL, waiting_sequence = NULL,
                             trace_id = COALESCE(session_states.trace_id, EXCLUDED.trace_id),
                             trace_parent_span_id = COALESCE(session_states.trace_parent_span_id, EXCLUDED.trace_parent_span_id),

@@ -1,121 +1,132 @@
 #!/usr/bin/env python3
-"""Create an offline fault-tolerance plot from a collected result bundle."""
+"""Plot one bundle or compare two entirely offline, aligned to observed outage."""
 import argparse
 import csv
+import json
 import math
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-
-import matplotlib.dates as mdates
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from export_run_bundle import read_jsonl
+
+PARAMETERS = ("rate", "duration", "fault_after", "fault_duration", "drain_timeout", "max_concurrent")
 
 
-def parse_timestamp(value):
-    """Parse Postgres and RFC 3339 timestamps as timezone-aware datetimes."""
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+def bucket_counts(values, origin):
+    return Counter(math.floor(value - origin) for value in values)
 
 
-BUCKET_SECONDS = 10
+def mailbox_series(stream, run_id, origin):
+    """Return warehouse mailbox samples, excluding interleaved session-state rows."""
+    rows = [row for row in csv.DictReader(stream)
+            if row["run_id"] == run_id and row["service"] == "warehouse"
+            and row["pending_outbox"] != ""]
+    return ([datetime.fromisoformat(row["observed_at_utc"].replace("Z", "+00:00")).timestamp() - origin
+             for row in rows],
+            [int(row["pending_outbox"]) for row in rows])
 
-parser = argparse.ArgumentParser()
-parser.add_argument("bundle")
-args = parser.parse_args()
-bundle = Path(args.bundle)
-completed = bundle / "completed_sessions.csv"
-samples = bundle / "mailbox_samples.csv"
-events = bundle / "fault_events.csv"
-for artifact in (completed, samples, events):
-    if not artifact.is_file():
-        raise FileNotFoundError(f"Bundle is missing required artifact: {artifact}")
 
-with events.open(newline="") as file:
-    fault_events = list(csv.DictReader(file))
-if not fault_events:
-    raise ValueError("fault_events.csv is empty")
-run_id = fault_events[0]["run_id"]
-event_times = {row["phase"]: parse_timestamp(row["timestamp_utc"]) for row in fault_events}
+def load(bundle):
+    return (json.loads((bundle / "run-config.json").read_text()),
+            json.loads((bundle / "run-manifest.json").read_text()),
+            json.loads((bundle / "executions.json").read_text()),
+            read_jsonl(bundle / "requests.jsonl"), read_jsonl(bundle / "fault-events.jsonl"))
 
-completion_times = []
-with completed.open(newline="") as file:
-    for row in csv.DictReader(file):
-        if row.get("completed_at"):
-            completion_times.append(parse_timestamp(row["completed_at"]))
 
-# The warehouse outbox holds messages that cannot be delivered while payment is
-# unavailable. Keep every one-second sample; reducing them by minute hides peaks.
-backlog_samples = []
-with samples.open(newline="") as file:
-    for row in csv.DictReader(file):
-        if (row.get("run_id") == run_id and row.get("service") == "warehouse"
-                and row.get("pending_outbox") not in (None, "")):
-            backlog_samples.append((parse_timestamp(row["observed_at_utc"]), int(row["pending_outbox"])))
-if not backlog_samples:
-    raise ValueError(f"No warehouse backlog samples found for run {run_id}")
-backlog_samples.sort()
+def plot(bundles, output):
+    data = [load(bundle) for bundle in bundles]
+    warnings = []
+    if len(data) == 2:
+        for key in PARAMETERS:
+            if data[0][0].get(key) != data[1][0].get(key):
+                warnings.append(f"Incompatible {key}: {data[0][0].get(key)} vs {data[1][0].get(key)}")
+    fig, axes = plt.subplots(3, 2, figsize=(14, 11))
+    axes = axes.flatten()
+    for index, (config, manifest, executions, requests, events) in enumerate(data):
+        color = f"C{index}"
+        label = config["system"] + " " + config["run_id"][:8]
+        if not manifest["valid"]:
+            warnings.append(label + ": INVALID — " + "; ".join(manifest["errors"]))
+        phases = {row["phase"]: row["timestamp"] for row in events}
+        origin = phases.get("target-unavailable", config.get("started_at", config["created_at"]))
+        if "target-unavailable" not in phases:
+            warnings.append(label + ": no observed unavailability; aligned to run start")
+        ready = phases.get("target-ready")
+        if ready:
+            for ax in axes[:3]:
+                ax.axvspan(0, ready - origin, color=color, alpha=0.1, label=label + " outage")
+        def rate_plot(ax, values, name, style="-", marker=None, marker_offset=0):
+            counts = bucket_counts(values, origin)
+            if counts:
+                xs = list(range(min(math.floor(config.get("started_at", origin) - origin), min(counts)),
+                                max(math.ceil(phases.get("test-stop", origin) - origin), max(counts) + 1) + 1))
+                ax.step(xs, [counts.get(x, 0) for x in xs], where="post", color=color,
+                        linestyle=style, marker=marker, markevery=(marker_offset, 24),
+                        markersize=4, alpha=.85, label=label + " " + name)
+        # These normally coincide. Staggered markers make all four series identifiable
+        # without shifting the data or implying a difference that is not present.
+        rate_plot(axes[0], [r["scheduled_at"] for r in requests if r["event"] == "scheduled"],
+                  "scheduled", "--", "x", 6 + index * 12)
+        rate_plot(axes[0], [r["timestamp"] for r in requests if r["event"] == "dispatch"],
+                  "actual", "-", "o" if index == 0 else "s", index * 12)
+        rate_plot(axes[1], [r["terminal_at"] for r in executions if r["status"] == "completed"], "successes")
+        rate_plot(axes[1], [r["terminal_at"] for r in executions if r["status"] == "failed" and r["terminal_at"] is not None], "failures", ":")
+        changes = Counter()
+        for row in executions:
+            if row["started_at"] is not None:
+                changes[row["started_at"] - origin] += 1
+                if row["terminal_at"] is not None:
+                    changes[row["terminal_at"] - origin] -= 1
+        outstanding, xs, ys = 0, [], []
+        for at, delta in sorted(changes.items()):
+            outstanding += delta
+            xs.append(at)
+            ys.append(outstanding)
+        if xs:
+            xs.append(max(xs[-1], phases.get("test-stop", origin) - origin))
+            ys.append(outstanding)
+        axes[2].step(xs, ys, where="post", color=color, label=label)
+        latencies = sorted(row["terminal_at"] - row["started_at"] for row in executions
+                           if row["status"] == "completed" and row["terminal_at"] is not None and row["started_at"] is not None)
+        if latencies:
+            axes[3].step([latencies[0], *latencies], [0, *[(i + 1) / len(latencies) for i in range(len(latencies))]], label=label, color=color)
+        http = sorted(row["http_latency_ms"] / 1000 for row in requests if row["event"] == "response")
+        if http:
+            axes[4].step([http[0], *http], [0, *[(i + 1) / len(http) for i in range(len(http))]], label=label, color=color)
+        samples = bundles[index] / "mailbox_samples.csv"
+        if config["system"] == "accompanist" and samples.exists():
+            with samples.open() as stream:
+                xs, ys = mailbox_series(stream, config["run_id"], origin)
+            axes[5].plot(xs, ys, label=label)
+    titles = ["Scheduled / actual arrivals per second (coincident lines overlap)", "Durable terminal executions per second",
+              "Unfinished accepted orders (starts − all terminals)", "Durable end-to-end execution latency (CDF)",
+              "Client-observed HTTP latency, including failures (CDF)", "Accompanist mailbox diagnostic (not a Temporal queue metric)"]
+    for i, ax in enumerate(axes):
+        ax.set_title(titles[i], fontsize=10)
+        ax.set_xlabel("Latency (s)" if i in (3, 4) else "Seconds from observed payment unavailability")
+        ax.set_ylim(bottom=0)
+        ax.grid(alpha=0.2)
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=7)
+    if not axes[5].lines:
+        axes[5].text(.5, .5, "No Accompanist mailbox samples supplied", ha="center", transform=axes[5].transAxes)
+    fig.suptitle("Recovery benchmark" + (" — INVALID / INCOMPATIBLE: see adjacent JSON report" if warnings else ""))
+    fig.tight_layout()
+    fig.savefig(output, dpi=180)
+    plt.close(fig)
+    report = {"warnings": warnings, "runs": [d[1] for d in data]}
+    output.with_suffix(".json").write_text(json.dumps(report, indent=2))
+    return report
 
-timeline_start = event_times.get("test-start", backlog_samples[0][0])
-timeline_end = max(backlog_samples[-1][0], max(completion_times, default=timeline_start))
-bucket_count = max(1, math.ceil((timeline_end - timeline_start).total_seconds() / BUCKET_SECONDS))
-completion_counts = Counter(
-    min(
-        bucket_count - 1,
-        int((completed_at - timeline_start).total_seconds() // BUCKET_SECONDS),
-    )
-    for completed_at in completion_times
-    if timeline_start <= completed_at <= timeline_end
-)
-bucket_starts = [
-    timeline_start + timedelta(seconds=index * BUCKET_SECONDS)
-    for index in range(bucket_count)
-]
-completion_rates = [completion_counts[index] / BUCKET_SECONDS for index in range(bucket_count)]
 
-fig, left = plt.subplots(figsize=(11, 5.5))
-right = left.twinx()
-
-unavailable = event_times.get("target-unavailable")
-ready = event_times.get("target-ready")
-if unavailable and ready:
-    left.axvspan(unavailable, ready, color="0.55", alpha=0.18, zorder=0)
-    left.axvline(unavailable, color="0.45", linestyle="--", linewidth=1, zorder=1)
-    left.axvline(ready, color="0.45", linestyle="--", linewidth=1, zorder=1)
-
-throughput_line = left.step(
-    bucket_starts + [timeline_end],
-    completion_rates + [completion_rates[-1]],
-    where="post",
-    color="tab:blue",
-    linewidth=2,
-    label=f"completed warehouse choreographies/s ({BUCKET_SECONDS} s buckets)",
-    zorder=3,
-)
-backlog_line = right.plot(
-    [sample[0] for sample in backlog_samples],
-    [sample[1] for sample in backlog_samples],
-    color="tab:red",
-    linewidth=1.5,
-    label="warehouse pending outbox",
-    zorder=2,
-)
-
-left.set_xlim(timeline_start, timeline_end)
-left.set_ylim(bottom=0)
-right.set_ylim(bottom=0)
-left.set_ylabel("completed choreographies/s")
-right.set_ylabel("pending outbox messages")
-left.set_xlabel("UTC time")
-left.grid(axis="y", alpha=0.25)
-left.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M", tz=timeline_start.tzinfo))
-left.xaxis.set_major_locator(mdates.MinuteLocator(interval=1, tz=timeline_start.tzinfo))
-
-handles = throughput_line + backlog_line
-labels = [handle.get_label() for handle in handles]
-if unavailable and ready:
-    handles.insert(0, plt.Rectangle((0, 0), 1, 1, color="0.55", alpha=0.18))
-    labels.insert(0, "payment unavailable")
-fig.legend(handles, labels, loc="lower center", ncol=len(handles))
-left.set_title(f"Fault-tolerance benchmark ({run_id})")
-fig.autofmt_xdate()
-fig.tight_layout(rect=(0, 0.1, 1, 1))
-fig.savefig(bundle / "fault-tolerance.png", dpi=200)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("bundle", type=Path)
+    parser.add_argument("comparison", type=Path, nargs="?")
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    plot([args.bundle] + ([args.comparison] if args.comparison else []),
+         args.output or args.bundle / ("comparison.png" if args.comparison else "fault-tolerance.png"))

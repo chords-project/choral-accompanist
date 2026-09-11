@@ -22,13 +22,12 @@ package io.temporal.samples.ordersaga;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
-import io.temporal.client.WorkflowStub;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 
 import javax.net.ssl.SSLException;
 import java.io.FileNotFoundException;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 public class WarehouseCaller {
 
@@ -36,16 +35,34 @@ public class WarehouseCaller {
     final String WAREHOUSE_TASK_QUEUE = ServerInfo.getWarehouseTaskQueue();
 
     public WarehouseCaller() throws FileNotFoundException, SSLException {
-        client = TemporalClient.get();
+        this(TemporalClient.get());
+    }
+
+    WarehouseCaller(WorkflowClient client) {
+        this.client = client;
     }
 
     public WorkflowExecution runWorkflow() throws FileNotFoundException, SSLException {
-        // get java timestamp
-        long javaTime = System.nanoTime();
+        return runWorkflow(null, null);
+    }
+
+    public WorkflowExecution runWorkflow(String benchmarkRunId, String requestId) {
+        String workflowId;
+        if (benchmarkRunId == null) {
+            workflowId = "WarehouseSaga-" + UUID.randomUUID();
+        } else {
+            UUID.fromString(benchmarkRunId);
+            if (requestId == null) {
+                throw new IllegalArgumentException("X-Benchmark-Request-Id is required with X-Benchmark-Run-Id");
+            }
+            UUID.fromString(requestId);
+            workflowId = "benchmark-" + benchmarkRunId + "-" + requestId;
+        }
 
         WorkflowOptions options =
                 WorkflowOptions.newBuilder()
-                        .setWorkflowId("WarehouseSaga-" + javaTime)
+                        .setWorkflowId(workflowId)
+                        .setWorkflowIdReusePolicy(io.temporal.api.enums.v1.WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE)
                         .setTaskQueue(WAREHOUSE_TASK_QUEUE)
                         .build();
         WarehouseSaga workflow = client.newWorkflowStub(WarehouseSaga.class, options);

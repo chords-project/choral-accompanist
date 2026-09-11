@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - warehouse/deployment.yaml
+  - warehouse/database
   - loyalty/deployment.yaml
   - payment/deployment.yaml
   - loadgenerator/deployment.yaml

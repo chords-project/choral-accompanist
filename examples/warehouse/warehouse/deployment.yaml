@@ -6,13 +6,13 @@ metadata:
     app: warehouse
 spec:
   ports:
-    - name: "choral"
-      port: 4001
-      targetPort: 4001
-      protocol: TCP
-    - name: "web-endpoint"
-      port: 5000
-      protocol: TCP
+  - name: choral
+    port: 4001
+    targetPort: 4001
+    protocol: TCP
+  - name: web-endpoint
+    port: 5000
+    protocol: TCP
   clusterIP: None
   selector:
     app: warehouse
@@ -34,95 +34,66 @@ spec:
       labels:
         app: warehouse
     spec:
-      affinity: # Deploy on same node as db service
+      affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - db-warehouse
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - db-warehouse
       initContainers:
-        - name: check-warehouse-db-ready
-          image: postgres
-          command: [
-            'sh', '-c',
-            'until pg_isready -h db-warehouse -p 5432; 
-                    do echo waiting for database; sleep 2; done;'
-          ]
+      - name: check-warehouse-db-ready
+        image: postgres:17.6
+        command:
+        - sh
+        - -c
+        - until pg_isready -h db-warehouse -p 5432; do echo waiting for database;
+          sleep 2; done;
       containers:
-        - name: warehouse-sidecar
-          image: warehouse
-          env:
-            - name: RUN
-              value: 'sidecar'
-            - name: WAREHOUSE
-              value: warehouse:4001
-            - name: PAYMENT
-              value: payment:4002
-            - name: LOYALTY
-              value: loyalty:4003
-            - name: POSTGRES_URL
-              value: "postgresql://db-warehouse:5432/warehouse"
-            - name: LISTEN_PORT
-              value: "5000"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://lgtm:4317"
-            - name: OTEL_METRIC_EXPORT_INTERVAL_SECONDS
-              value: "1"
-            - name: OTEL_SERVICE_INSTANCE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-        - name: warehouse-service
-          image: warehouse
-          env:
-            - name: RUN
-              value: 'service'
-            - name: POSTGRES_URL
-              value: "postgresql://db-warehouse:5432/warehouse"
-            - name: LISTEN_PORT
-              value: "5000"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: db-warehouse
-  labels:
-    app: db-warehouse
-spec:
-  ports:
-    - port: 5432
-      protocol: TCP
-  clusterIP: None
-  selector:
-    app: db-warehouse
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: db-warehouse
-  labels:
-    app: db-warehouse
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: db-warehouse
-  template:
-    metadata:
-      labels:
-        app: db-warehouse
-    spec:
-      containers:
-        - name: db-warehouse
-          image: postgres
-          env:
-            - name: POSTGRES_USER
-              value: postgres
-            - name: POSTGRES_PASSWORD
-              value: postgres
-            - name: POSTGRES_DB
-              value: warehouse
+      - name: warehouse-sidecar
+        image: warehouse
+        env:
+        - name: RUN
+          value: sidecar
+        - name: WAREHOUSE
+          value: warehouse:4001
+        - name: PAYMENT
+          value: payment:4002
+        - name: LOYALTY
+          value: loyalty:4003
+        - name: POSTGRES_URL
+          value: postgresql://db-warehouse:5432/warehouse
+        - name: LISTEN_PORT
+          value: '5000'
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://lgtm:4317
+        - name: OTEL_METRIC_EXPORT_INTERVAL_SECONDS
+          value: '1'
+        - name: OTEL_SERVICE_INSTANCE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        resources: &id001
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          tcpSocket:
+            port: 5000
+          periodSeconds: 2
+      - name: warehouse-service
+        image: warehouse
+        env:
+        - name: RUN
+          value: service
+        - name: POSTGRES_URL
+          value: postgresql://db-warehouse:5432/warehouse
+        - name: LISTEN_PORT
+          value: '5000'
+        resources: *id001

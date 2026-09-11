@@ -24,7 +24,7 @@ public class RestEndpoint {
             boolean success = false;
 
             try {
-                Object result = events.orderFulfillment();
+                Object result = events.orderFulfillment(exchange.getRequestHeaders().getFirst("X-Benchmark-Run-Id"), exchange.getRequestHeaders().getFirst("X-Benchmark-Request-Id"));
                 if (result instanceof Exception) {
                     message = "order exception: " + ((Exception) result).getMessage();
                     success = false;
@@ -72,6 +72,6 @@ public class RestEndpoint {
     }
 
     public interface Events {
-        Object orderFulfillment() throws Exception;
+        Object orderFulfillment(String benchmarkRunId, String requestId) throws Exception;
     }
 }

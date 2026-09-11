@@ -26,8 +26,8 @@ public class Main {
                 break;
             case "endpoint":
                 WarehouseCaller caller = new WarehouseCaller();
-                RestEndpoint endpoint = new RestEndpoint(() -> {
-                    var workflow = caller.runWorkflow();
+                RestEndpoint endpoint = new RestEndpoint((runId, requestId) -> {
+                    var workflow = caller.runWorkflow(runId, requestId);
                     String result = caller.client.newUntypedWorkflowStub(workflow.getWorkflowId()).getResult(String.class);
                     return "run workflow (%s): %s".formatted(workflow.getRunId(), result);
                 });

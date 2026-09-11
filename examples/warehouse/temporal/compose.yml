@@ -17,6 +17,7 @@ services:
       - postgresql
     environment:
       - DB=postgres12
+      - BIND_ON_IP=0.0.0.0
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal

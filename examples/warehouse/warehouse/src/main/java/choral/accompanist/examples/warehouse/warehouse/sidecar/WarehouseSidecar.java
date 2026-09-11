@@ -22,6 +22,7 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
     protected final OpenTelemetrySdk telemetry;
     protected final WarehouseTransactions warehouseTransactions;
     protected final RestEndpoint endpoint;
+    private final SQLDataStore dataStore;
 
     public WarehouseSidecar() throws Exception {
         String otelEndpoint = System.getenv().getOrDefault(
@@ -33,12 +34,23 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
 
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_warehouse");
 
-        SQLDataStore dataStore = SQLDataStore.createHikariDataStore(
+        dataStore = SQLDataStore.createHikariDataStore(
                 "jdbc:" + dbUrl,
                 "postgres",
                 "postgres",
                 warehouseTransactions.allTransactions()
         );
+
+        try (var con = dataStore.db.getConnection(); var stmt = con.createStatement()) {
+            stmt.execute("""
+                CREATE SEQUENCE IF NOT EXISTS benchmark_session_ids AS INTEGER MINVALUE -2147483647 MAXVALUE -1 START -2147483647;
+                CREATE TABLE IF NOT EXISTS benchmark_requests (
+                    request_id UUID PRIMARY KEY, run_id UUID NOT NULL,
+                    session_id INTEGER UNIQUE NOT NULL DEFAULT nextval('benchmark_session_ids'),
+                    accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """);
+        }
 
         // RabbitMQ connection
 //        var connectionFactory = new ConnectionFactory();
@@ -90,11 +102,24 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
     }
 
     @Override
-    public Object orderFulfillment(String benchmarkRunId) throws Exception {
+    public Object orderFulfillment(String benchmarkRunId, String requestId) throws Exception {
         if (benchmarkRunId != null && !benchmarkRunId.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")) {
             throw new IllegalArgumentException("X-Benchmark-Run-Id must be a UUID");
         }
         Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME, benchmarkRunId);
+        if (benchmarkRunId != null) {
+            java.util.UUID.fromString(requestId);
+            // Commit correlation before invoking the session, even if the HTTP client disconnects.
+            try (var con = dataStore.db.getConnection(); var stmt = con.prepareStatement(
+                    "INSERT INTO benchmark_requests (request_id, run_id) VALUES (CAST(? AS UUID), CAST(? AS UUID)) RETURNING session_id")) {
+                stmt.setString(1, requestId);
+                stmt.setString(2, benchmarkRunId);
+                try (var rows = stmt.executeQuery()) {
+                    rows.next();
+                    session = new Session("WAREHOUSE_ORDER", SERVICE_NAME, rows.getInt(1), benchmarkRunId);
+                }
+            }
+        }
         TelemetrySession telemetrySession = TelemetrySession.createRoot(telemetry, session);
 
         return server.invokeManualSession(telemetrySession);

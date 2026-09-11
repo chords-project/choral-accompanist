@@ -97,6 +97,15 @@ class SQLRecoveryTest {
         };
     }
 
+    @Test void retryPreservesOriginalStartTimestamp() throws Exception {
+        var session = new Session("test", "warehouse", 991, UUID.randomUUID().toString());
+        assertTrue(store.startSession(session));
+        sql("UPDATE session_states SET started_at = '2020-01-01T00:00:00Z' WHERE session_id = 991");
+        assertTrue(store.restartSession(991));
+        assertTrue(store.startSession(session));
+        assertEquals(1, count("SELECT COUNT(*) FROM session_states WHERE session_id = 991 AND started_at = '2020-01-01T00:00:00Z' AND attempt_count = 2"));
+    }
+
     @Test void identitiesSeparateSendersAndDestinations() throws Exception {
         var a = message(1, "a");
         var b = message(1, "b");

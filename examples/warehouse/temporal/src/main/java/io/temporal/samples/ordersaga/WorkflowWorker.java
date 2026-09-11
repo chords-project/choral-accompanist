@@ -24,6 +24,7 @@ public class WorkflowWorker {
 
         // Start all workers created by this factory.
         factory.start();
+        WorkerHealth.start();
         logger.info("Workflow worker started for task queues: {}", TASK_QUEUE);
 
         while (!factory.isTerminated()) {

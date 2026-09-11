@@ -37,6 +37,9 @@ repositories {
 }
 
 dependencies {
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
     // Temporal SDK
     implementation("io.temporal:temporal-sdk:$temporalVersion")
     implementation("io.temporal:temporal-opentracing:$temporalVersion")

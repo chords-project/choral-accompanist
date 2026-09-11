@@ -45,6 +45,7 @@ public class PaymentWorker {
 
         // Start all workers created by this factory.
         factory.start();
+        WorkerHealth.start();
         logger.info("Worker payment started for task queues: {}", TASK_QUEUE);
 
         while (!factory.isTerminated()) {

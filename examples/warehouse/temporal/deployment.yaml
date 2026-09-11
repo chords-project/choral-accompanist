@@ -14,31 +14,35 @@ spec:
       labels:
         app: temporal-worker-workflow
     spec:
-      #      affinity: # Deploy on same node as temporal db service
-      #        podAffinity:
-      #          requiredDuringSchedulingIgnoredDuringExecution:
-      #            - topologyKey: kubernetes.io/hostname
-      #              labelSelector:
-      #                matchExpressions:
-      #                  - key: io.kompose.service
-      #                    operator: In
-      #                    values:
-      #                      - postgresql
       initContainers:
-        - name: wait-for-temporal
-          image: busybox
-          command: [ "sh", "-c",
-                     "until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+      - name: wait-for-temporal
+        image: busybox:1.37.0
+        command:
+        - sh
+        - -c
+        - until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.;
+          sleep 2; done;
       containers:
-        - name: temporal-worker-workflow
-          image: warehouse-temporal
-          env:
-            - name: WORKER_TYPE
-              value: workflow
-            - name: TEMPORAL_ADDRESS
-              value: temporal-frontend:7233
+      - name: temporal-worker-workflow
+        image: warehouse-temporal
+        env:
+        - name: WORKER_TYPE
+          value: workflow
+        - name: TEMPORAL_ADDRESS
+          value: temporal-frontend:7233
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          periodSeconds: 2
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -55,39 +59,43 @@ spec:
       labels:
         app: temporal-worker-warehouse
     spec:
-      affinity: # Deploy on same node as warehouse db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - db-warehouse
       initContainers:
-        - name: wait-for-temporal
-          image: busybox
-          command: [ "sh", "-c",
-                     "until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
-        - name: check-warehouse-db-ready
-          image: postgres
-          command: [
-            'sh', '-c',
-            'until pg_isready -h db-warehouse -p 5432; 
-                    do echo waiting for database; sleep 2; done;'
-          ]
+      - name: wait-for-temporal
+        image: busybox:1.37.0
+        command:
+        - sh
+        - -c
+        - until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.;
+          sleep 2; done;
+      - name: check-warehouse-db-ready
+        image: postgres:17.6
+        command:
+        - sh
+        - -c
+        - until pg_isready -h db-warehouse -p 5432; do echo waiting for database;
+          sleep 2; done;
       containers:
-        - name: temporal-worker-warehouse
-          image: warehouse-temporal
-          env:
-            - name: WORKER_TYPE
-              value: warehouse
-            - name: TEMPORAL_ADDRESS
-              value: temporal-frontend:7233
-            - name: POSTGRES_URL
-              value: "postgresql://db-warehouse:5432/warehouse"
-
+      - name: temporal-worker-warehouse
+        image: warehouse-temporal
+        env:
+        - name: WORKER_TYPE
+          value: warehouse
+        - name: TEMPORAL_ADDRESS
+          value: temporal-frontend:7233
+        - name: POSTGRES_URL
+          value: postgresql://db-warehouse:5432/warehouse
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          periodSeconds: 2
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -105,39 +113,34 @@ spec:
       labels:
         app: temporal-worker-payment
     spec:
-      affinity: # Deploy on same node as payment db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - db-payment
       initContainers:
-        - name: wait-for-temporal
-          image: busybox
-          command: [ "sh", "-c",
-                     "until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
-        - name: check-payment-db-ready-temporal
-          image: postgres
-          command: [
-            'sh', '-c',
-            'until pg_isready -h db-payment -p 5432; 
-                    do echo waiting for database; sleep 2; done;'
-          ]
+      - name: wait-for-temporal
+        image: busybox:1.37.0
+        command:
+        - sh
+        - -c
+        - until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.;
+          sleep 2; done;
       containers:
-        - name: temporal-worker-payment
-          image: warehouse-temporal
-          env:
-            - name: WORKER_TYPE
-              value: payment
-            - name: TEMPORAL_ADDRESS
-              value: temporal-frontend:7233
-            - name: POSTGRES_URL
-              value: "postgresql://db-payment:5432/payment"
-
+      - name: temporal-worker-payment
+        image: warehouse-temporal
+        env:
+        - name: WORKER_TYPE
+          value: payment
+        - name: TEMPORAL_ADDRESS
+          value: temporal-frontend:7233
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          periodSeconds: 2
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -155,40 +158,36 @@ spec:
       labels:
         app: temporal-worker-loyalty
     spec:
-      affinity: # Deploy on same node as loyalty db service
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - db-loyalty
       initContainers:
-        - name: wait-for-temporal
-          image: busybox
-          command: [ "sh", "-c",
-                     "until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
-        - name: check-loyalty-db-ready
-          image: postgres
-          command: [
-            'sh', '-c',
-            'until pg_isready -h db-loyalty -p 5432; 
-                    do echo waiting for database; sleep 2; done;'
-          ]
+      - name: wait-for-temporal
+        image: busybox:1.37.0
+        command:
+        - sh
+        - -c
+        - until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.;
+          sleep 2; done;
       containers:
-        - name: temporal-worker-loyalty
-          image: warehouse-temporal
-          env:
-            - name: WORKER_TYPE
-              value: loyalty
-            - name: TEMPORAL_ADDRESS
-              value: temporal-frontend:7233
-            - name: POSTGRES_URL
-              value: "postgresql://db-loyalty:5432/loyalty"
-
-
+      - name: temporal-worker-loyalty
+        image: warehouse-temporal
+        env:
+        - name: WORKER_TYPE
+          value: loyalty
+        - name: TEMPORAL_ADDRESS
+          value: temporal-frontend:7233
+        - name: POSTGRES_URL
+          value: postgresql://db-warehouse:5432/warehouse
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          periodSeconds: 2
 ---
 apiVersion: v1
 kind: Service
@@ -198,8 +197,8 @@ metadata:
     app: temporal-warehouse-endpoint
 spec:
   ports:
-    - port: 5001
-      name: rest-port
+  - port: 5001
+    name: rest-port
   clusterIP: None
   selector:
     app: temporal-warehouse-endpoint
@@ -220,28 +219,32 @@ spec:
       labels:
         app: temporal-warehouse-endpoint
     spec:
-      #      affinity: # Deploy on same node as temporal db service
-      #        podAffinity:
-      #          requiredDuringSchedulingIgnoredDuringExecution:
-      #            - topologyKey: kubernetes.io/hostname
-      #              labelSelector:
-      #                matchExpressions:
-      #                  - key: io.kompose.service
-      #                    operator: In
-      #                    values:
-      #                      - postgresql
       initContainers:
-        - name: wait-for-temporal
-          image: busybox
-          command: [ "sh", "-c",
-                     "until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.; sleep 2; done;" ]
+      - name: wait-for-temporal
+        image: busybox:1.37.0
+        command:
+        - sh
+        - -c
+        - until nc -z temporal-frontend 7233 > /dev/null; do echo Waiting for Temporal.;
+          sleep 2; done;
       containers:
-        - name: temporal-warehouse-endpoint
-          image: warehouse-temporal
-          env:
-            - name: WORKER_TYPE
-              value: endpoint
-            - name: TEMPORAL_ADDRESS
-              value: temporal-frontend:7233
-            - name: LISTEN_PORT
-              value: '5001'
+      - name: temporal-warehouse-endpoint
+        image: warehouse-temporal
+        env:
+        - name: WORKER_TYPE
+          value: endpoint
+        - name: TEMPORAL_ADDRESS
+          value: temporal-frontend:7233
+        - name: LISTEN_PORT
+          value: '5001'
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        readinessProbe:
+          tcpSocket:
+            port: 5001
+          periodSeconds: 2

@@ -1,3 +1,5 @@
+For the shared Accompanist/Temporal recovery benchmark, see [BENCHMARK.md](BENCHMARK.md).
+
 # Warehouse SAGA Example
 
 ## Run using docker compose
@@ -15,20 +17,11 @@ To trigger the choreography, run `curl localhost:5000/orderFulfillment`.
 
 ## Fault-tolerance evaluation on Kubernetes
 
-The Locust class picker offers both `WebshopChoreographyUser` for the ordinary
-benchmark and `FaultToleranceWarehouseUser` for the fault-tolerance benchmark.
-When a fault-tolerance test starts, the load-generator Pod scales the `payment`
-Deployment to zero after 120 seconds and restores it 60 seconds later.
-
-```shell
-skaffold dev
-```
-
-Skaffold starts and port-forwards the complete setup without provider-specific
-manifest changes. Wait for the `lgtm` Pod readiness probe, then open Grafana at
-<http://localhost:3000> and Locust at <http://localhost:8089>. The warehouse
-endpoint is <http://localhost:5000/orderFulfillment>. Cluster-internal OTLP
-endpoints are `http://lgtm:4317` (gRPC) and `http://lgtm:4318` (HTTP).
+The default load-generator image runs `RecoveryBenchmarkUser`, with one fixed-rate
+scheduler and a timed payment outage. Configure and start runs in the Locust web UI.
+Use the guarded deployment and collection commands in [BENCHMARK.md](BENCHMARK.md)
+for both Accompanist and Temporal. The ordinary response-paced workload is still
+available by running `locust -f locustfile.py` separately.
 
 ## Observability data lifetime
 

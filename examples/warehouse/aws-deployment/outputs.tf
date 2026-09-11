@@ -20,3 +20,10 @@ output "cluster_name" {
   description = "Kubernetes Cluster Name"
   value       = module.eks.cluster_name
 }
+
+output "image_repositories" {
+  value = { for name, repository in aws_ecr_repository.benchmark : name => repository.repository_url }
+}
+output "skaffold_default_repo" {
+  value = trimsuffix(aws_ecr_repository.benchmark["warehouse"].repository_url, "/warehouse")
+}

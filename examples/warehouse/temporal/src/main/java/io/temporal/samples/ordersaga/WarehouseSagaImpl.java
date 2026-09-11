@@ -9,23 +9,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Random;
 
 public class WarehouseSagaImpl implements WarehouseSaga {
     private static final Logger logger = LoggerFactory.getLogger(WarehouseSagaImpl.class);
 
-    private final WarehouseActivities warehouseActivities;
-    private final PaymentActivities paymentActivities;
-    private final LoyaltyActivities loyaltyActivities;
+    private WarehouseActivities warehouseActivities;
+    private PaymentActivities paymentActivities;
+    private LoyaltyActivities loyaltyActivities;
 
-    public WarehouseSagaImpl() {
-        // because we want to trigger Saga compensation any failure
+    private void configure() {
         ActivityOptions options = ActivityOptions.newBuilder()
-                .setScheduleToCloseTimeout(Duration.ofSeconds(30))
-                .setRetryOptions(
-                        RetryOptions.newBuilder()
-                                .setMaximumAttempts(1) // because we want to trigger Saga compensation any failure
-                                .build())
+                .setStartToCloseTimeout(Duration.ofSeconds(30))
+                .setRetryOptions(RetryOptions.newBuilder().setMaximumAttempts(0)
+                        .setInitialInterval(Duration.ofSeconds(1))
+                        .setMaximumInterval(Duration.ofSeconds(10)).setBackoffCoefficient(2)
+                        .setDoNotRetry("warehouse.UserException").build())
                 .build();
         this.warehouseActivities = Workflow.newActivityStub(
                 WarehouseActivities.class,
@@ -45,10 +43,11 @@ public class WarehouseSagaImpl implements WarehouseSaga {
 
     @Override
     public String orderFulfillment(int sessionID) {
+        configure();
         Saga saga = new Saga(new Saga.Options.Builder().build());
 
         try {
-            var t1 = System.nanoTime();
+            var t1 = Workflow.currentTimeMillis();
 
             saga.addCompensation(warehouseActivities::cancelOrderReservation);
             warehouseActivities.checkItemInStockAndReserveForOrder();
@@ -62,8 +61,8 @@ public class WarehouseSagaImpl implements WarehouseSaga {
             saga.addCompensation(() -> warehouseActivities.cancelDelivery(sessionID));
             warehouseActivities.packageAndSendOrder(sessionID);
 
-            var t2 = System.nanoTime();
-            return "order " + sessionID + " processed in " + (t2 - t1) / 1000000.0 + " ms";
+            var t2 = Workflow.currentTimeMillis();
+            return "order " + sessionID + " processed in " + (t2 - t1) + " ms";
         } catch (Exception e) {
             logger.error("Order processing failed, compensating.", e);
             saga.compensate();

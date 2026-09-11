@@ -45,6 +45,7 @@ public class WarehouseWorker {
 
         // Start all workers created by this factory.
         factory.start();
+        WorkerHealth.start();
         logger.info("Worker warehouse started for task queues: {}", TASK_QUEUE);
 
         while (!factory.isTerminated()) {

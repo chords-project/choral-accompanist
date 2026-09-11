@@ -35,3 +35,30 @@ portForward:
     resourceName: lgtm
     port: 3000
     localPort: 3000
+
+profiles:
+  - name: temporal
+    build:
+      artifacts:
+        - image: warehouse-temporal
+          context: temporal
+          jib:
+            project: temporal
+        - image: loadgenerator
+          context: loadgenerator
+    manifests:
+      kustomize:
+        paths:
+          - temporal
+    portForward:
+      - resourceType: service
+        resourceName: loadgenerator
+        port: 8089
+      - resourceType: service
+        resourceName: temporal-ui
+        port: 8080
+        localPort: 8080
+      - resourceType: service
+        resourceName: temporal-frontend
+        port: 7233
+        localPort: 17233
