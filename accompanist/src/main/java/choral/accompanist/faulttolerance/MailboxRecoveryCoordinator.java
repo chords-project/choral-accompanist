@@ -44,8 +44,25 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             Duration maxBackoff, int scanBatchSize, int maxConcurrentDeliveries,
             int maxConcurrentDeliveriesPerDestination, int maxConcurrentReplays, int cleanupBatchSize) {
         public static Config defaults() {
-            return new Config(Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofMillis(250),
-                    Duration.ofSeconds(30), 128, 32, 8, 8, 128);
+            return new Config(Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofSeconds(1),
+                    Duration.ofSeconds(10),
+                    positiveEnvironmentInt("ACCOMPANIST_SCAN_BATCH_SIZE", 128),
+                    positiveEnvironmentInt("ACCOMPANIST_DELIVERY_CONCURRENCY", 32),
+                    positiveEnvironmentInt("ACCOMPANIST_DELIVERY_CONCURRENCY", 8),
+                    positiveEnvironmentInt("ACCOMPANIST_EXECUTION_CONCURRENCY", 8),
+                    128);
+        }
+
+        private static int positiveEnvironmentInt(String name, int defaultValue) {
+            String value = System.getenv(name);
+            if (value == null || value.isBlank()) return defaultValue;
+            try {
+                int parsed = Integer.parseInt(value);
+                if (parsed > 0) return parsed;
+            } catch (NumberFormatException ignored) {
+                // Report the same actionable startup error for malformed and non-positive values.
+            }
+            throw new IllegalArgumentException(name + " must be a positive integer, but was: " + value);
         }
     }
 
@@ -233,6 +250,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
                     inFlight.remove(output.key(), reservation);
                     destinationState.release(permit);
                     deliveries.release();
+                    wake();
                 }
             });
         } catch (RuntimeException rejected) {
@@ -267,7 +285,6 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
                 destinationState.success(permit);
                 if (configuredTelemetry != null) configuredTelemetry.confirmation(output.message().session);
                 if (events != null) events.messageDeliveryConfirmed(output.message());
-                wake();
             } catch (Exception error) {
                 span.setStatus(StatusCode.ERROR, "Failed to deliver durable message");
                 span.recordException(error, deliveryAttributes(output));

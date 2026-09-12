@@ -3,11 +3,19 @@ kind: Kustomization
 resources:
 - deployment.yaml
 - temporal.yaml
+- ../benchmark-runtime-settings
 - ../warehouse/database
 - ../loadgenerator
 patches:
 - target:
     kind: Deployment
     name: loadgenerator
-  patch: "- op: replace\n  path: /spec/template/spec/containers/0/env/1/value\n  value:\
-    \ temporal\n"
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/1/value
+      value: temporal
+    - op: add
+      path: /spec/template/spec/containers/0/envFrom
+      value:
+        - configMapRef:
+            name: benchmark-runtime-settings

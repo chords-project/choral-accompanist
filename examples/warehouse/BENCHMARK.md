@@ -32,6 +32,18 @@ rate × (submission duration + drain), or 3,000 with the defaults. A missed arri
 invalidates a run rather than generating a catch-up burst. Submissions are never
 retried. HTTP errors and durable execution results are distinct measurements.
 
+Runtime concurrency defaults shared by both profiles are committed in
+`benchmark-runtime-settings/benchmark-runtime-settings.env`. Both Kustomize profiles
+generate a `benchmark-runtime-settings` ConfigMap from that file and inject it into
+the benchmark services. Kubernetes prefixes the neutral keys with `ACCOMPANIST_` or
+`TEMPORAL_` for the respective profile. `EXECUTION_CONCURRENCY` controls Accompanist
+replays and Temporal activity/workflow-task execution; the remaining settings tune the
+closest runtime-specific supporting limits. Changing the file changes the generated
+ConfigMap name and rolls out the affected deployments on the next apply.
+The same neutral values are injected into the load generator and saved under
+`runtime_settings` in every `run-config.json`, preserving the effective settings with
+the run evidence.
+
 Every start allocates a new UUID. Find it in the Locust Pod logs or:
 
 ```sh
@@ -117,7 +129,9 @@ the figure and adjacent JSON report. All plots regenerate without cluster access
 ## Temporal retry policy and pinned infrastructure
 
 All Temporal orders use a 30-second Start-to-Close timeout, unlimited retries
-with 1–10-second exponential backoff and no Schedule-to-Close deadline. Known business
+with 1–10-second exponential backoff and no Schedule-to-Close deadline. Accompanist
+durable message delivery uses the same 1–10-second exponential-backoff envelope;
+peer-readiness notifications can trigger an earlier probe after a service restarts. Known business
 failures are non-retryable and trigger saga compensation. Benchmark headers only
 identify benchmark executions; they do not select retry behavior. The workflow input
 contains only the session ID.

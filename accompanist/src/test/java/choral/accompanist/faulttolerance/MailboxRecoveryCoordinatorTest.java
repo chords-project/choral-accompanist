@@ -88,4 +88,5 @@ class MailboxRecoveryCoordinatorTest {
         assertNotNull(state.tryAcquire(CONFIG, 0));
         assertNotNull(state.tryAcquire(CONFIG, 0));
     }
+
 }

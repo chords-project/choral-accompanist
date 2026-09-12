@@ -22,8 +22,20 @@ public class LoyaltyService {
         db.setJdbcUrl("jdbc:" + dbUrl);
         db.setUsername("postgres");
         db.setPassword("postgres");
+        db.setMaximumPoolSize(positiveEnvironmentInt("ACCOMPANIST_DB_POOL_SIZE", 10));
 
         createTables();
+    }
+
+    private static int positiveEnvironmentInt(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) return defaultValue;
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed > 0) return parsed;
+        } catch (NumberFormatException ignored) {
+        }
+        throw new IllegalArgumentException(name + " must be a positive integer, but was: " + value);
     }
 
     protected void createTables() throws SQLException {

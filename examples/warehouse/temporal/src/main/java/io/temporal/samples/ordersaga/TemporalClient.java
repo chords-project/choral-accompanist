@@ -84,21 +84,36 @@ public class TemporalClient {
     }
 
     public static WorkerOptions getWorkerOptions() {
+        int executionConcurrency = positiveEnvironmentInt("TEMPORAL_EXECUTION_CONCURRENCY", 1000);
+        int pollers = positiveEnvironmentInt("TEMPORAL_WORKER_POLLERS", 64);
         return WorkerOptions.newBuilder()
                 // concurrent jobs
-                .setMaxConcurrentActivityExecutionSize(1000)
-                .setMaxConcurrentWorkflowTaskExecutionSize(1000)
+                .setMaxConcurrentActivityExecutionSize(executionConcurrency)
+                .setMaxConcurrentWorkflowTaskExecutionSize(executionConcurrency)
                 // connections to server
-                .setMaxConcurrentActivityTaskPollers(64)
-                .setMaxConcurrentWorkflowTaskPollers(64)
+                .setMaxConcurrentActivityTaskPollers(pollers)
+                .setMaxConcurrentWorkflowTaskPollers(pollers)
                 .setUsingVirtualThreads(true)
                 .build();
     }
 
     public static WorkerFactoryOptions getWorkerFactoryOptions() {
+        int executionConcurrency = positiveEnvironmentInt("TEMPORAL_EXECUTION_CONCURRENCY", 1000);
         return WorkerFactoryOptions.newBuilder()
                 // Must be >= total MaxConcurrentWorkflowTaskExecutionSize
-                .setWorkflowCacheSize(2000)
+                .setWorkflowCacheSize(Math.multiplyExact(executionConcurrency, 2))
                 .build();
+    }
+
+    private static int positiveEnvironmentInt(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) return defaultValue;
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed > 0) return parsed;
+        } catch (NumberFormatException ignored) {
+            // Report the same actionable startup error for malformed and non-positive values.
+        }
+        throw new IllegalArgumentException(name + " must be a positive integer, but was: " + value);
     }
 }

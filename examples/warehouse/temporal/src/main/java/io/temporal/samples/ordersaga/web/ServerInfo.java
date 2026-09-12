@@ -84,7 +84,20 @@ public class ServerInfo {
         db.setJdbcUrl("jdbc:" + dbUrl);
         db.setUsername("postgres");
         db.setPassword("postgres");
+        db.setMaximumPoolSize(positiveEnvironmentInt("TEMPORAL_DB_POOL_SIZE", 10));
 
         return db;
+    }
+
+    private static int positiveEnvironmentInt(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) return defaultValue;
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed > 0) return parsed;
+        } catch (NumberFormatException ignored) {
+            // Report the same actionable startup error for malformed and non-positive values.
+        }
+        throw new IllegalArgumentException(name + " must be a positive integer, but was: " + value);
     }
 }

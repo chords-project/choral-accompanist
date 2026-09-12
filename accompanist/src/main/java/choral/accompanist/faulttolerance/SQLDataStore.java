@@ -39,6 +39,17 @@ public class SQLDataStore implements FaultDataStore {
         db.setJdbcUrl(url);
         db.setUsername(username);
         db.setPassword(password);
+        String configuredPoolSize = System.getenv("ACCOMPANIST_DB_POOL_SIZE");
+        if (configuredPoolSize != null && !configuredPoolSize.isBlank()) {
+            try {
+                int poolSize = Integer.parseInt(configuredPoolSize);
+                if (poolSize <= 0) throw new NumberFormatException();
+                db.setMaximumPoolSize(poolSize);
+            } catch (NumberFormatException error) {
+                throw new IllegalArgumentException(
+                        "ACCOMPANIST_DB_POOL_SIZE must be a positive integer, but was: " + configuredPoolSize, error);
+            }
+        }
 
         return new SQLDataStore(db, transactions);
     }

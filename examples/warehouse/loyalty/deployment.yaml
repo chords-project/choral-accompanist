@@ -48,6 +48,10 @@ spec:
       containers:
         - name: loyalty-sidecar
           image: loyalty
+          envFrom:
+            - prefix: ACCOMPANIST_
+              configMapRef:
+                name: benchmark-runtime-settings
           env:
             - name: RUN
               value: sidecar
@@ -80,6 +84,10 @@ spec:
             periodSeconds: 2
         - name: loyalty-service
           image: loyalty
+          envFrom:
+            - prefix: ACCOMPANIST_
+              configMapRef:
+                name: benchmark-runtime-settings
           env:
             - name: RUN
               value: service

@@ -55,6 +55,10 @@ spec:
       containers:
       - name: warehouse-sidecar
         image: warehouse
+        envFrom:
+        - prefix: ACCOMPANIST_
+          configMapRef:
+            name: benchmark-runtime-settings
         env:
         - name: RUN
           value: sidecar
@@ -89,6 +93,10 @@ spec:
           periodSeconds: 2
       - name: warehouse-service
         image: warehouse
+        envFrom:
+        - prefix: ACCOMPANIST_
+          configMapRef:
+            name: benchmark-runtime-settings
         env:
         - name: RUN
           value: service

@@ -7,6 +7,7 @@ import fault_tolerance as ft
 import json
 import tempfile
 import unittest
+import os
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import gevent
@@ -100,6 +101,23 @@ class SchedulingTests(unittest.TestCase):
     def test_default_concurrency(self):
         self.assertEqual(resolve(options(request_rate=5, submission_duration=300, drain_timeout=300,
                                          max_concurrent_requests=0))['max_concurrent'],3000)
+
+    def test_runtime_settings_are_captured_from_environment(self):
+        values = {
+            'EXECUTION_CONCURRENCY': '32', 'DELIVERY_CONCURRENCY': '32',
+            'SCAN_BATCH_SIZE': '512', 'WORKER_POLLERS': '16', 'DB_POOL_SIZE': '32'
+        }
+        with patch.dict(os.environ, values, clear=False):
+            settings = resolve(options())['runtime_settings']
+        self.assertEqual(settings, {
+            'execution_concurrency': 32, 'delivery_concurrency': 32,
+            'scan_batch_size': 512, 'worker_pollers': 16, 'db_pool_size': 32
+        })
+
+    def test_runtime_settings_reject_non_positive_values(self):
+        with patch.dict(os.environ, {'EXECUTION_CONCURRENCY': '0'}, clear=False):
+            with self.assertRaisesRegex(ValueError, 'EXECUTION_CONCURRENCY'):
+                resolve(options())
 
 
 class FaultTests(unittest.TestCase):
