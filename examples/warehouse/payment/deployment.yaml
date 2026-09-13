@@ -51,9 +51,8 @@ spec:
       - name: payment-sidecar
         image: payment
         envFrom:
-        - prefix: ACCOMPANIST_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: accompanist-runtime-settings
         env:
         - name: RUN
           value: sidecar
@@ -87,9 +86,8 @@ spec:
       - name: payment-service
         image: payment
         envFrom:
-        - prefix: ACCOMPANIST_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: accompanist-runtime-settings
         env:
         - name: RUN
           value: service

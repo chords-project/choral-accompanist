@@ -8,8 +8,10 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MailboxRecoveryCoordinatorTest {
     private static final MailboxRecoveryCoordinator.Config CONFIG = new MailboxRecoveryCoordinator.Config(
@@ -87,6 +89,24 @@ class MailboxRecoveryCoordinatorTest {
 
         assertNotNull(state.tryAcquire(CONFIG, 0));
         assertNotNull(state.tryAcquire(CONFIG, 0));
+    }
+
+    @Test void coalescesRepeatedWakeRequestsIntoOneFollowUpPass() {
+        var throttle = new MailboxRecoveryCoordinator.WakeThrottle();
+
+        assertTrue(throttle.request());
+        assertFalse(throttle.request());
+        assertFalse(throttle.request());
+        assertTrue(throttle.finishPass());
+        assertFalse(throttle.finishPass());
+    }
+
+    @Test void acceptsANewWakeAfterReconciliationBecomesIdle() {
+        var throttle = new MailboxRecoveryCoordinator.WakeThrottle();
+
+        assertTrue(throttle.request());
+        assertFalse(throttle.finishPass());
+        assertTrue(throttle.request());
     }
 
 }

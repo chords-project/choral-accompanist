@@ -84,6 +84,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     private final ConcurrentMap<String, DestinationState> destinations = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     private final AtomicBoolean started = new AtomicBoolean();
+    private final WakeThrottle wakeThrottle = new WakeThrottle();
     private volatile boolean closed;
     private volatile ReplayHandler replayHandler;
     private volatile FaultToleranceTelemetry telemetry;
@@ -119,7 +120,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
 
     public void start() {
         if (started.compareAndSet(false, true)) {
-            scheduler.scheduleWithFixedDelay(this::reconcileSafely, 0,
+            scheduler.scheduleWithFixedDelay(this::wake, 0,
                     config.reconciliationInterval().toMillis(), TimeUnit.MILLISECONDS);
         }
     }
@@ -149,7 +150,20 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     }
 
     public void wake() {
-        if (!closed) scheduler.execute(this::reconcileSafely);
+        if (closed || !wakeThrottle.request()) return;
+        try {
+            scheduler.execute(this::runRequestedReconciliations);
+        } catch (RuntimeException rejected) {
+            wakeThrottle.cancel();
+            if (!closed) throw rejected;
+        }
+    }
+
+    private void runRequestedReconciliations() {
+        do {
+            reconcileSafely();
+        } while (!closed && wakeThrottle.finishPass());
+        if (closed) wakeThrottle.cancel();
     }
 
     /**
@@ -433,6 +447,37 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
             nextAttemptNanos = 0;
             probeInFlight = false;
             generation++;
+        }
+    }
+
+    /**
+     * Coalesces any number of wake requests received during a pass into one follow-up pass.
+     */
+    static final class WakeThrottle {
+        private boolean active;
+        private boolean pending;
+
+        synchronized boolean request() {
+            if (active) {
+                pending = true;
+                return false;
+            }
+            active = true;
+            return true;
+        }
+
+        synchronized boolean finishPass() {
+            if (pending) {
+                pending = false;
+                return true;
+            }
+            active = false;
+            return false;
+        }
+
+        synchronized void cancel() {
+            active = false;
+            pending = false;
         }
     }
 }

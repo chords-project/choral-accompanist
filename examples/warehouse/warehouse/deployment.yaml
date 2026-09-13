@@ -56,9 +56,8 @@ spec:
       - name: warehouse-sidecar
         image: warehouse
         envFrom:
-        - prefix: ACCOMPANIST_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: accompanist-runtime-settings
         env:
         - name: RUN
           value: sidecar
@@ -94,9 +93,8 @@ spec:
       - name: warehouse-service
         image: warehouse
         envFrom:
-        - prefix: ACCOMPANIST_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: accompanist-runtime-settings
         env:
         - name: RUN
           value: service

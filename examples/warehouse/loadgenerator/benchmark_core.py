@@ -7,7 +7,7 @@ SYSTEMS = {
     "temporal": {"endpoint": "http://temporal-warehouse-endpoint:5001", "deployment": "temporal-worker-payment", "collector": "temporal-api"},
 }
 
-RUNTIME_SETTINGS = (
+RUNTIME_SETTING_SUFFIXES = (
     "EXECUTION_CONCURRENCY",
     "DELIVERY_CONCURRENCY",
     "SCAN_BATCH_SIZE",
@@ -16,10 +16,12 @@ RUNTIME_SETTINGS = (
 )
 
 
-def runtime_settings():
+def runtime_settings(system):
     """Return the resolved ConfigMap values recorded with every benchmark run."""
     settings = {}
-    for name in RUNTIME_SETTINGS:
+    prefix = system.upper() + "_"
+    for suffix in RUNTIME_SETTING_SUFFIXES:
+        name = prefix + suffix
         value = os.getenv(name)
         if value is None or not value.strip():
             continue
@@ -29,7 +31,7 @@ def runtime_settings():
             raise ValueError(f"{name} must be a positive integer") from error
         if parsed <= 0:
             raise ValueError(f"{name} must be a positive integer")
-        settings[name.lower()] = parsed
+        settings[suffix.lower()] = parsed
     return settings
 
 
@@ -38,7 +40,7 @@ def resolve(options):
     config.update(system=options.benchmark_system, rate=options.request_rate,
                   duration=options.submission_duration, fault_after=options.fault_after_seconds,
                   fault_duration=options.fault_duration_seconds, drain_timeout=options.drain_timeout,
-                  runtime_settings=runtime_settings())
+                  runtime_settings=runtime_settings(options.benchmark_system))
     if options.benchmark_endpoint:
         config["endpoint"] = options.benchmark_endpoint.rstrip("/")
     for key in ("rate", "duration", "drain_timeout", "fault_duration"):

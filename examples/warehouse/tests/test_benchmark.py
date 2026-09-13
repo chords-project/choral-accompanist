@@ -104,19 +104,30 @@ class SchedulingTests(unittest.TestCase):
 
     def test_runtime_settings_are_captured_from_environment(self):
         values = {
-            'EXECUTION_CONCURRENCY': '32', 'DELIVERY_CONCURRENCY': '32',
-            'SCAN_BATCH_SIZE': '512', 'WORKER_POLLERS': '16', 'DB_POOL_SIZE': '32'
+            'ACCOMPANIST_EXECUTION_CONCURRENCY': '128', 'ACCOMPANIST_DELIVERY_CONCURRENCY': '64',
+            'ACCOMPANIST_SCAN_BATCH_SIZE': '1024', 'ACCOMPANIST_DB_POOL_SIZE': '32'
         }
         with patch.dict(os.environ, values, clear=False):
             settings = resolve(options())['runtime_settings']
         self.assertEqual(settings, {
-            'execution_concurrency': 32, 'delivery_concurrency': 32,
-            'scan_batch_size': 512, 'worker_pollers': 16, 'db_pool_size': 32
+            'execution_concurrency': 128, 'delivery_concurrency': 64,
+            'scan_batch_size': 1024, 'db_pool_size': 32
+        })
+
+    def test_temporal_runtime_settings_are_captured_independently(self):
+        values = {
+            'TEMPORAL_EXECUTION_CONCURRENCY': '128', 'TEMPORAL_WORKER_POLLERS': '16',
+            'TEMPORAL_DB_POOL_SIZE': '32', 'ACCOMPANIST_EXECUTION_CONCURRENCY': '64'
+        }
+        with patch.dict(os.environ, values, clear=False):
+            settings = resolve(options(benchmark_system='temporal'))['runtime_settings']
+        self.assertEqual(settings, {
+            'execution_concurrency': 128, 'worker_pollers': 16, 'db_pool_size': 32
         })
 
     def test_runtime_settings_reject_non_positive_values(self):
-        with patch.dict(os.environ, {'EXECUTION_CONCURRENCY': '0'}, clear=False):
-            with self.assertRaisesRegex(ValueError, 'EXECUTION_CONCURRENCY'):
+        with patch.dict(os.environ, {'ACCOMPANIST_EXECUTION_CONCURRENCY': '0'}, clear=False):
+            with self.assertRaisesRegex(ValueError, 'ACCOMPANIST_EXECUTION_CONCURRENCY'):
                 resolve(options())
 
 

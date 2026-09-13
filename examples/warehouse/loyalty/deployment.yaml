@@ -49,9 +49,8 @@ spec:
         - name: loyalty-sidecar
           image: loyalty
           envFrom:
-            - prefix: ACCOMPANIST_
-              configMapRef:
-                name: benchmark-runtime-settings
+            - configMapRef:
+                name: accompanist-runtime-settings
           env:
             - name: RUN
               value: sidecar
@@ -85,9 +84,8 @@ spec:
         - name: loyalty-service
           image: loyalty
           envFrom:
-            - prefix: ACCOMPANIST_
-              configMapRef:
-                name: benchmark-runtime-settings
+            - configMapRef:
+                name: accompanist-runtime-settings
           env:
             - name: RUN
               value: service

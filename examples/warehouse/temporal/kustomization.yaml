@@ -18,4 +18,4 @@ patches:
       path: /spec/template/spec/containers/0/envFrom
       value:
         - configMapRef:
-            name: benchmark-runtime-settings
+            name: temporal-runtime-settings

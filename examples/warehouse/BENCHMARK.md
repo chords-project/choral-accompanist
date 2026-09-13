@@ -32,17 +32,15 @@ rate × (submission duration + drain), or 3,000 with the defaults. A missed arri
 invalidates a run rather than generating a catch-up burst. Submissions are never
 retried. HTTP errors and durable execution results are distinct measurements.
 
-Runtime concurrency defaults shared by both profiles are committed in
-`benchmark-runtime-settings/benchmark-runtime-settings.env`. Both Kustomize profiles
-generate a `benchmark-runtime-settings` ConfigMap from that file and inject it into
-the benchmark services. Kubernetes prefixes the neutral keys with `ACCOMPANIST_` or
-`TEMPORAL_` for the respective profile. `EXECUTION_CONCURRENCY` controls Accompanist
-replays and Temporal activity/workflow-task execution; the remaining settings tune the
-closest runtime-specific supporting limits. Changing the file changes the generated
-ConfigMap name and rolls out the affected deployments on the next apply.
-The same neutral values are injected into the load generator and saved under
-`runtime_settings` in every `run-config.json`, preserving the effective settings with
-the run evidence.
+Runtime defaults are committed separately in
+`benchmark-runtime-settings/accompanist-runtime-settings.env` and
+`benchmark-runtime-settings/temporal-runtime-settings.env`. Variable names include
+their `ACCOMPANIST_` or `TEMPORAL_` prefix explicitly, and each Kubernetes profile
+loads its corresponding ConfigMap into the application containers and load generator.
+Changing either file changes the generated ConfigMap name and rolls out the affected
+deployments on the next apply. The load generator strips the active system prefix when
+saving `runtime_settings` in each `run-config.json`, preserving the effective
+framework-specific settings with the run evidence.
 
 Every start allocates a new UUID. Find it in the Locust Pod logs or:
 

@@ -26,9 +26,8 @@ spec:
       - name: temporal-worker-workflow
         image: warehouse-temporal
         envFrom:
-        - prefix: TEMPORAL_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: temporal-runtime-settings
         env:
         - name: WORKER_TYPE
           value: workflow
@@ -82,9 +81,8 @@ spec:
       - name: temporal-worker-warehouse
         image: warehouse-temporal
         envFrom:
-        - prefix: TEMPORAL_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: temporal-runtime-settings
         env:
         - name: WORKER_TYPE
           value: warehouse
@@ -133,9 +131,8 @@ spec:
       - name: temporal-worker-payment
         image: warehouse-temporal
         envFrom:
-        - prefix: TEMPORAL_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: temporal-runtime-settings
         env:
         - name: WORKER_TYPE
           value: payment
@@ -182,9 +179,8 @@ spec:
       - name: temporal-worker-loyalty
         image: warehouse-temporal
         envFrom:
-        - prefix: TEMPORAL_
-          configMapRef:
-            name: benchmark-runtime-settings
+        - configMapRef:
+            name: temporal-runtime-settings
         env:
         - name: WORKER_TYPE
           value: loyalty
