@@ -15,7 +15,8 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  cluster_name = "warehouse-eks-${random_string.suffix.result}"
+  cluster_name          = "warehouse-eks-${random_string.suffix.result}"
+  ecr_repository_prefix = lower(local.cluster_name)
 }
 
 resource "random_string" "suffix" {
@@ -114,7 +115,7 @@ module "irsa-ebs-csi" {
 
 resource "aws_ecr_repository" "benchmark" {
   for_each             = toset(["warehouse", "payment", "loyalty", "loadgenerator", "warehouse-monitor", "warehouse-temporal"])
-  name                 = "${local.cluster_name}/${each.key}"
+  name                 = "${local.ecr_repository_prefix}/${each.key}"
   image_tag_mutability = "IMMUTABLE"
   image_scanning_configuration {
     scan_on_push = true

@@ -2,6 +2,8 @@
 """Build and deploy one benchmark stack, retaining evidence and shared storage."""
 import argparse
 import json
+import re
+import shlex
 import subprocess
 import tempfile
 from pathlib import Path
@@ -14,14 +16,58 @@ STACKS = {
                  'temporal-admin-tools', 'temporal-ui', 'postgresql'],
 }
 
+ECR_REPOSITORY = re.compile(
+    r'^(?:https?://)?(?P<registry>[0-9]+\.dkr\.ecr\.(?P<region>[a-z0-9-]+)\.amazonaws\.com(?:\.cn)?)(?:/|$)'
+)
+
+
+def authenticate_registry(default_repo):
+    """Log Docker into private ECR when the selected repository is hosted there."""
+    match = ECR_REPOSITORY.match(default_repo or '')
+    if not match:
+        return
+    password = subprocess.run(
+        ['aws', 'ecr', 'get-login-password', '--region', match.group('region')],
+        check=True, stdout=subprocess.PIPE,
+    ).stdout
+    subprocess.run(
+        ['docker', 'login', '--username', 'AWS', '--password-stdin', match.group('registry')],
+        input=password, check=True,
+    )
+
+
+def remote_build_options(default_repo):
+    """Match images to the x86-64 EKS nodes without colliding with native Mac tags."""
+    if not ECR_REPOSITORY.match(default_repo or ''):
+        return []
+    revision = subprocess.check_output(
+        ['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT, text=True,
+    ).strip()
+    return ['--platform', 'linux/amd64', '--tag', f'{revision}-linux-amd64']
+
+
+def ensure_namespace(context, namespace):
+    """Create or retain the dedicated benchmark namespace."""
+    manifest = {
+        'apiVersion': 'v1',
+        'kind': 'Namespace',
+        'metadata': {'name': namespace},
+    }
+    subprocess.run(
+        ['kubectl', '--context', context, 'apply', '-f', '-'],
+        input=json.dumps(manifest), text=True, check=True,
+    )
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('system', choices=STACKS)
     parser.add_argument('--context', required=True)
-    parser.add_argument('--namespace', default='warehouse-benchmark', help='Existing dedicated namespace')
+    parser.add_argument('--namespace', default='warehouse-benchmark', help='Dedicated namespace to create or reuse')
     parser.add_argument('--default-repo', help='Registry prefix, required for EKS')
     args = parser.parse_args()
+    authenticate_registry(args.default_repo)
+    ensure_namespace(args.context, args.namespace)
     kube = ['kubectl', '--context', args.context, '-n', args.namespace]
     def output(*cmd):
         return subprocess.check_output([*kube, *cmd], text=True, timeout=60)
@@ -37,10 +83,18 @@ def main():
             raise SystemExit(f'Collect and drain run {guard} before deploying or switching stacks')
     profile = ['-p','temporal'] if args.system == 'temporal' else []
     registry = ['--default-repo',args.default_repo] if args.default_repo else []
+    build_options = remote_build_options(args.default_repo)
     with tempfile.TemporaryDirectory(prefix='warehouse-deploy-') as directory:
         artifacts = str(Path(directory)/'images.json')
-        subprocess.run(['skaffold','build',*profile,*registry,'--kube-context',args.context,'--file-output',artifacts], cwd=ROOT, check=True)
-        rendered = subprocess.check_output(['skaffold','render',*profile,'--build-artifacts',artifacts],cwd=ROOT,text=True)
+        subprocess.run(
+            ['skaffold', 'build', *profile, *registry, *build_options,
+             '--kube-context', args.context, '--file-output', artifacts],
+            cwd=ROOT, check=True,
+        )
+        rendered = subprocess.check_output(
+            ['skaffold', 'render', *profile, *registry, '--build-artifacts', artifacts],
+            cwd=ROOT, text=True,
+        )
         # Disable UI starts during switching, then recheck the persistent guard to close the race.
         if existing:
             subprocess.run([*kube,'scale','deployment/loadgenerator','--replicas=0'],check=True)
@@ -72,7 +126,11 @@ def main():
         subprocess.run([*kube,'delete','service',*STACKS[other],'--ignore-not-found'],check=True)
         subprocess.run([*kube,'apply','-f','-'],input=rendered,text=True,check=True)
         subprocess.run([*kube,'rollout','status','deployment','--timeout=600s'],check=True)
-    print(f'{args.system} ready. Port-forward service/loadgenerator 8089:8089 in context {args.context}, namespace {args.namespace}.')
+    port_forward = shlex.join([
+        'kubectl', '--context', args.context, '--namespace', args.namespace,
+        'port-forward', 'service/loadgenerator', '8089:8089',
+    ])
+    print(f'{args.system} ready. Start the load-generator port forward with:\n{port_forward}')
 
 
 if __name__=='__main__': main()

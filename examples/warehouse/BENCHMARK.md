@@ -154,17 +154,19 @@ The existing Terraform foundation now defaults to Kubernetes `1.35` and AL2023 a
 creates immutable ECR repositories for the six application images. Check regional
 availability before provisioning; see
 the [AWS version lifecycle](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html).
-Provision with the existing `aws-deployment` instructions. Authenticate Docker to ECR,
-then use the `skaffold_default_repo` Terraform output:
+Provision with the existing `aws-deployment` instructions, then use the
+`skaffold_default_repo` Terraform output. The deployment helper authenticates Docker
+to private ECR automatically using the active AWS CLI credentials:
 
 ```sh
-python3 benchmark_deploy.py temporal --context YOUR_EKS_CONTEXT --default-repo ECR_PREFIX
-./results/collect_run.sh RUN_UUID --context YOUR_EKS_CONTEXT --namespace warehouse-benchmark --output ./results
+python3 benchmark_deploy.py temporal --context $YOUR_EKS_CONTEXT --default-repo $ECR_PREFIX
+./results/collect_run.sh $RUN_UUID --context $YOUR_EKS_CONTEXT --namespace warehouse-benchmark --output ./results
 ```
 
-Create the namespace first. EKS nodes need registry pull permissions; the existing
-managed-node role supplies them. Use port forwards for Locust, Temporal UI and
-Accompanist Grafana (`svc/lgtm 3000:3000`), without public dashboard ingress.
+The deployment helper creates or reuses the selected namespace. EKS nodes need
+registry pull permissions; the existing managed-node role supplies them. Use port
+forwards for Locust, Temporal UI and Accompanist Grafana (`svc/lgtm 3000:3000`),
+without public dashboard ingress.
 
 ## Validation
 

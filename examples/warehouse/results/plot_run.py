@@ -88,7 +88,8 @@ def plot(bundles, output):
         if xs:
             xs.append(max(xs[-1], phases.get("test-stop", origin) - origin))
             ys.append(outstanding)
-        axes[2].step(xs, ys, where="post", color=color, label=label)
+        unfinished_xs, unfinished_ys = xs, ys
+        axes[2].step(unfinished_xs, unfinished_ys, where="post", color=color, label=label)
         latencies = sorted(row["terminal_at"] - row["started_at"] for row in executions
                            if row["status"] == "completed" and row["terminal_at"] is not None and row["started_at"] is not None)
         if latencies:
@@ -100,7 +101,15 @@ def plot(bundles, output):
         if config["system"] == "accompanist" and samples.exists():
             with samples.open() as stream:
                 xs, ys = mailbox_series(stream, config["run_id"], origin)
-            axes[5].plot(xs, ys, label=label)
+            if ready:
+                axes[5].axvspan(0, ready - origin, color=color, alpha=0.1,
+                                label=label + " outage")
+            axes[5].plot(xs, ys, color=color, label=label + " pending outbox")
+            axes[5].step(unfinished_xs, unfinished_ys, where="post", color="grey",
+                         alpha=.85, label=label + " unfinished accepted orders")
+    # Mailbox sampling can continue after the load test has ended. Keep the diagnostic on the
+    # same displayed timeline as the other non-latency benchmark plots for direct comparison.
+    axes[5].set_xlim(axes[2].get_xlim())
     titles = ["Scheduled / actual arrivals per second (coincident lines overlap)", "Durable terminal executions per second",
               "Unfinished accepted orders (starts − all terminals)", "Durable end-to-end execution latency (CDF)",
               "Client-observed HTTP latency, including failures (CDF)", "Accompanist mailbox diagnostic (not a Temporal queue metric)"]
