@@ -1,0 +1,41 @@
+{
+  "warnings": [],
+  "runs": [
+    {
+      "schema_version": 1,
+      "run_id": "1f4a6329-c6ec-48ec-80f0-e7fa3f68f03a",
+      "system": "accompanist",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 1500,
+      "failures": 0,
+      "outage_cohort_recovery": {
+        "status": "complete",
+        "seconds": 32.99575972557068,
+        "orders": 328
+      }
+    },
+    {
+      "schema_version": 1,
+      "run_id": "be05f40a-9d08-4962-a0ea-0703a3d05e73",
+      "system": "temporal",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 1500,
+      "failures": 0,
+      "outage_cohort_recovery": {
+        "status": "complete",
+        "seconds": 16.63959765434265,
+        "orders": 319
+      }
+    }
+  ]
+}

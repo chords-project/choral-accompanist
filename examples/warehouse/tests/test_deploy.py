@@ -43,13 +43,24 @@ class RegistryAuthenticationTests(unittest.TestCase):
             'metadata': {'name': 'warehouse-benchmark'},
         })
 
+    @patch.object(benchmark_deploy, 'working_tree_fingerprint', return_value='')
     @patch.object(benchmark_deploy.subprocess, 'check_output', return_value='455e2f4\n')
-    def test_ecr_build_targets_x86_with_distinct_tag(self, check_output):
+    def test_ecr_build_targets_x86_with_distinct_tag(self, check_output, fingerprint):
         options = benchmark_deploy.remote_build_options(
             '727646482479.dkr.ecr.eu-central-1.amazonaws.com/warehouse-eks-example'
         )
         self.assertEqual(options, [
             '--platform', 'linux/amd64', '--tag', '455e2f4-linux-amd64'
+        ])
+
+    @patch.object(benchmark_deploy, 'working_tree_fingerprint', return_value='a1b2c3d4')
+    @patch.object(benchmark_deploy.subprocess, 'check_output', return_value='455e2f4\n')
+    def test_ecr_build_tags_uncommitted_inputs_uniquely(self, check_output, fingerprint):
+        options = benchmark_deploy.remote_build_options(
+            '727646482479.dkr.ecr.eu-central-1.amazonaws.com/warehouse-eks-example'
+        )
+        self.assertEqual(options, [
+            '--platform', 'linux/amd64', '--tag', '455e2f4-a1b2c3d4-linux-amd64'
         ])
 
     @patch.object(benchmark_deploy.subprocess, 'check_output')

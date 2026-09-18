@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build and deploy one benchmark stack, retaining evidence and shared storage."""
 import argparse
+import hashlib
 import json
 import re
 import shlex
@@ -43,7 +44,38 @@ def remote_build_options(default_repo):
     revision = subprocess.check_output(
         ['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT, text=True,
     ).strip()
+    fingerprint = working_tree_fingerprint()
+    if fingerprint:
+        revision = f'{revision}-{fingerprint}'
     return ['--platform', 'linux/amd64', '--tag', f'{revision}-linux-amd64']
+
+
+def working_tree_fingerprint():
+    """Identify uncommitted build-input changes so immutable ECR tags remain unique."""
+    pathspecs = [
+        ':(top)accompanist',
+        ':(top)examples/warehouse',
+        ':(exclude,top)examples/warehouse/results',
+        ':(exclude,top)examples/warehouse/aws-deployment',
+    ]
+    changed = subprocess.check_output(
+        ['git', 'diff', '--binary', 'HEAD', '--', *pathspecs], cwd=ROOT,
+    )
+    untracked = subprocess.check_output(
+        ['git', 'ls-files', '--others', '--exclude-standard', '--full-name', '-z', '--', *pathspecs],
+        cwd=ROOT,
+    ).split(b'\0')
+    digest = hashlib.sha256(changed)
+    has_changes = bool(changed)
+    for encoded_path in sorted(path for path in untracked if path):
+        path = encoded_path.decode('utf-8', errors='surrogateescape')
+        if '__pycache__' in Path(path).parts or path.endswith(('.pyc', '.pyo')):
+            continue
+        digest.update(encoded_path)
+        digest.update(b'\0')
+        digest.update((ROOT.parents[1] / path).read_bytes())
+        has_changes = True
+    return digest.hexdigest()[:8] if has_changes else ''
 
 
 def ensure_namespace(context, namespace):

@@ -63,6 +63,41 @@ such runs invalid. A forcibly killed Pod or node cannot execute cleanup: inspect
 `fault-deployment.json`, restore the recorded original count manually, and keep the
 run invalid. Graceful Pod termination allows up to 600 seconds for cleanup.
 
+## DNS recovery
+
+The Warehouse sidecar uses a one-second JVM negative DNS cache TTL so that a failed
+lookup during Payment's outage does not remain cached after its headless Service
+becomes resolvable. On peer readiness, Accompanist resets a disconnected channel's
+resolver and waits for connectivity before waking durable delivery. Duplicate
+notifications share one pending watch; healthy channels retain their connections.
+
+`benchmark-runtime-settings/warehouse-dns.security` sets
+`networkaddress.cache.negative.ttl=1`. The Warehouse sidecar loads it before startup
+through `JAVA_TOOL_OPTIONS=-Djava.security.properties=/etc/accompanist/warehouse-dns.security`.
+The single `=` supplements the default Java security properties. Positive DNS caching
+and cluster DNS settings retain their defaults. Kustomize hashes the ConfigMap contents,
+so changing the file triggers a Warehouse rollout on redeployment.
+
+### Optional DNS diagnostics
+
+Start this in another terminal before starting Locust:
+
+```sh
+bash results/capture_dns.sh "$YOUR_EKS_CONTEXT" results/dns-capture.log
+```
+
+The script creates an ephemeral BusyBox container in Warehouse's pod and records
+420 fresh DNS lookups, spaced by one second plus lookup time. Allow it to attach before
+starting the benchmark. A fourth argument overrides the lookup count (the third is the
+namespace). Each lookup runs outside the JVM but uses Warehouse's pod network and cluster
+DNS, allowing comparison with gRPC delivery traces. Permission to create ephemeral
+containers is required.
+
+The container exits after the loop. Interrupting the local attachment may leave the
+loop running until it finishes; the terminated container entry remains until pod
+replacement. Save the output and the security-properties file with the run evidence
+when diagnosing DNS recovery.
+
 ## Collect and plot
 
 Install local collection dependencies in a virtual environment:
@@ -144,7 +179,9 @@ process killed during a committed database operation.
 Manifest pins: Temporal server `1.28.0`, UI `2.38.3`, admin-tools
 `1.28.0-tctl-1.18.2-cli-1.3.0`, PostgreSQL `17.6`, BusyBox `1.37.0`, Locust `2.31.6`.
 Skaffold builds application images and deployment collection records their actual
-image IDs. The benchmark uses manifests, not the legacy optional Helm deployment.
+image IDs. ECR builds include a fingerprint of uncommitted source/configuration changes
+in the image tag, allowing successive local edits to use immutable ECR tags. Benchmark
+results and Terraform files are excluded from this fingerprint. The benchmark uses manifests, not the legacy optional Helm deployment.
 These pins are reproducible inputs, not a claim that Kubernetes/EKS acceptance runs
 have already passed.
 

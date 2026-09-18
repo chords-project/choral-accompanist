@@ -8,3 +8,6 @@ configMapGenerator:
   - name: temporal-runtime-settings
     envs:
       - temporal-runtime-settings.env
+  - name: warehouse-dns-settings
+    files:
+      - warehouse-dns.security

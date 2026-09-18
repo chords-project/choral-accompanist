@@ -1,0 +1,3 @@
+# A headless Service can temporarily have no DNS answer during pod replacement.
+# Retry failed lookups promptly after the replacement becomes ready.
+networkaddress.cache.negative.ttl=1

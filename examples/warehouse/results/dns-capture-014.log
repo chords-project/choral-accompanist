@@ -1,0 +1,864 @@
+context=arn:aws:eks:eu-central-1:727646482479:cluster/warehouse-eks-BNUCLLTT namespace=warehouse-benchmark pod=warehouse-658c769c97-fvbhf container=dns-capture-1789473626 duration=420
+All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
+If you don't see a command prompt, try pressing enter.
+2026-09-15T12:00:30Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:31Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:32Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:33Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:34Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:35Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:36Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:37Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:38Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:39Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:40Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:41Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:42Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:43Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:44Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:45Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:46Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:47Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:48Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:49Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:50Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:51Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:52Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:53Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:54Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:55Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:56Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:57Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:58Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:00:59Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:00Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:01Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:02Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:03Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:04Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:05Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:06Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:07Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:08Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:09Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1
+2026-09-15T12:01:10Z
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+** server can't find payment.eu-central-1.compute.internal: NXDOMAIN
+
+Name:	payment.warehouse-benchmark.svc.cluster.local
+Address: 10.0.3.69
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+** server can't find payment.svc.cluster.local: NXDOMAIN
+
+** server can't find payment.cluster.local: NXDOMAIN
+
+lookup_exit=1

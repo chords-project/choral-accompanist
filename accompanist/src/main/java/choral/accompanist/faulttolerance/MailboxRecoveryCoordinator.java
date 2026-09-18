@@ -8,9 +8,10 @@ import choral.accompanist.tracing.Logger;
 import choral.accompanist.tracing.TelemetrySession;
 import choral_reactive.ChannelGrpc;
 import choral_reactive.ChannelOuterClass;
-import io.grpc.StatusRuntimeException;
+import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
@@ -24,6 +25,7 @@ import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.*;
@@ -83,6 +85,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     private final ConcurrentMap<SQLMailbox.OutboxKey, Object> inFlight = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, DestinationState> destinations = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
+    private final ReadinessGate readinessGate = new ReadinessGate();
     private final AtomicBoolean started = new AtomicBoolean();
     private final WakeThrottle wakeThrottle = new WakeThrottle();
     private volatile boolean closed;
@@ -207,14 +210,16 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     }
 
     /**
-     * A peer has proven that it is currently reachable by delivering a readiness RPC.
+     * A peer reports that it is listening, but the return path may not be usable yet.
+     * Wait asynchronously for our channel to connect before waking delivery retries.
      */
     public void destinationReady(String destination) {
-        if (destination == null || destination.isBlank()) return;
-        destinations.computeIfAbsent(destination, ignored -> new DestinationState()).ready();
-        ManagedChannel channel = channels.get(destination);
-        if (channel != null) channel.resetConnectBackoff();
-        wake();
+        if (closed || destination == null || destination.isBlank()) return;
+        readinessGate.await(destination, channel(destination), () -> {
+            if (closed) return;
+            destinations.computeIfAbsent(destination, ignored -> new DestinationState()).ready();
+            wake();
+        });
     }
 
     private void reconcileSafely() {
@@ -376,6 +381,7 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
     @Override
     public void close() {
         closed = true;
+        readinessGate.close();
         scheduler.shutdownNow();
         workers.shutdownNow();
         channels.values().forEach(ManagedChannel::shutdownNow);
@@ -443,10 +449,54 @@ public final class MailboxRecoveryCoordinator implements AutoCloseable {
         }
 
         synchronized void ready() {
+            // A notification must neither demote a healthy destination nor overlap a probe.
+            if (failures == 0 || probeInFlight) return;
             failures = 1;
             nextAttemptNanos = 0;
             probeInFlight = false;
             generation++;
+        }
+    }
+
+    /**
+     * At most one connectivity watch per destination. gRPC owns reconnect timing after
+     * the initial resolver reset; a failed connection attempt does not consume the readiness hint.
+     * Normal reconciliation continues while the watch waits, without a blocked worker.
+     */
+    static final class ReadinessGate implements AutoCloseable {
+        private final Map<String, ManagedChannel> pending = new HashMap<>();
+        private boolean closed;
+
+        synchronized void await(String destination, ManagedChannel channel, Runnable onReady) {
+            if (closed || pending.containsKey(destination)) return;
+            pending.put(destination, channel);
+            ConnectivityState state = channel.getState(false);
+            if (state != ConnectivityState.READY && state != ConnectivityState.SHUTDOWN) {
+                // Recreate the resolver/load balancer so a previous DNS failure does not
+                // leave this recovery waiting on the old resolver's retry schedule.
+                // observe() requests a connection; JVM and external DNS caches still apply.
+                channel.enterIdle();
+            }
+            observe(destination, channel, onReady);
+        }
+
+        private synchronized void observe(String destination, ManagedChannel channel, Runnable onReady) {
+            if (closed || pending.get(destination) != channel) return;
+            ConnectivityState state = channel.getState(true);
+            if (state == ConnectivityState.READY) {
+                pending.remove(destination);
+                onReady.run();
+            } else if (state == ConnectivityState.SHUTDOWN) {
+                pending.remove(destination);
+            } else {
+                channel.notifyWhenStateChanged(state, () -> observe(destination, channel, onReady));
+            }
+        }
+
+        @Override
+        public synchronized void close() {
+            closed = true;
+            pending.clear();
         }
     }
 

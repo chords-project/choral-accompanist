@@ -59,6 +59,8 @@ spec:
         - configMapRef:
             name: accompanist-runtime-settings
         env:
+        - name: JAVA_TOOL_OPTIONS
+          value: -Djava.security.properties=/etc/accompanist/warehouse-dns.security
         - name: RUN
           value: sidecar
         - name: WAREHOUSE
@@ -79,6 +81,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        volumeMounts:
+        - name: warehouse-dns-settings
+          mountPath: /etc/accompanist
+          readOnly: true
         resources: &id001
           requests:
             cpu: 100m
@@ -103,3 +109,10 @@ spec:
         - name: LISTEN_PORT
           value: '5000'
         resources: *id001
+      volumes:
+      - name: warehouse-dns-settings
+        configMap:
+          name: warehouse-dns-settings
+          items:
+          - key: warehouse-dns.security
+            path: warehouse-dns.security
