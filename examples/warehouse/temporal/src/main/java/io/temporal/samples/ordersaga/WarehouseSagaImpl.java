@@ -49,8 +49,8 @@ public class WarehouseSagaImpl implements WarehouseSaga {
         try {
             var t1 = Workflow.currentTimeMillis();
 
-            saga.addCompensation(warehouseActivities::cancelOrderReservation);
             warehouseActivities.checkItemInStockAndReserveForOrder();
+            saga.addCompensation(warehouseActivities::cancelOrderReservation);
 
             saga.addCompensation(paymentActivities::refundCustomer);
             paymentActivities.takeMoneyFromCustomer();

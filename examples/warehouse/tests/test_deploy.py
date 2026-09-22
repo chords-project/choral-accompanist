@@ -1,6 +1,7 @@
 """Deployment helper tests that do not require benchmark runtime dependencies."""
 import sys
 import json
+import shlex
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,6 +11,16 @@ import benchmark_deploy
 
 
 class RegistryAuthenticationTests(unittest.TestCase):
+    def test_discard_command_checks_run_identity_and_stopped_status(self):
+        command = benchmark_deploy.discard_guard_command('eks-context', 'warehouse-benchmark', 'run-123')
+        argv = shlex.split(command)
+        self.assertEqual(argv[:8], ['kubectl', '--context', 'eks-context', '-n',
+                                    'warehouse-benchmark', 'exec', 'deploy/loadgenerator', '--'])
+        self.assertEqual(argv[8:10], ['sh', '-c'])
+        self.assertIn('test "$(cat /runs/active-run)" = run-123', argv[10])
+        self.assertIn('test -f /runs/run-123/run-status.json', argv[10])
+        self.assertTrue(argv[10].endswith('&& rm /runs/active-run'))
+
     @patch.object(benchmark_deploy.subprocess, 'run')
     def test_private_ecr_login_uses_repository_region(self, run):
         run.return_value.stdout = b'temporary-password\n'

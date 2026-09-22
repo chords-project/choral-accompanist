@@ -5,9 +5,12 @@ import io.temporal.client.WorkflowOptions;
 import io.temporal.samples.ordersaga.web.ServerInfo;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.WorkerFactory;
+import io.temporal.failure.ApplicationFailure;
+import io.temporal.client.WorkflowFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RecoveryWorkflowTest {
@@ -20,6 +23,30 @@ class RecoveryWorkflowTest {
         public void refundCustomer() {}
         public void awardPointsToCustomer() {}
         public void compensatePointsFromCustomer() {}
+    }
+
+    @Test @Timeout(30)
+    void stockOutFailsWithoutCompensatingUnreservedStock() {
+        var reservations = new AtomicInteger();
+        var compensations = new AtomicInteger();
+        var activities = new Activities() {
+            @Override public void checkItemInStockAndReserveForOrder() {
+                reservations.incrementAndGet();
+                throw ApplicationFailure.newFailure("item out of stock", "warehouse.UserException");
+            }
+            @Override public void cancelOrderReservation() { compensations.incrementAndGet(); }
+        };
+        try (var env = TestWorkflowEnvironment.newInstance()) {
+            var warehouse = env.newWorker(ServerInfo.getWarehouseTaskQueue());
+            warehouse.registerWorkflowImplementationTypes(WarehouseSagaImpl.class);
+            warehouse.registerActivitiesImplementations(activities);
+            env.start();
+            var workflow = env.getWorkflowClient().newWorkflowStub(WarehouseSaga.class,
+                    WorkflowOptions.newBuilder().setTaskQueue(ServerInfo.getWarehouseTaskQueue()).build());
+            assertThrows(WorkflowFailedException.class, () -> workflow.orderFulfillment(123));
+            assertEquals(1, reservations.get());
+            assertEquals(0, compensations.get());
+        }
     }
 
     @Test @Timeout(100)

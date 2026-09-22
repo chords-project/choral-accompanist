@@ -17,6 +17,11 @@ def timestamp(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() if value else None
 
 
+def releasable(manifest, collection_errors):
+    """Only collected terminal work may release the persistent run guard."""
+    return manifest["complete"] and manifest["restored"] and not collection_errors
+
+
 class Kubernetes:
     def __init__(self, context, namespace):
         self.command = ["kubectl", "--context", context, "--namespace", namespace]
@@ -116,13 +121,19 @@ def main():
         if len(pods) != 1:
             raise RuntimeError("Expected exactly one running Locust Pod")
         pod = pods[0]["metadata"]["name"]
-        for name in ("run-config.json", "run-status.json", "requests.jsonl", "fault-events.jsonl", "validation-errors.jsonl", "fault-deployment.json"):
+        for name in ("run-config.json", "run-status.json", "requests.jsonl", "fault-events.jsonl", "validation-errors.jsonl"):
             try:
                 data = kube.run("exec", pod, "--", "cat", f"/runs/{args.run_id}/{name}")
                 (bundle / name).write_text(data)
             except Exception as exc:
                 errors.append(f"Missing artifact {name}: {exc}")
         config = json.loads((bundle / "run-config.json").read_text())
+        if config.get("benchmark", "fault_tolerance") == "fault_tolerance":
+            try:
+                (bundle / "fault-deployment.json").write_text(
+                    kube.run("exec", pod, "--", "cat", f"/runs/{args.run_id}/fault-deployment.json"))
+            except Exception as exc:
+                errors.append(f"Missing artifact fault-deployment.json: {exc}")
         if config["run_id"] != args.run_id:
             raise ValueError("Run identity mismatch")
         if not (bundle / "run-status.json").exists():
@@ -162,6 +173,15 @@ def main():
                 (bundle / "mailbox_samples.csv").write_text(samples)
             except Exception as exc:
                 errors.append(f"Missing mailbox diagnostic: {exc}")
+        if config.get("benchmark") == "compensation":
+            try:
+                stock = int(kube.run("exec", "deploy/db-warehouse", "--", "psql", "-X", "-U", "postgres",
+                                     "-d", "warehouse", "-v", "ON_ERROR_STOP=1", "-At", "-c",
+                                     f"SELECT stock_quantity FROM products WHERE product_id = {config['product_id']};").strip())
+                (bundle / "stock-final.json").write_text(json.dumps({"product_id": config["product_id"],
+                                                                         "stock_quantity": stock}, indent=2) + "\n")
+            except Exception as exc:
+                errors.append(f"Cannot verify final stock: {exc}")
     except Exception as exc:
         errors.append(str(exc))
     finally:
@@ -171,7 +191,7 @@ def main():
     (bundle / "executions.json").write_text(json.dumps(records, indent=2))
     manifest = export(bundle, errors)
     # Failed terminal executions do not block another run; unknown/running work does.
-    if manifest["complete"] and manifest["restored"] and not errors:
+    if releasable(manifest, errors):
         guard = kube.run("exec", pod, "--", "cat", "/runs/active-run").strip()
         if guard == args.run_id:
             kube.run("exec", pod, "--", "rm", "/runs/active-run")

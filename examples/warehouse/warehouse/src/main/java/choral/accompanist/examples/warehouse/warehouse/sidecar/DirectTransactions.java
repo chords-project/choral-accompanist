@@ -47,32 +47,11 @@ public class DirectTransactions implements WarehouseTransactions {
                     stmt.execute();
                 }
 
-                // Check item in stock
-                try (var stmt = trans.prepareStatement("SELECT * FROM products WHERE product_id = ?;")) {
+                // PostgreSQL serializes updates to this row and rechecks the predicate.
+                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ? AND stock_quantity > 0;")) {
                     stmt.setInt(1, productID);
-
-                    try (var resultSet = stmt.executeQuery()) {
-                        var foundRow = resultSet.next();
-                        if (!foundRow) {
-                            System.out.println("- FAILED: checkItemInStockAndReserveForOrder, item not found");
-                            return false;
-                        }
-
-                        int stockQuantity = resultSet.getInt("stock_quantity");
-                        if (stockQuantity <= 0) {
-                            System.out.println("- FAILED: checkItemInStockAndReserveForOrder, item out of stock");
-                            return false;
-                        }
-                    }
+                    return stmt.executeUpdate() == 1;
                 }
-
-                // Reduce item stock quantity
-                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ?;")) {
-                    stmt.setInt(1, productID);
-                    stmt.execute();
-                }
-
-                return true;
             }
 
             @Override

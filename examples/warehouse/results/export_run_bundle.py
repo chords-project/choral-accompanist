@@ -25,7 +25,8 @@ def export(bundle, collection_errors=()):
     errors.extend(row["error"] for row in read("validation-errors.jsonl", []))
     executions = read("executions.json", [])
     scheduled = [row for row in requests if row["event"] == "scheduled"]
-    expected = math.ceil(config.get("rate", 0) * config.get("duration", 0))
+    stock_run = config.get("benchmark") == "compensation"
+    expected = config.get("request_count", 0) if stock_run else math.ceil(config.get("rate", 0) * config.get("duration", 0))
     if len(scheduled) != expected:
         errors.append(f"Expected {expected} scheduled arrivals, recorded {len(scheduled)}")
     if any(row["event"] == "missed" for row in requests):
@@ -42,34 +43,53 @@ def export(bundle, collection_errors=()):
         errors.append(f"Incomplete drain: {len(running)} unfinished executions")
     if any(row.get("started_at") is None for row in executions):
         errors.append("Execution records missing durable start timestamps")
-    if not status.get("restored"):
+    if not status.get("restored") and not stock_run:
         errors.append("Payment restoration is unverified")
-    unavailable = next((row["timestamp"] for row in events if row["phase"] == "target-unavailable"), None)
-    ready = next((row["timestamp"] for row in events if row["phase"] == "target-ready"), None)
     recovery = {"status": "unobserved", "seconds": None}
-    if unavailable is None or ready is None:
-        errors.append("Missing observed outage or readiness")
+    if stock_run:
+        count = config.get("stock_count")
+        if not isinstance(count, int) or count < 1 or expected != 2 * count:
+            errors.append("Invalid stock-count or request-count configuration")
+        if config.get("initial_stock") != count:
+            errors.append("Initial stock was not verified")
+        final = read("stock-final.json", {})
+        if final.get("stock_quantity") != 0 or final.get("product_id") != config.get("product_id"):
+            errors.append("Final stock is not zero or product identity differs")
+        if len(dispatched) != expected:
+            errors.append(f"Expected {expected} dispatched requests, recorded {len(dispatched)}")
+        if sum(row["status"] == "completed" for row in executions) != count:
+            errors.append(f"Expected {count} successful executions")
+        if len(failures) != count:
+            errors.append(f"Expected {count} failed executions")
+        if len(known) != len(executions) or known != dispatched:
+            errors.append("Execution correlations do not match dispatched requests")
     else:
-        if ready < unavailable:
-            errors.append("Readiness precedes unavailability")
-        if ready - unavailable + 1 < config.get("fault_duration", 0):
-            errors.append("Observed outage was shorter than configured")
-        cohort = [row for row in executions if row["started_at"] is not None and row["started_at"] <= ready
-                  and (row["terminal_at"] is None or row["terminal_at"] > ready)]
-        if unknown or any(row["started_at"] is None for row in executions) or any(row["status"] == "running" for row in cohort):
-            recovery = {"status": "unresolved", "seconds": None}
-        elif any(row["status"] != "completed" for row in cohort):
-            recovery = {"status": "failed", "seconds": None}
+        unavailable = next((row["timestamp"] for row in events if row["phase"] == "target-unavailable"), None)
+        ready = next((row["timestamp"] for row in events if row["phase"] == "target-ready"), None)
+        if unavailable is None or ready is None:
+            errors.append("Missing observed outage or readiness")
         else:
-            recovery = {"status": "complete", "seconds": max((row["terminal_at"] - ready for row in cohort), default=0)}
-        recovery["orders"] = len(cohort)
-    if failures:
+            if ready < unavailable:
+                errors.append("Readiness precedes unavailability")
+            if ready - unavailable + 1 < config.get("fault_duration", 0):
+                errors.append("Observed outage was shorter than configured")
+            cohort = [row for row in executions if row["started_at"] is not None and row["started_at"] <= ready
+                      and (row["terminal_at"] is None or row["terminal_at"] > ready)]
+            if unknown or any(row["started_at"] is None for row in executions) or any(row["status"] == "running" for row in cohort):
+                recovery = {"status": "unresolved", "seconds": None}
+            elif any(row["status"] != "completed" for row in cohort):
+                recovery = {"status": "failed", "seconds": None}
+            else:
+                recovery = {"status": "complete", "seconds": max((row["terminal_at"] - ready for row in cohort), default=0)}
+            recovery["orders"] = len(cohort)
+    if failures and not stock_run:
         errors.append(f"{len(failures)} durable executions failed")
-    manifest = dict(schema_version=1, run_id=config.get("run_id"), system=config.get("system"),
+    manifest = dict(schema_version=config.get("schema_version", 1), run_id=config.get("run_id"), system=config.get("system"),
                     valid=not errors, complete=complete, restored=bool(status.get("restored")),
                     errors=sorted(set(errors)), unknown_request_ids=unknown, unfinished=len(running),
                     successes=sum(row["status"] == "completed" for row in executions), failures=len(failures),
-                    outage_cohort_recovery=recovery)
+                    outage_cohort_recovery=recovery,
+                    benchmark=config.get("benchmark", "fault_tolerance"))
     (bundle / "run-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
 

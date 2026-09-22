@@ -24,12 +24,15 @@ FROM base
 
 WORKDIR /loadgen
 
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /install /usr/local
 
 # Add application code.
-COPY locustfile.py fault_tolerance.py benchmark_core.py ./
+COPY locustfile.py fault_tolerance.py compensation.py benchmark_core.py stock_db.py ./
 
 # enable gevent support in debugger
 ENV GEVENT_SUPPORT=True
 
-ENTRYPOINT ["locust", "-f", "fault_tolerance.py", "--users", "1", "--spawn-rate", "1"]
+ENTRYPOINT ["sh", "-c", "exec locust -f \"${BENCHMARK_MODE:-fault_tolerance}.py\" --users 1 --spawn-rate 1"]

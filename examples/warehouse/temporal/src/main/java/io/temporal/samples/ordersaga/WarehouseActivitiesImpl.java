@@ -39,31 +39,17 @@ public class WarehouseActivitiesImpl implements WarehouseActivities {
                 stmt.execute();
             }
 
-            // Check item in stock
-            try (var stmt = con.prepareStatement("SELECT * FROM products WHERE product_id = ?;")) {
+            try (var stmt = con.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ? AND stock_quantity > 0;")) {
                 stmt.setInt(1, productID);
-
-                try (var resultSet = stmt.executeQuery()) {
-                    var foundRow = resultSet.next();
-                    if (!foundRow) {
-                        throw ApplicationFailure.newFailure("item not found", "warehouse.UserException");
-                    }
-
-                    int stockQuantity = resultSet.getInt("stock_quantity");
-                    if (stockQuantity <= 0) {
-                        throw ApplicationFailure.newFailure("item out of stock", "warehouse.UserException");
-                    }
+                if (stmt.executeUpdate() != 1) {
+                    throw ApplicationFailure.newFailure("item out of stock", "warehouse.UserException");
                 }
-            }
-
-            // Reduce item stock quantity
-            try (var stmt = con.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ?;")) {
-                stmt.setInt(1, productID);
-                stmt.execute();
             }
 
             con.commit();
 
+        } catch (ApplicationFailure e) {
+            throw e;
         } catch (Exception e) {
             throw ApplicationFailure.newFailureWithCause("database exception", e.getClass().getName(), e);
         }

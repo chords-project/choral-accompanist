@@ -1,0 +1,41 @@
+{
+  "warnings": [],
+  "runs": [
+    {
+      "schema_version": 2,
+      "run_id": "fa20d243-8912-4f25-9ba2-048ffa3bb4b1",
+      "system": "accompanist",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 750,
+      "failures": 750,
+      "outage_cohort_recovery": {
+        "status": "unobserved",
+        "seconds": null
+      },
+      "benchmark": "compensation"
+    },
+    {
+      "schema_version": 2,
+      "run_id": "1ec1d8b4-8acf-448f-bd26-35450f3746c8",
+      "system": "temporal",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 750,
+      "failures": 750,
+      "outage_cohort_recovery": {
+        "status": "unobserved",
+        "seconds": null
+      },
+      "benchmark": "compensation"
+    }
+  ]
+}

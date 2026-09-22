@@ -155,6 +155,27 @@ class SQLRecoveryTest {
         assertEquals(1, count("SELECT COUNT(*) FROM session_states WHERE session_id=11 AND session_state='completed'"));
     }
 
+    @Test void failedSessionsCleanUpInboxAndAcknowledgedOutboxButKeepPendingOutput() throws Exception {
+        var input = message(12, "sender");
+        mailbox.didReceiveMessage(input);
+        assertTrue(store.startSession(input.session));
+        assertFalse(mailbox.aboutToSendMessage(input, "acknowledged-peer"));
+        assertFalse(mailbox.aboutToSendMessage(input, "pending-peer"));
+        mailbox.didDeliverMessage(input, "acknowledged-peer");
+        assertTrue(store.failSession(input.session));
+
+        mailbox.cleanupRegularMessages(100);
+
+        assertEquals(0, mailbox.inboxCount());
+        assertEquals(1, mailbox.totalOutboxCount());
+        assertEquals(1, mailbox.pendingOutboxCount());
+        assertEquals(1, count("SELECT COUNT(*) FROM session_states WHERE session_id=12 AND session_state='failed'"));
+
+        mailbox.didDeliverMessage(input, "pending-peer");
+        mailbox.cleanupRegularMessages(100);
+        assertEquals(0, mailbox.totalOutboxCount());
+    }
+
     @Test void receiptSurvivesCrashBeforeExecutionStarts() throws Exception {
         var input = message(2, "sender");
         var parent = SpanContext.createFromRemoteParent(

@@ -232,14 +232,14 @@ public class SQLMailbox {
             int deleted;
             try (var inbox = con.prepareStatement("""
                     DELETE FROM inbox WHERE ctid IN (SELECT i.ctid FROM inbox i JOIN session_states s
-                    ON s.session_id=i.session_id WHERE s.session_state='completed' LIMIT ?)
+                    ON s.session_id=i.session_id WHERE s.session_state IN ('completed', 'failed') LIMIT ?)
                     """)) {
                 inbox.setInt(1, limit);
                 deleted = inbox.executeUpdate();
             }
             try (var outbox = con.prepareStatement("""
                     DELETE FROM outbox WHERE ctid IN (SELECT o.ctid FROM outbox o JOIN session_states s
-                    ON s.session_id=o.session_id WHERE s.session_state='completed' AND o.acknowledged=TRUE LIMIT ?)
+                    ON s.session_id=o.session_id WHERE s.session_state IN ('completed', 'failed') AND o.acknowledged=TRUE LIMIT ?)
                     """)) {
                 outbox.setInt(1, limit);
                 deleted += outbox.executeUpdate();

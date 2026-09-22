@@ -108,7 +108,7 @@ class SchedulingTests(unittest.TestCase):
             'ACCOMPANIST_SCAN_BATCH_SIZE': '1024', 'ACCOMPANIST_DB_POOL_SIZE': '32'
         }
         with patch.dict(os.environ, values, clear=False):
-            settings = resolve(options())['runtime_settings']
+            settings = resolve(options(benchmark_system='accompanist'))['runtime_settings']
         self.assertEqual(settings, {
             'execution_concurrency': 128, 'delivery_concurrency': 128,
             'scan_batch_size': 1024, 'db_pool_size': 32
@@ -130,7 +130,7 @@ class SchedulingTests(unittest.TestCase):
     def test_runtime_settings_reject_non_positive_values(self):
         with patch.dict(os.environ, {'ACCOMPANIST_EXECUTION_CONCURRENCY': '0'}, clear=False):
             with self.assertRaisesRegex(ValueError, 'ACCOMPANIST_EXECUTION_CONCURRENCY'):
-                resolve(options())
+                resolve(options(benchmark_system='accompanist'))
 
         with patch.dict(os.environ, {'TEMPORAL_ACTIVITY_EXECUTION_CONCURRENCY': '0'}, clear=False):
             with self.assertRaisesRegex(ValueError, 'TEMPORAL_ACTIVITY_EXECUTION_CONCURRENCY'):

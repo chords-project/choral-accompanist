@@ -118,29 +118,11 @@ public class WarehouseService {
                     stmt.execute();
                 }
 
-                // Check item in stock
-                try (var stmt = trans.prepareStatement("SELECT * FROM products WHERE product_id = ?;")) {
+                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ? AND stock_quantity > 0;")) {
                     stmt.setInt(1, productID);
-
-                    try (var resultSet = stmt.executeQuery()) {
-                        var foundRow = resultSet.next();
-                        if (!foundRow) {
-                            System.out.println("- FAILED: checkItemInStockAndReserveForOrder, item not found");
-                            throw new Exception("item not found");
-                        }
-
-                        int stockQuantity = resultSet.getInt("stock_quantity");
-                        if (stockQuantity <= 0) {
-                            System.out.println("- FAILED: checkItemInStockAndReserveForOrder, item out of stock");
-                            throw new Exception("item out of stock");
-                        }
+                    if (stmt.executeUpdate() != 1) {
+                        throw new Exception("item out of stock");
                     }
-                }
-
-                // Reduce item stock quantity
-                try (var stmt = trans.prepareStatement("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_id = ?;")) {
-                    stmt.setInt(1, productID);
-                    stmt.execute();
                 }
 
                 trans.commit();

@@ -1,5 +1,51 @@
 # Warehouse recovery benchmark
 
+## Stock-out benchmark
+
+Use the same namespace, cluster prerequisites, run guard, collector, and port-forward
+workflow as the recovery benchmark below. Select the stock-out mode when deploying:
+
+```sh
+python3 benchmark_deploy.py accompanist --benchmark compensation --context docker-desktop
+kubectl --context docker-desktop -n warehouse-benchmark port-forward svc/loadgenerator 8089:8089
+```
+
+Open <http://localhost:8089> and start the run. The UI defaults to 750 units of
+product 123 and 5 requests/s. It sets and verifies stock before scheduling exactly
+1,500 requests, taking 300 seconds at that rate. `Stock Count` and `Request Rate`
+change the count and submission duration; the latter is always `2 × stock / rate`.
+Set `Max Concurrent Requests` to 0 for an automatically derived cap. The benchmark
+does not retry submissions or catch up missed arrivals. Stop Locust before collecting.
+
+```sh
+python3 -m venv ./results/.venv
+. ./results/.venv/bin/activate
+pip install -r results/requirements.txt
+./results/collect_run.sh RUN_UUID --context docker-desktop --namespace warehouse-benchmark --output ./results
+python results/plot_compensation.py results/RUN_UUID
+```
+
+After collection releases the run guard, deploy Temporal and repeat:
+
+```sh
+python3 benchmark_deploy.py temporal --benchmark compensation --context docker-desktop
+kubectl --context docker-desktop -n warehouse-benchmark port-forward svc/loadgenerator 8089:8089
+./results/collect_run.sh TEMPORAL_UUID --context docker-desktop --namespace warehouse-benchmark --output ./results
+python results/plot_compensation.py results/ACCOMPANIST_UUID results/TEMPORAL_UUID --output results/stock-comparison.png
+```
+
+The stock-out bundle records the verified initial stock in `run-config.json` and
+the final count in `stock-final.json`. Validation requires all requests to reach a
+durable terminal state, exactly half to complete and half to fail, and final stock
+to equal zero. Expected stock-out failures do not invalidate the run. The plot shows
+terminal throughput and dispatch-to-terminal latency separately for successes and
+failures; HTTP latency is secondary because Temporal's HTTP endpoint only starts a
+workflow. The stock-out occurs at the first saga step, before payment and loyalty;
+this benchmark does not exercise their compensations. Use the existing guard and
+collect each run before starting another or switching systems.
+
+## Recovery benchmark
+
 Use one dedicated Kubernetes namespace and one active system at a time. The benchmark
 uses synchronous HTTP, a single Locust process and a fixed aggregate arrival rate.
 Locust's user count does not change the rate. The ordinary `locustfile.py` remains

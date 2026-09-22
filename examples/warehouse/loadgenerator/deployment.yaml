@@ -81,6 +81,8 @@ spec:
               fieldPath: metadata.namespace
         - name: BENCHMARK_SYSTEM
           value: accompanist
+        - name: BENCHMARK_MODE
+          value: fault_tolerance
         volumeMounts:
         - name: runs
           mountPath: /runs
