@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from export_run_bundle import read_jsonl
 
@@ -27,6 +28,28 @@ def load(bundle):
             json.loads((bundle / "run-manifest.json").read_text()),
             json.loads((bundle / "executions.json").read_text()),
             read_jsonl(bundle / "requests.jsonl"))
+
+
+def recorded_summary(bundle):
+    """Return a stock-out summary only when the collected evidence is complete."""
+    try:
+        config, manifest, executions, _ = load(bundle)
+        stock = json.loads((bundle / "stock-final.json").read_text())
+    except (OSError, ValueError, KeyError):
+        return None
+    if (config.get("benchmark") != "compensation" or
+            not manifest.get("valid") or not manifest.get("complete") or
+            manifest.get("run_id") != config.get("run_id") or
+            manifest.get("system") != config.get("system") or
+            stock.get("product_id") != config.get("product_id") or
+            not isinstance(stock.get("stock_quantity"), int)):
+        return None
+    counts = Counter(row.get("status") for row in executions)
+    successes, failures = counts["completed"], counts["failed"]
+    if (successes != manifest.get("successes") or failures != manifest.get("failures") or
+            successes + failures != config.get("request_count")):
+        return None
+    return config["system"], successes, failures, stock["stock_quantity"]
 
 
 def plot(bundles, output):
@@ -52,7 +75,8 @@ def plot(bundles, output):
             counts = Counter(math.floor(row["terminal_at"] - origin) for row in rows)
             if counts:
                 xs = list(range(min(0, min(counts)), max(counts) + 2))
-                throughput.step(xs, [counts.get(x, 0) for x in xs], where="post", color=color,
+                direction = -1 if len(data) == 2 and index == 1 else 1
+                throughput.step(xs, [direction * counts.get(x, 0) for x in xs], where="post", color=color,
                                 linestyle=style, label=f"{label} {status}")
             latencies = [row["terminal_at"] - dispatch[row["request_id"]] for row in rows
                          if row["request_id"] in dispatch and row["terminal_at"] >= dispatch[row["request_id"]]]
@@ -76,13 +100,20 @@ def plot(bundles, output):
             ys.append(total)
         if xs:
             outstanding.step(xs, ys, where="post", color=color, label=label)
+    if len(data) == 2:
+        throughput.axhline(0, color="0.35", linewidth=.8)
+        throughput.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{abs(value):g}"))
+        throughput.set_ylabel(f"{data[0][0]['system']} ↑  |  {data[1][0]['system']} ↓\nExecutions/s (absolute scale)")
+    else:
+        throughput.set_ylabel("Executions/s")
     for ax, title, xlabel in ((throughput, "Durable terminal executions per second", "Seconds from run start"),
                               (durable, "Dispatch to durable terminal (CDF)", "Seconds"),
                               (http, "Client HTTP latency by durable outcome (CDF)", "Seconds"),
                               (outstanding, "Unfinished durable executions", "Seconds from run start")):
         ax.set_title(title)
         ax.set_xlabel(xlabel)
-        ax.set_ylim(bottom=0)
+        if ax is not throughput or len(data) == 1:
+            ax.set_ylim(bottom=0)
         ax.grid(alpha=.2)
         if ax.get_legend_handles_labels()[0]:
             ax.legend(fontsize=8)
@@ -101,5 +132,10 @@ if __name__ == "__main__":
     parser.add_argument("comparison", type=Path, nargs="?")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    plot([args.bundle] + ([args.comparison] if args.comparison else []),
-         args.output or args.bundle / ("comparison.png" if args.comparison else "compensation.png"))
+    bundles = [args.bundle] + ([args.comparison] if args.comparison else [])
+    plot(bundles, args.output or args.bundle / ("comparison.png" if args.comparison else "compensation.png"))
+    for bundle in bundles:
+        summary = recorded_summary(bundle)
+        if summary is not None:
+            system, successes, failures, final_stock = summary
+            print(f"{system}: succeeded={successes}, failed={failures}, final stock={final_stock}")
