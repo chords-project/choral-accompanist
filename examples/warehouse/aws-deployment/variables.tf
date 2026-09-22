@@ -10,5 +10,5 @@ variable "region" {
 variable "kubernetes_version" {
   description = "Pinned Kubernetes minor; verify regional EKS support before provisioning"
   type        = string
-  default     = "1.35"
+  default     = "1.36"
 }

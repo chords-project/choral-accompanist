@@ -115,6 +115,9 @@ public class FaultTolerantServer extends ReactiveServer implements FaultServerCo
                 runSessionAsync(telemetrySession);
             } finally {
                 recoveryLaunches.release();
+                // Keep replay scheduling work-conserving: a completed attempt makes one
+                // more durable candidate eligible to use the released permit immediately.
+                recoveryCoordinator.wake();
             }
         });
     }

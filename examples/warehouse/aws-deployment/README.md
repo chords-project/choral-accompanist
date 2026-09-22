@@ -1,7 +1,7 @@
 # Warehouse benchmark on EKS
 
 This configuration extends the [EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)
-with Kubernetes 1.35, AL2023 nodes, a default EBS CSI `gp3` storage class and immutable
+with Kubernetes 1.36, AL2023 nodes, a default EBS CSI `gp3` storage class and immutable
 ECR repositories for benchmark images.
 
 Review and provision from this directory using your AWS account:
@@ -10,7 +10,7 @@ Review and provision from this directory using your AWS account:
 terraform init
 terraform plan -out=benchmark.tfplan
 terraform apply benchmark.tfplan
-aws eks update-kubeconfig --region eu-central-1 --name "$(terraform output -raw cluster_name)"
+aws eks update-kubeconfig --region "$(terraform output -raw region)" --name "$(terraform output -raw cluster_name)"
 terraform output -raw skaffold_default_repo
 ```
 

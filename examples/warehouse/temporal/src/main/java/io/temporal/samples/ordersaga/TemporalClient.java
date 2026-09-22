@@ -84,12 +84,15 @@ public class TemporalClient {
     }
 
     public static WorkerOptions getWorkerOptions() {
-        int executionConcurrency = positiveEnvironmentInt("TEMPORAL_EXECUTION_CONCURRENCY", 1000);
+        int activityExecutionConcurrency = positiveEnvironmentInt(
+                "TEMPORAL_ACTIVITY_EXECUTION_CONCURRENCY", 1000);
+        int workflowTaskExecutionConcurrency = positiveEnvironmentInt(
+                "TEMPORAL_WORKFLOW_TASK_EXECUTION_CONCURRENCY", 1000);
         int pollers = positiveEnvironmentInt("TEMPORAL_WORKER_POLLERS", 64);
         return WorkerOptions.newBuilder()
                 // concurrent jobs
-                .setMaxConcurrentActivityExecutionSize(executionConcurrency)
-                .setMaxConcurrentWorkflowTaskExecutionSize(executionConcurrency)
+                .setMaxConcurrentActivityExecutionSize(activityExecutionConcurrency)
+                .setMaxConcurrentWorkflowTaskExecutionSize(workflowTaskExecutionConcurrency)
                 // connections to server
                 .setMaxConcurrentActivityTaskPollers(pollers)
                 .setMaxConcurrentWorkflowTaskPollers(pollers)
@@ -98,16 +101,21 @@ public class TemporalClient {
     }
 
     public static WorkerFactoryOptions getWorkerFactoryOptions() {
-        int executionConcurrency = positiveEnvironmentInt("TEMPORAL_EXECUTION_CONCURRENCY", 1000);
+        int workflowTaskExecutionConcurrency = positiveEnvironmentInt(
+                "TEMPORAL_WORKFLOW_TASK_EXECUTION_CONCURRENCY", 1000);
         return WorkerFactoryOptions.newBuilder()
                 // Must be >= total MaxConcurrentWorkflowTaskExecutionSize
-                .setWorkflowCacheSize(Math.multiplyExact(executionConcurrency, 2))
+                .setWorkflowCacheSize(Math.multiplyExact(workflowTaskExecutionConcurrency, 2))
                 .build();
     }
 
     private static int positiveEnvironmentInt(String name, int defaultValue) {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) return defaultValue;
+        return positiveInt(name, value);
+    }
+
+    private static int positiveInt(String name, String value) {
         try {
             int parsed = Integer.parseInt(value);
             if (parsed > 0) return parsed;
