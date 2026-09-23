@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'results'))
-from collect_run import collect_temporal, collect_accompanist
+from collect_run import collect_temporal, collect_accompanist, temporal_compensation_evidence
 
 
 class CollectorTests(unittest.TestCase):
@@ -40,6 +40,30 @@ class CollectorTests(unittest.TestCase):
             records=collect_accompanist(SimpleNamespace(run=lambda *args:raw),'run',bundle)
         self.assertEqual([r['status'] for r in records],['failed','running'])
         self.assertIsNone(records[1]['started_at'])
+
+    def test_temporal_compensation_timing_ends_at_last_activity(self):
+        from temporalio.api.history.v1 import HistoryEvent
+        from google.protobuf.timestamp_pb2 import Timestamp
+        events = []
+        event_id = 1
+        names = ('PackageAndSendOrder', 'CancelDelivery', 'CompensatePointsFromCustomer',
+                 'RefundCustomer', 'CancelOrderReservation')
+        for name in names:
+            scheduled = HistoryEvent(event_id=event_id, event_time=Timestamp(seconds=100 + event_id))
+            scheduled.activity_task_scheduled_event_attributes.activity_type.name = name
+            events.append(scheduled)
+            scheduled_id = event_id
+            event_id += 1
+            terminal = HistoryEvent(event_id=event_id, event_time=Timestamp(seconds=100 + event_id))
+            if name == 'PackageAndSendOrder':
+                terminal.activity_task_failed_event_attributes.scheduled_event_id = scheduled_id
+            else:
+                terminal.activity_task_completed_event_attributes.scheduled_event_id = scheduled_id
+            events.append(terminal)
+            event_id += 1
+        timing, completions = temporal_compensation_evidence(events)
+        self.assertEqual(timing['compensation_duration'], 8)
+        self.assertEqual(len(completions), 4)
 
     def test_arrivals_before_outage_use_floor_not_truncation(self):
         from plot_run import bucket_counts

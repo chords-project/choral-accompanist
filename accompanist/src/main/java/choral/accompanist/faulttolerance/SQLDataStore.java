@@ -102,6 +102,7 @@ public class SQLDataStore implements FaultDataStore {
                       session_id INT,
                       transaction_name VARCHAR(255),
                       transaction_state transaction_state_enum NOT NULL,
+                      compensated_at TIMESTAMPTZ,
                       PRIMARY KEY (session_id, transaction_name)
                     );
                     """);
@@ -111,6 +112,7 @@ public class SQLDataStore implements FaultDataStore {
                     ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_parent_span_id VARCHAR(16);
                     ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_flags SMALLINT;
                     ALTER TABLE session_states ADD COLUMN IF NOT EXISTS trace_state TEXT;
+                    ALTER TABLE transaction_states ADD COLUMN IF NOT EXISTS compensated_at TIMESTAMPTZ;
                     """);
         }
 
@@ -286,7 +288,7 @@ public class SQLDataStore implements FaultDataStore {
 
                 try (var stmt = con.prepareStatement("""
                         UPDATE transaction_states
-                        SET transaction_state = 'compensated'
+                        SET transaction_state = 'compensated', compensated_at = clock_timestamp()
                         WHERE session_id = ? AND transaction_name = ? AND transaction_state = 'completed';
                         """)) {
                     stmt.setInt(1, sessionID);

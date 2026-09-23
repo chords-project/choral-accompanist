@@ -137,6 +137,8 @@ public class LoyaltyService {
                     stmt.execute();
                 }
 
+                con.commit();
+
                 responseObserver.onNext(LoyaltyOuterClass.Empty.newBuilder().build());
                 responseObserver.onCompleted();
             } catch (Exception e) {

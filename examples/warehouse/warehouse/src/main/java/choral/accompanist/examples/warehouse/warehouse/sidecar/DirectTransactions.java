@@ -90,6 +90,21 @@ public class DirectTransactions implements WarehouseTransactions {
                               PRIMARY KEY (user_id, session_id)
                             );
                             """);
+                    stmt.execute("""
+                            CREATE TABLE IF NOT EXISTS fulfillment_capacity (
+                              capacity_id INT PRIMARY KEY,
+                              remaining_capacity INT NOT NULL CHECK (remaining_capacity >= 0)
+                            );
+                            INSERT INTO fulfillment_capacity (capacity_id, remaining_capacity)
+                            VALUES (1, 1000000000) ON CONFLICT DO NOTHING;
+                            """);
+                }
+
+                try (var stmt = trans.prepareStatement("""
+                        UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity - 1
+                        WHERE capacity_id = 1 AND remaining_capacity > 0;
+                        """)) {
+                    if (stmt.executeUpdate() != 1) return false;
                 }
 
                 // Create order
@@ -111,7 +126,14 @@ public class DirectTransactions implements WarehouseTransactions {
                 try (var stmt = trans.prepareStatement("DELETE FROM orders WHERE user_id = ? AND session_id = ?;")) {
                     stmt.setInt(1, userID);
                     stmt.setInt(2, sessionID);
-                    stmt.execute();
+                    if (stmt.executeUpdate() == 1) {
+                        try (var capacity = trans.prepareStatement("""
+                                UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity + 1
+                                WHERE capacity_id = 1;
+                                """)) {
+                            capacity.executeUpdate();
+                        }
+                    }
                 }
             }
         };

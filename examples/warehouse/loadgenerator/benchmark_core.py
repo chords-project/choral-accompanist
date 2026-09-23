@@ -58,21 +58,28 @@ def resolve(options):
 
 def resolve_compensation(options):
     """Resolve a fixed request count; the rate determines the submission window."""
-    if options.stock_count < 1 or options.stock_count > 1_000_000_000:
-        raise ValueError("stock count must be between 1 and 1,000,000,000")
+    failure_point = getattr(options, "failure_point", "stock")
+    if failure_point not in ("stock", "fulfillment"):
+        raise ValueError("failure point must be stock or fulfillment")
+    fulfillment_capacity = getattr(options, "fulfillment_capacity", 750)
+    resource_count = options.stock_count if failure_point == "stock" else fulfillment_capacity
+    if resource_count < 1 or resource_count > 1_000_000_000:
+        raise ValueError("resource count must be between 1 and 1,000,000,000")
     if not math.isfinite(options.request_rate) or options.request_rate <= 0:
         raise ValueError("request rate must be positive and finite")
     if not math.isfinite(options.drain_timeout) or options.drain_timeout <= 0:
         raise ValueError("drain timeout must be positive and finite")
     system = options.benchmark_system
     config = dict(SYSTEMS[system])
-    count = options.stock_count * 2
+    count = resource_count * 2
     duration = count / options.request_rate
     cap = options.max_concurrent_requests or math.ceil(options.request_rate * (duration + options.drain_timeout))
     if cap < 1:
         raise ValueError("maximum concurrency must be positive")
-    config.update(benchmark="compensation", system=system, stock_count=options.stock_count,
-                  product_id=123, request_count=count, rate=options.request_rate,
+    config.update(benchmark="compensation", system=system, failure_point=failure_point,
+                  stock_count=options.stock_count, fulfillment_capacity=fulfillment_capacity,
+                  resource_count=resource_count, product_id=123, capacity_id=1,
+                  request_count=count, rate=options.request_rate,
                   duration=duration, drain_timeout=options.drain_timeout, max_concurrent=cap,
                   runtime_settings=runtime_settings(system))
     if options.benchmark_endpoint:

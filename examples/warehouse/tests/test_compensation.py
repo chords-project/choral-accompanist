@@ -19,6 +19,7 @@ import stock_db
 class StockOutTests(unittest.TestCase):
     def options(self, **updates):
         values = dict(benchmark_system="temporal", benchmark_endpoint="", stock_count=750,
+                      failure_point="stock", fulfillment_capacity=750,
                       request_rate=5, max_concurrent_requests=0, drain_timeout=300)
         values.update(updates)
         return SimpleNamespace(**values)
@@ -39,6 +40,21 @@ class StockOutTests(unittest.TestCase):
         with patch.object(stock_db, "stock_sql", return_value="749"):
             with self.assertRaisesRegex(RuntimeError, "stock setup mismatch"):
                 stock_db.set_stock(750)
+
+    def test_fulfillment_configuration_and_setup(self):
+        config = resolve_compensation(self.options(failure_point="fulfillment", fulfillment_capacity=12))
+        self.assertEqual((config["resource_count"], config["request_count"]), (12, 24))
+        with patch.object(stock_db, "stock_sql", return_value="12") as query:
+            self.assertEqual(stock_db.set_fulfillment_capacity(12), 12)
+        self.assertIn("ON CONFLICT (capacity_id) DO UPDATE", query.call_args.args[0])
+        self.assertIn("VALUES (1, 12)", query.call_args.args[0])
+
+    def test_loyalty_baseline_uses_the_active_system_database(self):
+        completed = SimpleNamespace(stdout="17\n")
+        with patch.object(stock_db.subprocess, "run", return_value=completed) as run:
+            self.assertEqual(stock_db.get_loyalty_points("accompanist"), 17)
+        self.assertEqual(run.call_args.kwargs["env"]["PGHOST"], "db-loyalty")
+        self.assertEqual(run.call_args.kwargs["env"]["PGDATABASE"], "loyalty")
 
     def fixture(self, folder, outcomes=("completed", "failed"), final_stock=0):
         config = dict(schema_version=2, benchmark="compensation", run_id="r", system="temporal",
@@ -83,6 +99,37 @@ class StockOutTests(unittest.TestCase):
             (folder / "executions.json").write_text(json.dumps(records))
             manifest = export(folder)
             self.assertFalse(releasable(manifest, []))
+
+    def test_fulfillment_requires_complete_compensation_and_final_resources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            self.fixture(folder, final_stock=999_999_999)
+            config = json.loads((folder / "run-config.json").read_text())
+            config.update(schema_version=4, failure_point="fulfillment", resource_count=1, fulfillment_capacity=1,
+                          initial_fulfillment_capacity=1, initial_stock=1_000_000_000, capacity_id=1,
+                          initial_loyalty_points=4)
+            (folder / "run-config.json").write_text(json.dumps(config))
+            (folder / "capacity-final.json").write_text(json.dumps({"capacity_id": 1, "remaining_capacity": 0}))
+            (folder / "loyalty-final.json").write_text(json.dumps({"user_id": 100, "points": 5}))
+            records = json.loads((folder / "executions.json").read_text())
+            records[1].update(compensation_started_at=10.25, compensation_completed_at=10.75,
+                              compensation_duration=.5, terminal_at=10.75, compensation_pending=False)
+            (folder / "executions.json").write_text(json.dumps(records))
+            manifest = export(folder)
+            self.assertTrue(manifest["valid"], manifest["errors"])
+            self.assertEqual(manifest["compensation_drain"], {"status": "complete", "seconds": .5, "orders": 1})
+
+            records[1]["compensation_pending"] = True
+            (folder / "executions.json").write_text(json.dumps(records))
+            manifest = export(folder)
+            self.assertFalse(manifest["complete"])
+
+            records[1]["compensation_pending"] = False
+            (folder / "executions.json").write_text(json.dumps(records))
+            (folder / "loyalty-final.json").write_text(json.dumps({"user_id": 100, "points": 6}))
+            manifest = export(folder)
+            self.assertFalse(manifest["valid"])
+            self.assertTrue(any("loyalty points" in error for error in manifest["errors"]))
 
 
 if __name__ == "__main__":

@@ -58,6 +58,15 @@ public class WarehouseService {
                       PRIMARY KEY (user_id, session_id)
                     );
                     """);
+
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS fulfillment_capacity (
+                      capacity_id INT PRIMARY KEY,
+                      remaining_capacity INT NOT NULL CHECK (remaining_capacity >= 0)
+                    );
+                    INSERT INTO fulfillment_capacity (capacity_id, remaining_capacity)
+                    VALUES (1, 1000000000) ON CONFLICT DO NOTHING;
+                    """);
         }
     }
 
@@ -169,6 +178,17 @@ public class WarehouseService {
             System.out.println("- Warehouse commit transaction: packageAndSendOrder");
 
             try (var trans = db.getConnection()) {
+                trans.setAutoCommit(false);
+
+                try (var stmt = trans.prepareStatement("""
+                        UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity - 1
+                        WHERE capacity_id = 1 AND remaining_capacity > 0;
+                        """)) {
+                    if (stmt.executeUpdate() != 1) {
+                        throw new Exception("no fulfillment capacity available");
+                    }
+                }
+
                 // Create order
                 try (var stmt = trans.prepareStatement("""
                         INSERT INTO orders (user_id, session_id) VALUES (?, ?);
@@ -177,7 +197,7 @@ public class WarehouseService {
                     stmt.setInt(2, request.getSessionID());
                     stmt.execute();
                 }
-
+                trans.commit();
             } catch (Exception e) {
                 responseObserver.onError(e);
                 return;
@@ -192,11 +212,20 @@ public class WarehouseService {
             System.out.println("- Warehouse compensate transaction: packageAndSendOrder");
 
             try (var trans = db.getConnection()) {
+                trans.setAutoCommit(false);
                 try (var stmt = trans.prepareStatement("DELETE FROM orders WHERE user_id = ? AND session_id = ?;")) {
                     stmt.setInt(1, request.getUserID());
                     stmt.setInt(2, request.getSessionID());
-                    stmt.execute();
+                    if (stmt.executeUpdate() == 1) {
+                        try (var capacity = trans.prepareStatement("""
+                                UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity + 1
+                                WHERE capacity_id = 1;
+                                """)) {
+                            capacity.executeUpdate();
+                        }
+                    }
                 }
+                trans.commit();
             } catch (Exception e) {
                 responseObserver.onError(e);
                 return;

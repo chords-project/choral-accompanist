@@ -296,6 +296,7 @@ class SQLRecoveryTest {
         assertEquals(1, compensations.get());
         assertEquals(0, count("SELECT COUNT(*) FROM transaction_effects WHERE session_id = 8"));
         assertEquals(1, count("SELECT COUNT(*) FROM transaction_states WHERE session_id = 8 AND transaction_state = 'compensated'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM transaction_states WHERE session_id = 8 AND compensated_at IS NOT NULL"));
     }
 
     @Test void failedCompensationDoesNotMarkOtherTransactionsCompensated() throws Exception {
@@ -310,6 +311,7 @@ class SQLRecoveryTest {
 
         assertEquals(1, count("SELECT COUNT(*) FROM transaction_states WHERE session_id = 9 AND transaction_name = 'a-success' AND transaction_state = 'compensated'"));
         assertEquals(1, count("SELECT COUNT(*) FROM transaction_states WHERE session_id = 9 AND transaction_name = 'b-failing' AND transaction_state = 'completed'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM transaction_states WHERE session_id = 9 AND transaction_name = 'b-failing' AND compensated_at IS NULL"));
     }
 
     @Test void failedInboxWriteRollsBackSessionRegistration() throws Exception {

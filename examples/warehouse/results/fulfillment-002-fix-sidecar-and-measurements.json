@@ -1,0 +1,51 @@
+{
+  "warnings": [],
+  "runs": [
+    {
+      "schema_version": 4,
+      "run_id": "04a089b6-91f7-4a8f-acbe-eeac8dff0a59",
+      "system": "accompanist",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 750,
+      "failures": 750,
+      "outage_cohort_recovery": {
+        "status": "unobserved",
+        "seconds": null
+      },
+      "compensation_drain": {
+        "status": "complete",
+        "seconds": 149.79683899879456,
+        "orders": 750
+      },
+      "benchmark": "compensation"
+    },
+    {
+      "schema_version": 4,
+      "run_id": "d22e8b66-d69a-46eb-b1ac-ca425a20c807",
+      "system": "temporal",
+      "valid": true,
+      "complete": true,
+      "restored": true,
+      "errors": [],
+      "unknown_request_ids": [],
+      "unfinished": 0,
+      "successes": 750,
+      "failures": 750,
+      "outage_cohort_recovery": {
+        "status": "unobserved",
+        "seconds": null
+      },
+      "compensation_drain": {
+        "status": "complete",
+        "seconds": 150.47792601585388,
+        "orders": 750
+      },
+      "benchmark": "compensation"
+    }
+  ]
+}

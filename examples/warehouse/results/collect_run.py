@@ -40,7 +40,17 @@ class Kubernetes:
                 yield f"Cannot snapshot {name}: {exc}"
 
 
-def collect_accompanist(kube, run_id, bundle):
+ACCOMPANIST_COMPENSATIONS = {
+    "warehouse": "checkItemInStockAndReserveForOrder",
+    "payment": "takeMoneyFromCustomer",
+    "loyalty": "awardPointsToCustomer",
+}
+TEMPORAL_COMPENSATIONS = {
+    "cancelDelivery", "compensatePointsFromCustomer", "refundCustomer", "cancelOrderReservation",
+}
+
+
+def collect_accompanist(kube, run_id, bundle, fulfillment=False):
     sql = f"""SELECT COALESCE(s.session_id, r.session_id) AS session_id, COALESCE(s.run_id, r.run_id) AS run_id, s.session_state, s.started_at, s.completed_at,
         s.failed_at, s.attempt_count, s.restart_count, r.request_id, r.accepted_at
         FROM session_states s FULL OUTER JOIN benchmark_requests r ON s.session_id = r.session_id
@@ -54,7 +64,69 @@ def collect_accompanist(kube, run_id, bundle):
                             status="completed" if state == "completed" else "failed" if state == "failed" else "running",
                             started_at=timestamp(row["started_at"]),
                             terminal_at=timestamp(row["completed_at"] if state == "completed" else row["failed_at"] if state == "failed" else None)))
+    if not fulfillment:
+        return results
+
+    evidence = {}
+    for service, transaction in ACCOMPANIST_COMPENSATIONS.items():
+        database = service
+        sql = f"""SELECT s.session_id, s.failed_at, t.transaction_name, t.transaction_state, t.compensated_at
+            FROM session_states s LEFT JOIN transaction_states t ON t.session_id = s.session_id
+            WHERE s.run_id = '{run_id}'::uuid;"""
+        raw = kube.run("exec", f"deploy/db-{service}", "--", "psql", "-U", "postgres", "-d", database,
+                       "--csv", "-c", sql)
+        (bundle / "raw" / f"compensations-{service}.csv").write_text(raw)
+        for row in csv.DictReader(io.StringIO(raw)):
+            item = evidence.setdefault(row["session_id"], {"failures": [], "nodes": {}})
+            if row["failed_at"]:
+                item["failures"].append(timestamp(row["failed_at"]))
+            if row["transaction_name"] == transaction:
+                item["nodes"][service] = {
+                    "transaction": transaction,
+                    "state": row["transaction_state"],
+                    "completed_at": timestamp(row["compensated_at"]),
+                }
+    for result in results:
+        if result["status"] != "failed":
+            continue
+        item = evidence.get(str(result["execution_id"]), {"failures": [], "nodes": {}})
+        complete = (set(item["nodes"]) == set(ACCOMPANIST_COMPENSATIONS) and
+                    all(node["state"] == "compensated" and node["completed_at"] is not None
+                        for node in item["nodes"].values()) and item["failures"])
+        result["compensations"] = item["nodes"]
+        result["compensation_pending"] = not complete
+        if complete:
+            started = min(item["failures"])
+            completed = max(node["completed_at"] for node in item["nodes"].values())
+            result.update(compensation_started_at=started, compensation_completed_at=completed,
+                          compensation_duration=max(0, completed - started), terminal_at=completed)
     return results
+
+
+def temporal_compensation_evidence(events):
+    """Extract final-activity failure and actual compensation completions from protobuf history events."""
+    scheduled = {}
+    failure_at = None
+    completed = {}
+    for event in events:
+        when = event.event_time.ToDatetime().replace(tzinfo=__import__('datetime').timezone.utc).timestamp()
+        if event.HasField("activity_task_scheduled_event_attributes"):
+            scheduled[event.event_id] = event.activity_task_scheduled_event_attributes.activity_type.name
+        elif event.HasField("activity_task_failed_event_attributes"):
+            name = scheduled.get(event.activity_task_failed_event_attributes.scheduled_event_id)
+            normalized = name[:1].lower() + name[1:] if name else None
+            if normalized == "packageAndSendOrder":
+                failure_at = when
+        elif event.HasField("activity_task_completed_event_attributes"):
+            name = scheduled.get(event.activity_task_completed_event_attributes.scheduled_event_id)
+            normalized = name[:1].lower() + name[1:] if name else None
+            if normalized in TEMPORAL_COMPENSATIONS:
+                completed[normalized] = when
+    if failure_at is None or set(completed) != TEMPORAL_COMPENSATIONS:
+        return None, completed
+    finished = max(completed.values())
+    return dict(compensation_started_at=failure_at, compensation_completed_at=finished,
+                compensation_duration=max(0, finished - failure_at), terminal_at=finished), completed
 
 
 async def collect_temporal(address, namespace, requests, bundle, records=None):
@@ -81,19 +153,28 @@ async def collect_temporal(address, namespace, requests, bundle, records=None):
         execution.run_id = info.execution.run_id
         evidence = {"description": MessageToDict(description), "history_pages": []}
         token = b""
+        history_events = []
         while True:
             page = await client.workflow_service.get_workflow_execution_history(GetWorkflowExecutionHistoryRequest(
                 namespace=namespace, execution=execution, next_page_token=token, maximum_page_size=1000), timeout=timedelta(seconds=15))
             evidence["history_pages"].append(MessageToDict(page))
+            history_events.extend(page.history.events)
             token = page.next_page_token
             if not token:
                 break
         (bundle / "raw" / (execution_id + ".json")).write_text(json.dumps(evidence, indent=2))
-        records.append(dict(request_id=request["request_id"], execution_id=execution_id, temporal_run_id=execution.run_id,
+        record = dict(request_id=request["request_id"], execution_id=execution_id, temporal_run_id=execution.run_id,
                             status="completed" if info.status == 2 else "running" if info.status == 1 else "failed",
                             started_at=info.start_time.ToDatetime().replace(tzinfo=__import__('datetime').timezone.utc).timestamp(),
                             terminal_at=info.close_time.ToDatetime().replace(tzinfo=__import__('datetime').timezone.utc).timestamp()
-                            if info.HasField("close_time") else None))
+                            if info.HasField("close_time") else None)
+        if request.get("collect_compensations") and record["status"] == "failed":
+            timing, completions = temporal_compensation_evidence(history_events)
+            record["compensations"] = {name: {"completed_at": when} for name, when in completions.items()}
+            record["compensation_pending"] = timing is None
+            if timing:
+                record.update(timing)
+        records.append(record)
     return records
 
 
@@ -142,6 +223,9 @@ def main():
         (bundle / "run-config.json").write_text(json.dumps(config, indent=2))
         errors.extend(kube.snapshot(bundle))
         dispatched = [row for row in read_jsonl(bundle / "requests.jsonl") if row["event"] == "dispatch"]
+        fulfillment = config.get("benchmark") == "compensation" and config.get("failure_point", "stock") == "fulfillment"
+        if fulfillment:
+            dispatched = [dict(row, collect_compensations=True) for row in dispatched]
         if config["system"] == "temporal" and not args.no_port_forward:
             port = args.temporal_address.rsplit(":", 1)[1]
             forward = subprocess.Popen([*kube.command, "port-forward", "svc/temporal-frontend", f"{port}:7233"],
@@ -158,12 +242,13 @@ def main():
                     time.sleep(0.2)
         while True:
             if config["system"] == "accompanist":
-                records = collect_accompanist(kube, args.run_id, bundle)
+                records = collect_accompanist(kube, args.run_id, bundle, fulfillment)
             else:
                 records = []
                 asyncio.run(collect_temporal(args.temporal_address, args.temporal_namespace, dispatched, bundle, records))
             known = {row["request_id"] for row in records}
-            unresolved = any(row["status"] == "running" for row in records) or any(row["request_id"] not in known for row in dispatched)
+            unresolved = (any(row["status"] == "running" or row.get("compensation_pending") for row in records) or
+                          any(row["request_id"] not in known for row in dispatched))
             if not unresolved or time.time() >= config.get("drain_deadline", 0):
                 break
             time.sleep(min(2, max(0, config["drain_deadline"] - time.time())))
@@ -182,6 +267,24 @@ def main():
                                                                          "stock_quantity": stock}, indent=2) + "\n")
             except Exception as exc:
                 errors.append(f"Cannot verify final stock: {exc}")
+            if config.get("failure_point", "stock") == "fulfillment":
+                try:
+                    capacity = int(kube.run("exec", "deploy/db-warehouse", "--", "psql", "-X", "-U", "postgres",
+                                            "-d", "warehouse", "-v", "ON_ERROR_STOP=1", "-At", "-c",
+                                            f"SELECT remaining_capacity FROM fulfillment_capacity WHERE capacity_id = {config['capacity_id']};").strip())
+                    (bundle / "capacity-final.json").write_text(json.dumps({"capacity_id": config["capacity_id"],
+                                                                             "remaining_capacity": capacity}, indent=2) + "\n")
+                except Exception as exc:
+                    errors.append(f"Cannot verify final fulfillment capacity: {exc}")
+            try:
+                loyalty_deployment, loyalty_database = (("db-loyalty", "loyalty") if config["system"] == "accompanist"
+                                                         else ("db-warehouse", "warehouse"))
+                points = int(kube.run("exec", f"deploy/{loyalty_deployment}", "--", "psql", "-X", "-U", "postgres",
+                                      "-d", loyalty_database, "-v", "ON_ERROR_STOP=1", "-At", "-c",
+                                      "SELECT points FROM loyalty_points WHERE user_id = 100;").strip())
+                (bundle / "loyalty-final.json").write_text(json.dumps({"user_id": 100, "points": points}, indent=2) + "\n")
+            except Exception as exc:
+                errors.append(f"Cannot verify final loyalty points: {exc}")
     except Exception as exc:
         errors.append(str(exc))
     finally:

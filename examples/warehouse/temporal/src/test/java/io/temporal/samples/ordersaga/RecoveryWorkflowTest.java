@@ -49,6 +49,32 @@ class RecoveryWorkflowTest {
         }
     }
 
+    @Test @Timeout(30)
+    void fulfillmentFailureRunsEveryRegisteredCompensation() {
+        var compensations = new AtomicInteger();
+        var activities = new Activities() {
+            @Override public void packageAndSendOrder(int id) {
+                throw ApplicationFailure.newFailure("no fulfillment capacity available", "warehouse.UserException");
+            }
+            @Override public void cancelDelivery(int id) { compensations.incrementAndGet(); }
+            @Override public void compensatePointsFromCustomer() { compensations.incrementAndGet(); }
+            @Override public void refundCustomer() { compensations.incrementAndGet(); }
+            @Override public void cancelOrderReservation() { compensations.incrementAndGet(); }
+        };
+        try (var env = TestWorkflowEnvironment.newInstance()) {
+            var warehouse = env.newWorker(ServerInfo.getWarehouseTaskQueue());
+            warehouse.registerWorkflowImplementationTypes(WarehouseSagaImpl.class);
+            warehouse.registerActivitiesImplementations(activities);
+            env.newWorker(ServerInfo.getPaymentTaskQueue()).registerActivitiesImplementations(activities);
+            env.newWorker(ServerInfo.getLoyaltyTaskQueue()).registerActivitiesImplementations(activities);
+            env.start();
+            var workflow = env.getWorkflowClient().newWorkflowStub(WarehouseSaga.class,
+                    WorkflowOptions.newBuilder().setTaskQueue(ServerInfo.getWarehouseTaskQueue()).build());
+            assertThrows(WorkflowFailedException.class, () -> workflow.orderFulfillment(123));
+            assertEquals(4, compensations.get());
+        }
+    }
+
     @Test @Timeout(100)
     void survivesSixtySecondsWithoutPaymentWorker() {
         try (var env = TestWorkflowEnvironment.newInstance()) {

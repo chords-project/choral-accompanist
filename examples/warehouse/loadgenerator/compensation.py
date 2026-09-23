@@ -1,4 +1,4 @@
-"""Fixed-count stock-out benchmark, run once per Locust UI start."""
+"""Fixed-count compensation benchmark, run once per Locust UI start."""
 import json
 import logging
 import os
@@ -14,7 +14,7 @@ from locust.runners import MasterRunner, WorkerRunner
 import requests
 
 from benchmark_core import SYSTEMS, arrival, resolve_compensation
-from stock_db import set_stock
+from stock_db import DEFAULT_RESOURCE_COUNT, get_loyalty_points, set_fulfillment_capacity, set_stock
 
 LOG = logging.getLogger(__name__)
 ROOT = Path(os.getenv("BENCHMARK_ARTIFACTS", "/runs"))
@@ -28,6 +28,9 @@ def arguments(parser):
                         default=active or "accompanist", include_in_web_ui=True)
     parser.add_argument("--benchmark-endpoint", default="", include_in_web_ui=True)
     parser.add_argument("--stock-count", type=int, default=750, include_in_web_ui=True)
+    parser.add_argument("--failure-point", choices=("stock", "fulfillment"), default="stock",
+                        include_in_web_ui=True)
+    parser.add_argument("--fulfillment-capacity", type=int, default=750, include_in_web_ui=True)
     parser.add_argument("--request-rate", type=float, default=5, include_in_web_ui=True)
     parser.add_argument("--max-concurrent-requests", type=int, default=0, include_in_web_ui=True,
                         help="0 derives a cap from the submission and drain windows")
@@ -68,7 +71,7 @@ class Run:
             guard.flush()
             os.fsync(guard.fileno())
         self.evidence = Evidence(ROOT / self.run_id)
-        self.config.update(schema_version=2, run_id=self.run_id, created_at=time.time(),
+        self.config.update(schema_version=4, run_id=self.run_id, created_at=time.time(),
                            namespace=os.getenv("POD_NAMESPACE", "default"))
         self.stop = Event()
         self.done = Event()
@@ -116,9 +119,17 @@ class Run:
 
     def execute(self):
         try:
-            initial = set_stock(self.config["stock_count"])
-            self.config["initial_stock"] = initial
-            self.event("stock-set", stock=initial)
+            self.config["initial_loyalty_points"] = get_loyalty_points(self.config["system"])
+            if self.config["failure_point"] == "stock":
+                initial = set_stock(self.config["stock_count"])
+                initial_capacity = set_fulfillment_capacity(DEFAULT_RESOURCE_COUNT)
+                self.config.update(initial_stock=initial, initial_fulfillment_capacity=initial_capacity)
+                self.event("resources-set", stock=initial, fulfillment_capacity=initial_capacity)
+            else:
+                initial_stock = set_stock(DEFAULT_RESOURCE_COUNT)
+                initial_capacity = set_fulfillment_capacity(self.config["fulfillment_capacity"])
+                self.config.update(initial_stock=initial_stock, initial_fulfillment_capacity=initial_capacity)
+                self.event("resources-set", stock=initial_stock, fulfillment_capacity=initial_capacity)
             self.started = time.monotonic()
             wall = time.time()
             self.config.update(started_at=wall, drain_deadline=wall + self.config["duration"] + self.config["drain_timeout"])
@@ -175,8 +186,8 @@ def start(environment, **kwargs):
     global current
     try:
         current = Run(environment)
-        LOG.warning("Stock-out run %s: %s, %s requests", current.run_id,
-                    current.config["system"], current.config["request_count"])
+        LOG.warning("Compensation run %s: %s, %s failure, %s requests", current.run_id,
+                    current.config["system"], current.config["failure_point"], current.config["request_count"])
         current.worker = gevent.spawn(current.execute)
     except Exception:
         LOG.exception("Benchmark start rejected (collect the preceding run before restarting)")
@@ -191,7 +202,7 @@ def stopping(environment, **kwargs):
         current.done.wait()
 
 
-class StockOutBenchmarkUser(User):
+class CompensationBenchmarkUser(User):
     @task
     def idle(self):
         gevent.sleep(1)

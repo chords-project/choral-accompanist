@@ -1,6 +1,6 @@
 # Warehouse recovery benchmark
 
-## Stock-out benchmark
+## Compensation benchmark
 
 Use the same namespace, cluster prerequisites, run guard, collector, and port-forward
 workflow as the recovery benchmark below. Select the stock-out mode when deploying:
@@ -10,10 +10,17 @@ python3 benchmark_deploy.py accompanist --benchmark compensation --context docke
 kubectl --context docker-desktop -n warehouse-benchmark port-forward svc/loadgenerator 8089:8089
 ```
 
-Open <http://localhost:8089> and start the run. The UI defaults to 750 units of
-product 123 and 5 requests/s. It sets and verifies stock before scheduling exactly
-1,500 requests, taking 300 seconds at that rate. `Stock Count` and `Request Rate`
-change the count and submission duration; the latter is always `2 × stock / rate`.
+Open <http://localhost:8089>, choose a `Failure Point`, and start the run. `stock`
+preserves the original first-step stock-out workload. `fulfillment` fails the final
+`packageAndSendOrder` step after payment and loyalty have committed, exercising their
+compensations. The UI defaults to 750 units or fulfillment slots and 5 requests/s.
+It sets and verifies the selected resource before scheduling exactly twice that many
+requests, taking 300 seconds at the defaults. `Stock Count`, `Fulfillment Capacity`,
+and `Request Rate` control the workload; its duration is always `2 × resource / rate`.
+Fulfillment runs reset product stock to 1,000,000,000 so stock cannot cause an earlier
+failure. Every compensation run also records the initial loyalty balance and verifies
+that the final balance increased only for successful orders; this detects a service
+compensation that returned without durably reverting its points update.
 Set `Max Concurrent Requests` to 0 for an automatically derived cap. The benchmark
 does not retry submissions or catch up missed arrivals. Stop Locust before collecting.
 
@@ -31,18 +38,22 @@ After collection releases the run guard, deploy Temporal and repeat:
 python3 benchmark_deploy.py temporal --benchmark compensation --context docker-desktop
 kubectl --context docker-desktop -n warehouse-benchmark port-forward svc/loadgenerator 8089:8089
 ./results/collect_run.sh TEMPORAL_UUID --context docker-desktop --namespace warehouse-benchmark --output ./results
-python results/plot_compensation.py results/ACCOMPANIST_UUID results/TEMPORAL_UUID --output results/stock-comparison.png
+python results/plot_compensation.py results/ACCOMPANIST_UUID results/TEMPORAL_UUID --output results/compensation-comparison.png
 ```
 
-The stock-out bundle records the verified initial stock in `run-config.json` and
-the final count in `stock-final.json`. Validation requires all requests to reach a
-durable terminal state, exactly half to complete and half to fail, and final stock
-to equal zero. Expected stock-out failures do not invalidate the run. The plot shows
-terminal throughput and dispatch-to-terminal latency separately for successes and
-failures; HTTP latency is secondary because Temporal's HTTP endpoint only starts a
-workflow. The stock-out occurs at the first saga step, before payment and loyalty;
-this benchmark does not exercise their compensations. Use the existing guard and
-collect each run before starting another or switching systems.
+The bundle records verified initial and final resources. Validation requires every
+request to reach a durable terminal state and exactly half to complete and half to
+fail. Stock runs require final stock zero. Fulfillment runs require final capacity
+zero, stock reduced only by successful orders, and complete compensation timing for
+every failed order. Expected business failures do not invalidate the run.
+
+The plot shows terminal throughput, dispatch-to-terminal and HTTP latency, unfinished
+work, and—on fulfillment runs—the time from durable final-step rejection until the
+last compensation completes plus the compensation backlog. Accompanist derives this
+from transaction state in all three service databases. Temporal derives it from the
+workflow history and includes the idempotent `cancelDelivery` activity that its saga
+actually schedules. Use the existing guard and collect each run before starting
+another or switching systems.
 
 ## Recovery benchmark
 

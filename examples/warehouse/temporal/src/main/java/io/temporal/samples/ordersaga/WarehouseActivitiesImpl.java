@@ -75,6 +75,7 @@ public class WarehouseActivitiesImpl implements WarehouseActivities {
         System.out.println("packageAndSendOrder");
 
         try (var con = db.getConnection()) {
+            con.setAutoCommit(false);
             // Create table if not exists
             try (var stmt = con.createStatement()) {
                 stmt.execute("""
@@ -84,6 +85,23 @@ public class WarehouseActivitiesImpl implements WarehouseActivities {
                           PRIMARY KEY (user_id, session_id)
                         );
                         """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS fulfillment_capacity (
+                          capacity_id INT PRIMARY KEY,
+                          remaining_capacity INT NOT NULL CHECK (remaining_capacity >= 0)
+                        );
+                        INSERT INTO fulfillment_capacity (capacity_id, remaining_capacity)
+                        VALUES (1, 1000000000) ON CONFLICT DO NOTHING;
+                        """);
+            }
+
+            try (var stmt = con.prepareStatement("""
+                    UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity - 1
+                    WHERE capacity_id = 1 AND remaining_capacity > 0;
+                    """)) {
+                if (stmt.executeUpdate() != 1) {
+                    throw ApplicationFailure.newFailure("no fulfillment capacity available", "warehouse.UserException");
+                }
             }
 
             // Create order
@@ -94,6 +112,9 @@ public class WarehouseActivitiesImpl implements WarehouseActivities {
                 stmt.setInt(2, sessionID);
                 stmt.execute();
             }
+            con.commit();
+        } catch (ApplicationFailure e) {
+            throw e;
         } catch (Exception e) {
             throw ApplicationFailure.newFailureWithCause("database exception", e.getClass().getName(), e);
         }
@@ -103,13 +124,21 @@ public class WarehouseActivitiesImpl implements WarehouseActivities {
     public void cancelDelivery(int sessionID) {
         System.out.println("cancelDelivery");
 
-        try (
-                var con = db.getConnection();
-                var stmt = con.prepareStatement("DELETE FROM orders WHERE user_id = ? AND session_id = ?;")
-        ) {
-            stmt.setInt(1, userID);
-            stmt.setInt(2, sessionID);
-            stmt.execute();
+        try (var con = db.getConnection()) {
+            con.setAutoCommit(false);
+            try (var stmt = con.prepareStatement("DELETE FROM orders WHERE user_id = ? AND session_id = ?;")) {
+                stmt.setInt(1, userID);
+                stmt.setInt(2, sessionID);
+                if (stmt.executeUpdate() == 1) {
+                    try (var capacity = con.prepareStatement("""
+                            UPDATE fulfillment_capacity SET remaining_capacity = remaining_capacity + 1
+                            WHERE capacity_id = 1;
+                            """)) {
+                        capacity.executeUpdate();
+                    }
+                }
+            }
+            con.commit();
         } catch (Exception e) {
             throw ApplicationFailure.newFailureWithCause("database exception", e.getClass().getName(), e);
         }

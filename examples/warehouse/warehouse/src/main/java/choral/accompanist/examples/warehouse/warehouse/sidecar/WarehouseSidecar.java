@@ -30,7 +30,7 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
         telemetry = LgtmConfiguration.initTelemetry(otelEndpoint, TELEMETRY_SERVICE_NAME);
         Runtime.getRuntime().addShutdownHook(new Thread(telemetry::close, "warehouse-telemetry-shutdown"));
 
-        warehouseTransactions = new DirectTransactions();
+        warehouseTransactions = new SidecarTransactions();
 
         var dbUrl = System.getenv().getOrDefault("POSTGRES_URL", "postgresql://localhost:5432/warehouse_warehouse");
 
@@ -43,21 +43,14 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
 
         try (var con = dataStore.db.getConnection(); var stmt = con.createStatement()) {
             stmt.execute("""
-                CREATE SEQUENCE IF NOT EXISTS benchmark_session_ids AS INTEGER MINVALUE -2147483647 MAXVALUE -1 START -2147483647;
-                CREATE TABLE IF NOT EXISTS benchmark_requests (
-                    request_id UUID PRIMARY KEY, run_id UUID NOT NULL,
-                    session_id INTEGER UNIQUE NOT NULL DEFAULT nextval('benchmark_session_ids'),
-                    accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
-                """);
+                    CREATE SEQUENCE IF NOT EXISTS benchmark_session_ids AS INTEGER MINVALUE -2147483647 MAXVALUE -1 START -2147483647;
+                    CREATE TABLE IF NOT EXISTS benchmark_requests (
+                        request_id UUID PRIMARY KEY, run_id UUID NOT NULL,
+                        session_id INTEGER UNIQUE NOT NULL DEFAULT nextval('benchmark_session_ids'),
+                        accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                    """);
         }
-
-        // RabbitMQ connection
-//        var connectionFactory = new ConnectionFactory();
-//        connectionFactory.setHost(RMQ_ADDRESS);
-//        var connection = connectionFactory.newConnection();
-//        var clientCon = RMQChannelSender.factory(connection);
-//        var serverCon = RMQChannelReceiver.factory();
 
         // Mailbox connection
         String[] broadcastClients = {System.getenv("PAYMENT"), System.getenv("LOYALTY")};
@@ -108,7 +101,6 @@ public class WarehouseSidecar implements FaultTolerantServer.FaultSessionEvent, 
         }
         Session session = Session.makeSession("WAREHOUSE_ORDER", SERVICE_NAME, benchmarkRunId);
         if (benchmarkRunId != null) {
-            java.util.UUID.fromString(requestId);
             // Commit correlation before invoking the session, even if the HTTP client disconnects.
             try (var con = dataStore.db.getConnection(); var stmt = con.prepareStatement(
                     "INSERT INTO benchmark_requests (request_id, run_id) VALUES (CAST(? AS UUID), CAST(? AS UUID)) RETURNING session_id")) {
